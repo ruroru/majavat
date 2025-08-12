@@ -1,0 +1,1 @@
+{% if user.is_admin %}{% if user.has_permissions %}Admin Panel: {{ user.name }}{% else %}Access Denied - No Permissions{% endif %}{% else %}{% if user.is_logged_in %}Welcome {{ user.name }}!{% else %}Please log in{% endif %}{% endif %}

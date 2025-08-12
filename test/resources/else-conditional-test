@@ -1,0 +1,1 @@
+{% if has.posts %}posts{% else %}not-posts{% endif %}
