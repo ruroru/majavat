@@ -1,0 +1,3 @@
+{% extends content "./inheritance-parent" %}
+"testing {% include "inheritance-include" %}"
+foobarbaz

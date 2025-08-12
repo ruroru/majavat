@@ -1,0 +1,2 @@
+{% extends content "./not-existing-file" %}
+foobarbaz

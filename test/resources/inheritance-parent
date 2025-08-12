@@ -1,0 +1,3 @@
+hello {{ user.name }} from parent header
+{% block content %}
+this is a  footer
