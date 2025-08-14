@@ -3,6 +3,8 @@
             [clojure.string :as str]
             [clojure.test :refer [deftest is]]
             [jj.majavat :as majavat]
+            [jj.majavat.parser :as parser]
+            [mock-clj.core :as mock]
             [jj.majavat.resource-content-resolver :as rcr])
   (:import (java.io InputStream)))
 
@@ -54,3 +56,21 @@
                                              (majavat/render-file file-path file-content
                                                                   {:return-type :input-stream
                                                                    :resolver    (rcr/->ResourceContentResolver)}))))))))
+
+(deftest cache-enabled-test
+  (mock/with-mock
+    [parser/parse [{:type  :text
+                    :value "text"}]]
+    (majavat/render-file "somefile" {})
+    (majavat/render-file "somefile" {})
+    (majavat/render-file "somefile" {})
+    (is (= 1 (mock/call-count parser/parse)))))
+
+(deftest cache-disabled-test
+  (mock/with-mock
+    [parser/parse [{:type  :text
+                    :value "text"}]]
+    (majavat/render-file "somefile" {} {:cache? false})
+    (majavat/render-file "somefile" {} {:cache? false})
+    (majavat/render-file "somefile" {} {:cache? false})
+    (is (= 3 (mock/call-count parser/parse)))))

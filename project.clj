@@ -14,7 +14,8 @@
 
   :resource-paths ["src/resourses"]
   :profiles {:test {:global-vars    {*warn-on-reflection* true}
-                    :dependencies   [[ch.qos.logback/logback-classic "1.5.18"]]
+                    :dependencies   [[ch.qos.logback/logback-classic "1.5.18"]
+                                     [mock-clj "0.2.1"]]
                     :resource-paths ["test/resources"]}}
 
   :plugins [[org.clojars.jj/bump "1.0.4"]

@@ -33,65 +33,84 @@ All supported options:
 |--------------------|---------------------------|--------------------------------------|
 | `return-type`      | `:string`                 | `:string`, `:input-stream`           |
 | `content-resolver` | `ResourceContentResolver` | Any `ContentResolver` implementation |
+| `cache?`           | `true`                    | `true`, `false`                      |
 
 ### Creating templates
+
 #### Inserting value
 
-Rendering file with content 
+Rendering file with content
+
 ```
 Hello {{ name }}!
 ```
+
 ```clojure
 (render-file "input-file" {:name "world"}) ;; => returns Hello world!
 ```
+
 #### Conditionals
+
 Rendering input file with content:
+
 ```
 "Hello {% if name %}{{name}}{% else %}world{% endif %}!"
 ```
+
 ```clojure
 (render-file "input-file" {:name "jj"}) ;; returns "Hello jj!"
 (render-file "input-file" {}) ;; returns "Hello world!"
 ```
 
 #### Looping
+
 Rendering input file with content:
+
 ```
 {% for item in items %}
 - {{ item }}
 {% endfor %}
 ```
+
 ```clojure
-(render-file "input-file" {:items ["Apple" "Banana"  "Orange"]}) ;; returns "-Apple\n- Banana\n- Orange"
+(render-file "input-file" {:items ["Apple" "Banana" "Orange"]}) ;; returns "-Apple\n- Banana\n- Orange"
 ```
+
 #### Including template
 
 file.txt content
+
 ```
 foo
 ```
+
 Rendering input file with content:
+
 ```
 included {% include "file.txt" %}
 ```
+
 ```clojure
 (render-file "input-file" {}) ;; returns "included foo"
 ```
 
-
-
 #### Extending template
+
 file.txt content
+
 ```
 foo
 {% block content %}
 baz
 ```
+
 Rendering input file with content:
+
 ```
 {% extends content "file.txt" %}
 bar
 ```
+
 ```clojure
 (render-file "input-file" {}) ;; returns "foo\nbar\nbaz"
 ```
@@ -103,6 +122,7 @@ The `ContentResolver` protocol provides a uniform interface for accessing templa
 ### Protocol Methods
 
 #### `resolve-path`
+
 Resolve a relative path against a base path.
 
 ```clojure
@@ -114,6 +134,7 @@ Resolve a relative path against a base path.
 ```
 
 #### `read-content`
+
 Read content from a path. Returns the content as a string, or `nil` if not found.
 
 ```clojure
@@ -122,6 +143,7 @@ Read content from a path. Returns the content as a string, or `nil` if not found
 ```
 
 #### `content-exists?`
+
 Check if content exists at a path.
 
 ```clojure
@@ -133,7 +155,6 @@ Check if content exists at a path.
 
 - **ResourceContentResolver** (default) - Reads from classpath
 - **FileSystemContentResolver** - Reads from filesystem
-
 
 ## License
 
