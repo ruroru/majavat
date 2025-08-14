@@ -74,3 +74,7 @@
     (majavat/render-file "somefile" {} {:cache? false})
     (majavat/render-file "somefile" {} {:cache? false})
     (is (= 3 (mock/call-count parser/parse)))))
+
+
+(deftest try-rendering-file-that-extends-not-existing-file
+  (is (= "./not-existing-file does not exist" (majavat/render-file "extends-not-existing-test" {} {:cache? false}))))
