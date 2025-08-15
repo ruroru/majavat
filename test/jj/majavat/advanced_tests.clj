@@ -2,10 +2,9 @@
   (:require [clojure.test :refer [deftest is testing]]
             [jj.majavat.lexer :as lexer]
             [jj.majavat.parser :as parser]
-            [jj.majavat.resource-content-resolver :as rcr]))
+            [jj.majavat.resolver.resource :as rcr]))
 
 (def contentResolver (rcr/->ResourceContentResolver))
-
 
 (deftest test-deeply-nested-conditionals
   (is (= [{:condition  [:user

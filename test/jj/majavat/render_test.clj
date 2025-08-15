@@ -3,10 +3,11 @@
     [clojure.string :as str]
     [clojure.test :refer [deftest is are]]
     [jj.majavat.parser :as parser]
-    [jj.majavat.file-system-content-resolver :as fcr]
     [jj.majavat.renderer :as renderer]
     [jj.majavat.renderer.ops.html :as hops]
-    [jj.majavat.resource-content-resolver :as rcr])
+    [jj.majavat.resolver.fs-resolver :as fcr]
+    [jj.majavat.resolver.resource :as rcr]
+    )
   (:import (java.io InputStream)))
 
 
@@ -102,8 +103,8 @@
   (is (= (crlf->lf expected-string)
          (crlf->lf (renderer/render template context true))) "string assertion")
   (is (= (crlf->lf expected-string)
-         (crlf->lf (String. (.readAllBytes ^InputStream (renderer/render-is template context true))))
-         ) "input stream assertion"))
+         (crlf->lf (String. (.readAllBytes ^InputStream (renderer/render-is template context true)))))
+      "input stream assertion"))
 
 (deftest advanced-test
   (let [context {:company {:departments [{:name      "Engineering"
@@ -202,7 +203,7 @@ this is a  footer"
 \"testing your email is: some@mail.com\"
 foobarbaz
 this is a  footer"
-        template (parser/parse "./test/resources/inheritance-test" (fcr/->FileContentResolver))
+        template (parser/parse "./test/resources/inheritance-test" (fcr/->FsResolver))
         context {:user {:name  "jj"
                         :email "some@mail.com"}}]
     (assert-render template context expected-string)))

@@ -3,7 +3,7 @@
     [jj.majavat.renderer :as renderer]
     [jj.majavat.renderer.ops.html :as ho]
     [jj.majavat.parser :as parser]
-    [jj.majavat.resource-content-resolver :as rcr]))
+    [jj.majavat.resolver.resource :as rcr]))
 
 (defonce ^:private template-cache (atom {}))
 

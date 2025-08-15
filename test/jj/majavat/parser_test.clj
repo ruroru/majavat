@@ -1,7 +1,7 @@
 (ns jj.majavat.parser-test
   (:require [clojure.test :refer [deftest is are]]
             [jj.majavat.parser :as parser]
-            [jj.majavat.resource-content-resolver :as rcr]
+            [jj.majavat.resolver.resource :as rcr]
             [mock-clj.core :as mock]))
 
 (def contentResolver (rcr/->ResourceContentResolver))

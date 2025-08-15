@@ -1,4 +1,4 @@
-(ns jj.majavat.content-resolver)
+(ns jj.majavat.resolver)
 
 (defprotocol ContentResolver
   "Protocol for content resolution and access operations.

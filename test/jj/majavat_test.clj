@@ -4,9 +4,7 @@
             [clojure.test :refer [deftest is]]
             [jj.majavat :as majavat]
             [jj.majavat.parser :as parser]
-            [jj.majavat.renderer.ops.html :as hops]
-            [mock-clj.core :as mock]
-            [jj.majavat.resource-content-resolver :as rcr])
+            [mock-clj.core :as mock])
   (:import (java.io InputStream)))
 
 (defn- crlf->lf [s]
@@ -50,11 +48,12 @@
                                         ]
                       :about-content   "We are a team of passionate developers dedicated to sharing knowledge about modern web technologies."
                       :current-year    2025}]
-
     (is (= (crlf->lf (slurp (io/resource "html/expected.html")))
-           (crlf->lf (majavat/render-file file-path file-content {:escape? false}))
+           (crlf->lf (majavat/render-file file-path file-content {:escape? true})))
+        "verifying render to string")
+    (is (= (crlf->lf (slurp (io/resource "html/expected.html")))
            (crlf->lf (String. (.readAllBytes ^InputStream
-                                             (majavat/render-file file-path file-content {:return-type :input-stream :escape? false}))))))))
+                                             (majavat/render-file file-path file-content {:return-type :input-stream :escape? true}))))) "verifying render to input stream")))
 
 (deftest cache-enabled-test
   (mock/with-mock

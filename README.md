@@ -154,7 +154,7 @@ Check if content exists at a path.
 ### Built-in Implementations
 
 - **ResourceContentResolver** (default) - Reads from classpath
-- **FileSystemContentResolver** - Reads from filesystem
+- **FsResolver** - Reads from filesystem
 
 ## License
 

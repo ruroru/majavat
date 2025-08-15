@@ -1,6 +1,6 @@
 (ns jj.majavat.parser
   (:require [jj.majavat.lexer :as lexer]
-            [jj.majavat.content-resolver :as cr]))
+            [jj.majavat.resolver :as cr]))
 
 
 

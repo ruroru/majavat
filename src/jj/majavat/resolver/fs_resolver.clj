@@ -1,10 +1,10 @@
-(ns jj.majavat.file-system-content-resolver
-  (:require [jj.majavat.content-resolver :as cr]
-            [jj.majavat.content-resolver])
+(ns jj.majavat.resolver.fs-resolver
+  (:require [jj.majavat.resolver :as cr]
+            [jj.majavat.resolver])
   (:import (java.nio.file Files LinkOption Paths)))
 
 
-(defrecord FileContentResolver []
+(defrecord FsResolver []
   cr/ContentResolver
 
   (resolve-path [_ base-path relative-path]

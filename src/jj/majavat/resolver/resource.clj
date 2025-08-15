@@ -1,10 +1,7 @@
-(ns jj.majavat.resource-content-resolver
+(ns jj.majavat.resolver.resource
   (:require [clojure.java.io :as io]
-            [jj.majavat.content-resolver :as cr])
+            [jj.majavat.resolver :as cr])
   (:import (java.nio.file Paths)))
-
-
-
 
 (defrecord ResourceContentResolver []
   cr/ContentResolver

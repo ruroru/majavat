@@ -23,7 +23,7 @@
       (let [val (resolve-path context (:value node))]
         (if (and (some? (:ops escape-conf))
                  (:escape? escape-conf))
-          (.append sb (rops/escape  (:ops escape-conf) (str val)))
+          (.append sb (rops/escape (:ops escape-conf) (str val)))
           (.append sb (str val))))
 
       :for
@@ -52,7 +52,7 @@
     (:message template)))
 
 
-(defn- render-nodes-to-stream-seq [nodes context charset escape?]
+(defn- render-nodes-to-stream-seq [nodes context charset escape-conf]
   (lazy-seq
     (when (seq nodes)
       (let [node (first nodes)]
@@ -60,15 +60,19 @@
           :text
           (let [text (:value node "")]
             (if (empty? text)
-              (render-nodes-to-stream-seq (rest nodes) context charset escape?)
+              (render-nodes-to-stream-seq (rest nodes) context charset escape-conf)
               (cons (ByteArrayInputStream. (.getBytes ^String text ^Charset charset))
-                    (render-nodes-to-stream-seq (rest nodes) context charset escape?))))
+                    (render-nodes-to-stream-seq (rest nodes) context charset escape-conf))))
 
           :value-node
-          (let [resolved-value (str (resolve-path context (:value node)))
+          (let [resolved-value (let [val (resolve-path context (:value node))]
+                                 (if (and (some? (:ops escape-conf))
+                                          (:escape? escape-conf))
+                                   (rops/escape (:ops escape-conf) (str val))
+                                   (str (resolve-path context (:value node)))))
                 bytes (.getBytes ^String resolved-value ^Charset charset)]
             (cons (ByteArrayInputStream. bytes)
-                  (render-nodes-to-stream-seq (rest nodes) context charset escape?)))
+                  (render-nodes-to-stream-seq (rest nodes) context charset escape-conf)))
 
           :for
           (let [identifier (:identifier node)
@@ -78,10 +82,10 @@
                 for-streams (mapcat #(render-nodes-to-stream-seq
                                        body
                                        (assoc context identifier %)
-                                       charset escape?)
+                                       charset escape-conf)
                                     items)]
             (concat for-streams
-                    (render-nodes-to-stream-seq (rest nodes) context charset escape?)))
+                    (render-nodes-to-stream-seq (rest nodes) context charset escape-conf)))
 
           :if
           (let [condition (:condition node)
@@ -89,21 +93,21 @@
                 when-false (:when-false node)]
             (if (evaluate-condition condition context)
               (if when-true
-                (concat (render-nodes-to-stream-seq when-true context charset escape?)
-                        (render-nodes-to-stream-seq (rest nodes) context charset escape?))
-                (render-nodes-to-stream-seq (rest nodes) context charset escape?))
+                (concat (render-nodes-to-stream-seq when-true context charset escape-conf)
+                        (render-nodes-to-stream-seq (rest nodes) context charset escape-conf))
+                (render-nodes-to-stream-seq (rest nodes) context charset escape-conf))
               (if when-false
-                (concat (render-nodes-to-stream-seq when-false context charset escape?)
-                        (render-nodes-to-stream-seq (rest nodes) context charset escape?))
-                (render-nodes-to-stream-seq (rest nodes) context charset escape?))))
-          (render-nodes-to-stream-seq (rest nodes) context charset escape?))))))
+                (concat (render-nodes-to-stream-seq when-false context charset escape-conf)
+                        (render-nodes-to-stream-seq (rest nodes) context charset escape-conf))
+                (render-nodes-to-stream-seq (rest nodes) context charset escape-conf))))
+          (render-nodes-to-stream-seq (rest nodes) context charset escape-conf))))))
 
 (defn render-is
-  ([template context escape?]
-   (render-is template context StandardCharsets/UTF_8 escape?))
-  ([template context charset escape?]
+  ([template context escape-conf]
+   (render-is template context StandardCharsets/UTF_8 escape-conf))
+  ([template context charset escape-conf]
    (if-not (map? template)
-     (let [stream-seq (render-nodes-to-stream-seq template context charset escape?)
+     (let [stream-seq (render-nodes-to-stream-seq template context charset escape-conf)
            enumeration (Collections/enumeration stream-seq)]
        (SequenceInputStream. enumeration))
      (ByteArrayInputStream. (.getBytes ^String (:message template))))))
