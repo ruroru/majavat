@@ -1,6 +1,7 @@
 (ns jj.majavat
   (:require
     [jj.majavat.renderer :as renderer]
+    [jj.majavat.renderer.ops.html :as ho]
     [jj.majavat.parser :as parser]
     [jj.majavat.resource-content-resolver :as rcr]))
 
@@ -11,10 +12,12 @@
    (render-file file-path config {}))
   ([file-path config {:keys [return-type
                              content-resolver
+                             ops
                              cache?
                              escape?]
                       :or   {return-type      :string
                              content-resolver (rcr/->ResourceContentResolver)
+                             ops              (ho/->HtmlOps)
                              cache?           true
                              escape?          true}}]
 
@@ -26,5 +29,7 @@
                     (parser/parse file-path content-resolver))]
 
      (if (= :input-stream return-type)
-       (renderer/render-is template config escape?)
-       (renderer/render template config escape?)))))
+       (renderer/render-is template config {:escape? escape?
+                                            :ops ops})
+       (renderer/render template config {:escape? escape?
+                                         :ops ops})))))

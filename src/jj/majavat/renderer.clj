@@ -1,6 +1,8 @@
 (ns jj.majavat.renderer
+  (:require [jj.majavat.renderer.ops :as rops])
   (:import (java.io ByteArrayInputStream SequenceInputStream)
            (java.nio.charset Charset StandardCharsets)
+
            (java.util Collections)))
 
 (defn- resolve-path [context path]
@@ -8,43 +10,21 @@
     (get-in context path)
     (get context path)))
 
-(defn- html-escape
-  "Escapes HTML characters in a string for best performance.
-   Uses StringBuilder with pre-allocated capacity and primitive operations."
-  [^String s]
-  (if (nil? s)
-    s
-    (let [len (.length s)
-          ;; Pre-allocate StringBuilder with extra capacity for escaped chars
-          sb (StringBuilder. (int (* len 1.2)))]
-      (loop [i 0]
-        (if (< i len)
-          (let [c (.charAt s i)]
-            (case c
-              \& (.append sb "&amp;")
-              \< (.append sb "&lt;")
-              \> (.append sb "&gt;")
-              \" (.append sb "&quot;")
-              (.append sb c))
-            (recur (unchecked-inc i)))
-          (.toString sb))))))
-
-
 (defn- evaluate-condition [condition context]
   (boolean (resolve-path context condition)))
 
-(defn- render-nodes [nodes context ^StringBuilder sb escape?]
+(defn- render-nodes [nodes context ^StringBuilder sb escape-conf]
   (doseq [node nodes]
     (case (:type node)
       :text
       (.append sb (:value node ""))
 
       :value-node
-      (let [resolved-value (resolve-path context (:value node))]
-        (if escape?
-          (.append sb (html-escape (str resolved-value)))
-          (.append sb (str resolved-value)))
-        )
+      (let [val (resolve-path context (:value node))]
+        (if (and (some? (:ops escape-conf))
+                 (:escape? escape-conf))
+          (.append sb (rops/escape  (:ops escape-conf) (str val)))
+          (.append sb (str val))))
 
       :for
       (let [identifier (:identifier node)
@@ -53,22 +33,22 @@
             items (resolve-path context source-path)]
         (doseq [item items]
           (let [new-context (assoc context identifier item)]
-            (render-nodes body new-context sb escape?))))
+            (render-nodes body new-context sb escape-conf))))
 
       :if
       (let [condition (:condition node)
             when-true (:when-true node)
             when-false (:when-false node)]
         (if (evaluate-condition condition context)
-          (when (seq when-true) (render-nodes when-true context sb escape?))
-          (when (seq when-false) (render-nodes when-false context sb escape?))))
+          (when (seq when-true) (render-nodes when-true context sb escape-conf))
+          (when (seq when-false) (render-nodes when-false context sb escape-conf))))
 
       nil))
   sb)
 
-(defn render [template context escape?]
+(defn render [template context escape-conf]
   (if-not (map? template)
-    (.toString ^StringBuilder (render-nodes template context (StringBuilder.) escape?))
+    (.toString ^StringBuilder (render-nodes template context (StringBuilder.) escape-conf))
     (:message template)))
 
 
@@ -81,7 +61,7 @@
           (let [text (:value node "")]
             (if (empty? text)
               (render-nodes-to-stream-seq (rest nodes) context charset escape?)
-              (cons (ByteArrayInputStream. (.getBytes ^String text ^Charset charset )  )
+              (cons (ByteArrayInputStream. (.getBytes ^String text ^Charset charset))
                     (render-nodes-to-stream-seq (rest nodes) context charset escape?))))
 
           :value-node
@@ -101,7 +81,7 @@
                                        charset escape?)
                                     items)]
             (concat for-streams
-                    (render-nodes-to-stream-seq (rest nodes) context charset escape?) ) )
+                    (render-nodes-to-stream-seq (rest nodes) context charset escape?)))
 
           :if
           (let [condition (:condition node)
@@ -116,7 +96,7 @@
                 (concat (render-nodes-to-stream-seq when-false context charset escape?)
                         (render-nodes-to-stream-seq (rest nodes) context charset escape?))
                 (render-nodes-to-stream-seq (rest nodes) context charset escape?))))
-          (render-nodes-to-stream-seq (rest nodes) context charset escape?) )))))
+          (render-nodes-to-stream-seq (rest nodes) context charset escape?))))))
 
 (defn render-is
   ([template context escape?]

@@ -4,6 +4,7 @@
             [clojure.test :refer [deftest is]]
             [jj.majavat :as majavat]
             [jj.majavat.parser :as parser]
+            [jj.majavat.renderer.ops.html :as hops]
             [mock-clj.core :as mock]
             [jj.majavat.resource-content-resolver :as rcr])
   (:import (java.io InputStream)))
@@ -51,11 +52,9 @@
                       :current-year    2025}]
 
     (is (= (crlf->lf (slurp (io/resource "html/expected.html")))
-           (crlf->lf (majavat/render-file file-path file-content))
+           (crlf->lf (majavat/render-file file-path file-content {:escape? false}))
            (crlf->lf (String. (.readAllBytes ^InputStream
-                                             (majavat/render-file file-path file-content
-                                                                  {:return-type :input-stream
-                                                                   :resolver    (rcr/->ResourceContentResolver)}))))))))
+                                             (majavat/render-file file-path file-content {:return-type :input-stream :escape? false}))))))))
 
 (deftest cache-enabled-test
   (mock/with-mock

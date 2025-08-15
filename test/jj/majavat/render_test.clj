@@ -5,6 +5,7 @@
     [jj.majavat.parser :as parser]
     [jj.majavat.file-system-content-resolver :as fcr]
     [jj.majavat.renderer :as renderer]
+    [jj.majavat.renderer.ops.html :as hops]
     [jj.majavat.resource-content-resolver :as rcr])
   (:import (java.io InputStream)))
 
@@ -233,7 +234,8 @@ this is a  footer"
 
 (deftest escape-test
   (let [template (parser/parse "insert-value.html" contentResolver)]
-    (are [input expected] (= (format "hello %s" expected) (renderer/render template {:name input} true))
+    (are [input expected] (= (format "hello %s" expected) (renderer/render template {:name input} {:escape? true
+                                                                                                   :ops (hops/->HtmlOps)}))
                           "&" "&amp;"
                           "<" "&lt;"
                           ">" "&gt;"
