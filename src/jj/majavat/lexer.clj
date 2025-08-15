@@ -12,7 +12,10 @@
           next-char (first (next my-sequence))
           new-line-number (if (= current-char \newline)
                             (inc line-number)
-                            line-number)]
+                            (if (and (= current-char \return)
+                                     (not= next-char \newline))
+                              (inc line-number)
+                              line-number))]
 
       (cond
         (and (= current-char \{) (= next-char \{))
@@ -57,8 +60,8 @@
         (let [current-trimmed (string/trim current-string)]
           (if (not (.isBlank ^String current-trimmed))
             (recur (rest my-sequence) "" (conj vector {:type :identifier :value (mapv keyword (-> current-trimmed
-                                                                                                  (str/split #"\.")))} ) new-line-number)
-            (recur (rest my-sequence) "" (conj vector {:type :identifier } ) new-line-number)))
+                                                                                                  (str/split #"\.")))}) new-line-number)
+            (recur (rest my-sequence) "" (conj vector {:type :identifier}) new-line-number)))
 
         (every? identity [(= (:type (last vector)) :keyword-in)])
         (recur (rest my-sequence) (str current-string current-char) vector new-line-number)
@@ -103,7 +106,7 @@
         (if
           (and (= current-char \ ) (not (string/blank? current-string)))
           (recur (rest my-sequence) (str "" current-char) (conj vector {:type :identifier :value (mapv keyword (-> (string/trim current-string)
-                                                                                                                   (str/split #"\.")))} ) new-line-number)
+                                                                                                                   (str/split #"\.")))}) new-line-number)
           (recur (rest my-sequence) (str current-string current-char) vector new-line-number))
 
         (= (:type (last vector)) :keyword-for)

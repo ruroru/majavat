@@ -77,4 +77,6 @@
 
 
 (deftest try-rendering-file-that-extends-not-existing-file
-  (is (= "./not-existing-file does not exist" (majavat/render-file "extends-not-existing-test" {} {:cache? false}))))
+  (is (= "./not-existing-file does not exist"
+         (majavat/render-file "extends-not-existing-test" {}
+                              {:cache? false}))))

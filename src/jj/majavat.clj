@@ -11,10 +11,12 @@
    (render-file file-path config {}))
   ([file-path config {:keys [return-type
                              content-resolver
-                             cache?]
+                             cache?
+                             escape?]
                       :or   {return-type      :string
                              content-resolver (rcr/->ResourceContentResolver)
-                             cache?           true}}]
+                             cache?           true
+                             escape?          true}}]
 
    (let [template (if cache?
                     (or (get @template-cache file-path)
@@ -24,5 +26,5 @@
                     (parser/parse file-path content-resolver))]
 
      (if (= :input-stream return-type)
-       (renderer/render-is template config)
-       (renderer/render template config)))))
+       (renderer/render-is template config escape?)
+       (renderer/render template config escape?)))))

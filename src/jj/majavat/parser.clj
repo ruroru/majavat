@@ -4,9 +4,6 @@
 
 
 
-(defn- rrest [s]
-  (rest (rest s)))
-
 (defn- parse-ast
   ([lexed-list list current-block content-resolver]
    (parse-ast lexed-list list current-block false nil content-resolver))
@@ -51,8 +48,6 @@
                                 block-name-token (first remaining)
                                 remaining-after-block-name (rest remaining)]
                             (let [block-name (:value block-name-token)]
-                              (println "blockname is " block-name)
-                              (println "remaining after block name is " lexed-list)
                               (if (not (= :block-end (:type block-name-token)))
                                 (let [file-path-token (first remaining-after-block-name)
                                       remaining-after-file-path (rest remaining-after-block-name)]
@@ -94,7 +89,6 @@
                                     source-token (first remaining-after-in)
                                     remaining-after-source (rest remaining-after-in)
                                     block-end-token (first remaining-after-source)]
-                                (println block-end-token)
                                 (if (some? (:value source-token))
                                   (let [remaining-after-block-end (rest remaining-after-source)
                                         [body remaining-after-body] (parse-ast remaining-after-block-end [] current-block true current-file-path content-resolver)

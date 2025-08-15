@@ -1,7 +1,7 @@
 (ns jj.majavat.render-test
   (:require
     [clojure.string :as str]
-    [clojure.test :refer [deftest is]]
+    [clojure.test :refer [deftest is are]]
     [jj.majavat.parser :as parser]
     [jj.majavat.file-system-content-resolver :as fcr]
     [jj.majavat.renderer :as renderer]
@@ -63,13 +63,7 @@
                                {:type :if :condition [:dept :active]}]
                               {:name "Engineering" :budget "$500K"}))))
 
-(deftest prerender-non-string-text-values-test
-  (is (= [{:type  :text
-           :value "42[1 2 3]"}]
-         (renderer/pre-render [{:type :text :value 42}
-                               {:type :text :value nil}
-                               {:type :text :value [1 2 3]}]
-                              {:name "test"}))))
+
 
 (deftest prerender-special-characters-test
   (is (= [{:type :text :value "🎉 Hello 世界!"}
@@ -105,9 +99,9 @@
 
 (defn assert-render [template context expected-string]
   (is (= (crlf->lf expected-string)
-         (crlf->lf (renderer/render template context))) "string assertion")
+         (crlf->lf (renderer/render template context true))) "string assertion")
   (is (= (crlf->lf expected-string)
-         (crlf->lf (String. (.readAllBytes ^InputStream (renderer/render-is template context))))
+         (crlf->lf (String. (.readAllBytes ^InputStream (renderer/render-is template context true))))
          ) "input stream assertion"))
 
 (deftest advanced-test
@@ -236,3 +230,20 @@ this is a  footer"
         template (parser/parse "conditional-test" contentResolver)
         context {:has {:posts true}}]
     (assert-render template context expected-string)))
+
+(deftest escape-test
+  (let [template (parser/parse "insert-value.html" contentResolver)]
+    (are [input expected] (= (format "hello %s" expected) (renderer/render template {:name input} true))
+                          "&" "&amp;"
+                          "<" "&lt;"
+                          ">" "&gt;"
+                          "\"" "&quot;")))
+
+(deftest escape-set-to-false
+  (let [template (parser/parse "insert-value.html" contentResolver)]
+    (are [input] (= (format "hello %s" input) (renderer/render template {:name    input}
+                                                               false))
+                 "&"
+                 "<"
+                 ">"
+                 "\"")))

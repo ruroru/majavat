@@ -145,6 +145,43 @@
            [slurp "hello\n\n{{  }}\nworld"]
            (parser/parse "faulty-value" (rcr/->ResourceContentResolver))))))
 
+(deftest returns-error-on-line-3-if-for-return
+  (is (= {:message "error on line 3"
+          :type    :error}
+         (mock/with-mock
+           [slurp "hello\r\r{{  }}\rworld"]
+           (parser/parse "faulty-value" (rcr/->ResourceContentResolver))))))
+
+(deftest returns-error-on-line-3-for-crlf
+  (is (= {:message "error on line 3"
+          :type    :error}
+         (mock/with-mock
+           [slurp "hello\r\n\r\n{{  }}\r\nworld"]
+           (parser/parse "faulty-value" (rcr/->ResourceContentResolver))))))
+
+(deftest successful-crlf-parse
+  (is (= [{:type  :text
+           :value "hello\r\n\r\n"}
+          {:type  :value-node
+           :value [:name]}
+          {:type  :text
+           :value "\r\nworld"}]
+         (mock/with-mock
+           [slurp "hello\r\n\r\n{{ name }}\r\nworld"]
+           (parser/parse "faulty-value" (rcr/->ResourceContentResolver))))))
+
+(deftest successful-cr-parse
+  (is (= [{:type  :text
+           :value "hello\r\r"}
+          {:type  :value-node
+           :value [:name]}
+          {:type  :text
+           :value "\rworld"}]
+         (mock/with-mock
+           [slurp "hello\r\r{{ name }}\rworld"]
+           (parser/parse "faulty-value" (rcr/->ResourceContentResolver))))))
+
+
 (deftest returns-error-with-line-3-if-missing-condition-in-if
   (is (= {:message "error on line 3"
           :type    :error}
@@ -168,7 +205,7 @@
            (parser/parse "faulty-value" (rcr/->ResourceContentResolver))))))
 
 
-(deftest returns-not-existing-file-error12312
+(deftest returns-not-existing-file-error
   (is (= {:message "./asdasdasd does not exist"
           :type    :error}
          (mock/with-mock

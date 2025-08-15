@@ -27,7 +27,7 @@
 
 
 
-(deftest for-loop-test1asd
+(deftest for-loop-test
   (is (= [{:type :block-start}
           {:type :keyword-for}
           {:type  :identifier
@@ -93,7 +93,7 @@
            :type :block-end}]
          (lexer/tokenize "testing if {% if condition %}yes!{% else %}no!{% endif %}"))))
 
-(deftest if-else-statemens1
+(deftest include-test
   (is (= [{:type  :text
            :value "testing "}
           {:type :block-start}
@@ -116,7 +116,7 @@
          (lexer/tokenize "hello world {% block special-block %}"))))
 
 
-(deftest extends-test1
+(deftest extends-test
   (is (= [{:type  :text
            :value "testing "}
           {:type :block-start}
