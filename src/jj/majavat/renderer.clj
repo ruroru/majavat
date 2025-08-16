@@ -1,7 +1,6 @@
 (ns jj.majavat.renderer
   (:require [clojure.edn :as edn]
             [clojure.java.io :as io]
-            [jj.majavat.parser :as parser]
             [jj.majavat.renderer.ops :as rops])
   (:import (java.io ByteArrayInputStream SequenceInputStream)
            (java.nio.charset Charset StandardCharsets)

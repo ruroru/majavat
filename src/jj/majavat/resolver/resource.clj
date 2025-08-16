@@ -3,8 +3,8 @@
             [jj.majavat.resolver :as cr])
   (:import (java.nio.file Paths)))
 
-(defrecord ResourceContentResolver []
-  cr/ContentResolver
+(defrecord ResourceResolver []
+  cr/TemplateResolver
   (resolve-path [_ base-path relative-path]
     (let [base-path-obj (Paths/get base-path (make-array String 0))
           relative-path-obj (Paths/get relative-path (make-array String 0))

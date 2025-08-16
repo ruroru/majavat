@@ -4,7 +4,7 @@
             [jj.majavat.resolver.resource :as rcr]
             [mock-clj.core :as mock]))
 
-(def contentResolver (rcr/->ResourceContentResolver))
+(def contentResolver (rcr/->ResourceResolver))
 
 
 (deftest test-parse-text
@@ -99,7 +99,7 @@
            :value "hello "}
           {:type  :value-node
            :value [:name]}]
-         (parser/parse "subfolder/include-subfolder" (rcr/->ResourceContentResolver)))))
+         (parser/parse "subfolder/include-subfolder" (rcr/->ResourceResolver)))))
 
 
 (deftest includes-complicated-path
@@ -109,7 +109,7 @@
            :value "hello "}
           {:type  :value-node
            :value [:name]}]
-         (parser/parse "subfolder/include-complicated-subfolder" (rcr/->ResourceContentResolver)))))
+         (parser/parse "subfolder/include-complicated-subfolder" (rcr/->ResourceResolver)))))
 
 (deftest extends-test
   (is (= [{:type  :text
@@ -118,7 +118,7 @@
            :value "hello world"}
           {:type  :text
            :value "this is a  footer"}]
-         (parser/parse "extends-file" (rcr/->ResourceContentResolver)))))
+         (parser/parse "extends-file" (rcr/->ResourceResolver)))))
 
 (deftest extends-from-parent-dir
   (is (= [{:type  :text
@@ -127,7 +127,7 @@
            :value "hello world"}
           {:type  :text
            :value "this is a  footer"}]
-         (parser/parse "subfolder/extends-from-parent-dir" (rcr/->ResourceContentResolver)))))
+         (parser/parse "subfolder/extends-from-parent-dir" (rcr/->ResourceResolver)))))
 
 (deftest extends-from-sub-dir
   (is (= [{:type  :text
@@ -136,7 +136,7 @@
            :value "hello world"}
           {:type  :text
            :value "this is a subfolder footer"}]
-         (parser/parse "subfolder/extends-from-sub-dir" (rcr/->ResourceContentResolver)))))
+         (parser/parse "subfolder/extends-from-sub-dir" (rcr/->ResourceResolver)))))
 
 (deftest returns-error-on-line-3-if-missing-expression
   (is (= {:error-message "error on line 3"
@@ -144,7 +144,7 @@
           :type          "syntax-error"}
          (mock/with-mock
            [slurp "hello\n\n{{  }}\nworld"]
-           (parser/parse "faulty-value" (rcr/->ResourceContentResolver))))))
+           (parser/parse "faulty-value" (rcr/->ResourceResolver))))))
 
 (deftest returns-error-on-line-3-if-for-return
   (is (= {:error-message "error on line 3"
@@ -152,7 +152,7 @@
           :type          "syntax-error"}
          (mock/with-mock
            [slurp "hello\r\r{{  }}\rworld"]
-           (parser/parse "faulty-value" (rcr/->ResourceContentResolver))))))
+           (parser/parse "faulty-value" (rcr/->ResourceResolver))))))
 
 (deftest returns-error-on-line-3-for-crlf
   (is (= {:error-message "error on line 3"
@@ -160,7 +160,7 @@
           :type          "syntax-error"}
          (mock/with-mock
            [slurp "hello\r\n\r\n{{  }}\r\nworld"]
-           (parser/parse "faulty-value" (rcr/->ResourceContentResolver))))))
+           (parser/parse "faulty-value" (rcr/->ResourceResolver))))))
 
 (deftest successful-crlf-parse
   (is (= [{:type  :text
@@ -171,7 +171,7 @@
            :value "\r\nworld"}]
          (mock/with-mock
            [slurp "hello\r\n\r\n{{ name }}\r\nworld"]
-           (parser/parse "faulty-value" (rcr/->ResourceContentResolver))))))
+           (parser/parse "faulty-value" (rcr/->ResourceResolver))))))
 
 (deftest successful-cr-parse
   (is (= [{:type  :text
@@ -182,7 +182,7 @@
            :value "\rworld"}]
          (mock/with-mock
            [slurp "hello\r\r{{ name }}\rworld"]
-           (parser/parse "faulty-value" (rcr/->ResourceContentResolver))))))
+           (parser/parse "faulty-value" (rcr/->ResourceResolver))))))
 
 
 (deftest returns-error-with-line-3-if-missing-condition-in-if
@@ -191,7 +191,7 @@
           :type          "syntax-error"}
          (mock/with-mock
            [slurp "hello\n\n{% if %}\nworld{% endif %}"]
-           (parser/parse "faulty-value" (rcr/->ResourceContentResolver))))))
+           (parser/parse "faulty-value" (rcr/->ResourceResolver))))))
 
 
 (deftest returns-error-with-line-3-if-missing-block-name
@@ -200,7 +200,7 @@
           :type          "syntax-error"}
          (mock/with-mock
            [slurp "hello\n\n{% extends %}\nworld"]
-           (parser/parse "faulty-value" (rcr/->ResourceContentResolver))))))
+           (parser/parse "faulty-value" (rcr/->ResourceResolver))))))
 
 (deftest returns-error-with-line-3-if-missing-file-name
   (is (= {:error-message "error on line 3"
@@ -208,7 +208,7 @@
           :type          "syntax-error"}
          (mock/with-mock
            [slurp "hello\n\n{% extends block-name %}}"]
-           (parser/parse "faulty-value" (rcr/->ResourceContentResolver))))))
+           (parser/parse "faulty-value" (rcr/->ResourceResolver))))))
 
 
 (deftest returns-not-existing-file-error
@@ -216,7 +216,7 @@
           :type          "template-not-found-error"}
          (mock/with-mock
            [slurp "hello\n\n{% extends blockname1 \"./asdasdasd\" %}"]
-           (parser/parse "faulty-value" (rcr/->ResourceContentResolver))))))
+           (parser/parse "faulty-value" (rcr/->ResourceResolver))))))
 
 (deftest returns-error-when-include-file-is-not-defined
   (is (= {:error-message "error on line 3"
@@ -224,7 +224,7 @@
           :type          "syntax-error"}
          (mock/with-mock
            [slurp "hello\n\n{% include  %}"]
-           (parser/parse "faulty-value" (rcr/->ResourceContentResolver))))))
+           (parser/parse "faulty-value" (rcr/->ResourceResolver))))))
 
 
 (deftest returns-error-when-fail-to-include-not-existing-file
@@ -232,7 +232,7 @@
           :type          "template-not-found-error"}
          (mock/with-mock
            [slurp "hello\n\n{% include \"not-existing-file.txt\" %}"]
-           (parser/parse "faulty-value" (rcr/->ResourceContentResolver))))))
+           (parser/parse "faulty-value" (rcr/->ResourceResolver))))))
 
 (deftest faulty-for-loop
   (are [input] (= {:error-message "error on line 3"
@@ -240,7 +240,7 @@
                    :type          "syntax-error"}
                   (mock/with-mock
                     [slurp input]
-                    (parser/parse "faulty-value" (rcr/->ResourceContentResolver))))
+                    (parser/parse "faulty-value" (rcr/->ResourceResolver))))
                ;"hello\n\n{% for   %}"
                "hello\n\n{% for in  %}"
                ;"hello\n\n{%  for i in   %} "

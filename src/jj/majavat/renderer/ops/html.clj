@@ -1,10 +1,10 @@
 (ns jj.majavat.renderer.ops.html
-  (:require [jj.majavat.renderer.ops ])
+  (:require [jj.majavat.renderer.ops])
   (:import (jj.majavat.renderer.ops Ops)))
 
 (defrecord HtmlOps []
   Ops
-  (escape [_  s]
+  (escape [_ s]
     (if (nil? s)
       s
       (let [len (.length ^String s)

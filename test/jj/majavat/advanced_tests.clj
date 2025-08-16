@@ -4,7 +4,7 @@
             [jj.majavat.parser :as parser]
             [jj.majavat.resolver.resource :as rcr]))
 
-(def contentResolver (rcr/->ResourceContentResolver))
+(def contentResolver (rcr/->ResourceResolver))
 
 (deftest test-deeply-nested-conditionals
   (is (= [{:condition  [:user

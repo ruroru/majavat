@@ -1,11 +1,11 @@
-(ns jj.majavat.resolver.fs-resolver
+(ns jj.majavat.resolver.fs
   (:require [jj.majavat.resolver :as cr]
             [jj.majavat.resolver])
   (:import (java.nio.file Files LinkOption Paths)))
 
 
 (defrecord FsResolver []
-  cr/ContentResolver
+  cr/TemplateResolver
 
   (resolve-path [_ base-path relative-path]
     (let [base-path-obj (Paths/get base-path (make-array String 0))

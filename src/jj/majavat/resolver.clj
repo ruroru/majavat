@@ -1,6 +1,6 @@
 (ns jj.majavat.resolver)
 
-(defprotocol ContentResolver
+(defprotocol TemplateResolver
   "Protocol for content resolution and access operations.
 
   Provides a uniform interface for resolving paths and accessing content

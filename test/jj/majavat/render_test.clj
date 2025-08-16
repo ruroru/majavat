@@ -6,7 +6,7 @@
     [jj.majavat.parser :as parser]
     [jj.majavat.renderer :as renderer]
     [jj.majavat.renderer.ops.html :as hops]
-    [jj.majavat.resolver.fs-resolver :as fcr]
+    [jj.majavat.resolver.fs :as fcr]
     [jj.majavat.resolver.resource :as rcr]
     )
   (:import (java.io InputStream)))
@@ -15,9 +15,7 @@
 (defn- crlf->lf [s]
   (str/replace s "\r\n" "\n"))
 
-
-(def contentResolver (rcr/->ResourceContentResolver))
-
+(def contentResolver (rcr/->ResourceResolver))
 
 (deftest prerender-test
   (is (= [{:type :text :value "hello world"}
@@ -237,7 +235,7 @@ this is a  footer"
 (deftest escape-test
   (let [template (parser/parse "insert-value.html" contentResolver)]
     (are [input expected] (= (format "hello %s" expected) (renderer/render template {:name input} {:escape? true
-                                                                                                   :ops (hops/->HtmlOps)}))
+                                                                                                   :ops     (hops/->HtmlOps)}))
                           "&" "&amp;"
                           "<" "&lt;"
                           ">" "&gt;"
@@ -245,7 +243,7 @@ this is a  footer"
 
 (deftest escape-set-to-false
   (let [template (parser/parse "insert-value.html" contentResolver)]
-    (are [input] (= (format "hello %s" input) (renderer/render template {:name    input}
+    (are [input] (= (format "hello %s" input) (renderer/render template {:name input}
                                                                false))
                  "&"
                  "<"

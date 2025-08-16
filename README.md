@@ -29,11 +29,11 @@ Additional options can be passed with
 
 All supported options:
 
-| Option             | Default Value             | Supported Options                    |
-|--------------------|---------------------------|--------------------------------------|
-| `return-type`      | `:string`                 | `:string`, `:input-stream`           |
-| `content-resolver` | `ResourceContentResolver` | Any `ContentResolver` implementation |
-| `cache?`           | `true`                    | `true`, `false`                      |
+| Option              | Default Value      | Supported Options                     |
+|---------------------|--------------------|---------------------------------------|
+| `return-type`       | `:string`          | `:string`, `:input-stream`            |
+| `template-resolver` | `ResourceResolver` | Any `TemplateResolver` implementation |
+| `cache?`            | `true`             | `true`, `false`                       |
 
 ### Creating templates
 
@@ -153,7 +153,7 @@ Check if content exists at a path.
 
 ### Built-in Implementations
 
-- **ResourceContentResolver** (default) - Reads from classpath
+- **ResourceTemplateResolver** (default) - Reads from classpath
 - **FsResolver** - Reads from filesystem
 
 ## License
