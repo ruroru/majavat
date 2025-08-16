@@ -1,9 +1,9 @@
-(ns jj.majavat.renderer.ops.html
-  (:require [jj.majavat.renderer.ops])
-  (:import (jj.majavat.renderer.ops Ops)))
+(ns jj.majavat.renderer.escape.html
+  (:require [jj.majavat.renderer.escape])
+  (:import (jj.majavat.renderer.escape CharEscaper)))
 
-(defrecord HtmlOps []
-  Ops
+(defrecord HtmlEscaper []
+  CharEscaper
   (escape [_ s]
     (if (nil? s)
       s

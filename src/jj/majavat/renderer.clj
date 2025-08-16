@@ -1,10 +1,9 @@
 (ns jj.majavat.renderer
   (:require [clojure.edn :as edn]
             [clojure.java.io :as io]
-            [jj.majavat.renderer.ops :as rops])
+            [jj.majavat.renderer.escape :as rops])
   (:import (java.io ByteArrayInputStream SequenceInputStream)
            (java.nio.charset Charset StandardCharsets)
-
            (java.util Collections)))
 
 (defn- resolve-path [context path]
@@ -23,9 +22,8 @@
 
       :value-node
       (let [val (resolve-path context (:value node))]
-        (if (and (some? (:ops escape-conf))
-                 (:escape? escape-conf))
-          (.append sb (rops/escape (:ops escape-conf) (str val)))
+        (if (some? (:character-escaper escape-conf))
+          (.append sb (rops/escape (:character-escaper escape-conf) (str val)))
           (.append sb (str val))))
 
       :for
@@ -68,9 +66,8 @@
 
           :value-node
           (let [resolved-value (let [val (resolve-path context (:value node))]
-                                 (if (and (some? (:ops escape-conf))
-                                          (:escape? escape-conf))
-                                   (rops/escape (:ops escape-conf) (str val))
+                                 (if (some? (:character-escaper escape-conf))
+                                   (rops/escape (:character-escaper escape-conf) (str val))
                                    (str (resolve-path context (:value node)))))
                 bytes (.getBytes ^String resolved-value ^Charset charset)]
             (cons (ByteArrayInputStream. bytes)

@@ -34,6 +34,7 @@ All supported options:
 | `return-type`       | `:string`          | `:string`, `:input-stream`            |
 | `template-resolver` | `ResourceResolver` | Any `TemplateResolver` implementation |
 | `cache?`            | `true`             | `true`, `false`                       |
+| `character-escaper` | `nil`              | Any `CharEscaper` implementation      |
 
 ### Creating templates
 
@@ -153,7 +154,7 @@ Check if content exists at a path.
 
 ### Built-in Implementations
 
-- **ResourceTemplateResolver** (default) - Reads from classpath
+- **ResourceResolver** (default) - Reads from classpath
 - **FsResolver** - Reads from filesystem
 
 ## License

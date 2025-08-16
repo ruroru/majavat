@@ -5,7 +5,7 @@
     [clojure.test :refer [deftest is are]]
     [jj.majavat.parser :as parser]
     [jj.majavat.renderer :as renderer]
-    [jj.majavat.renderer.ops.html :as hops]
+    [jj.majavat.renderer.escape.html :as hops]
     [jj.majavat.resolver.fs :as fcr]
     [jj.majavat.resolver.resource :as rcr]
     )
@@ -235,7 +235,7 @@ this is a  footer"
 (deftest escape-test
   (let [template (parser/parse "insert-value.html" contentResolver)]
     (are [input expected] (= (format "hello %s" expected) (renderer/render template {:name input} {:escape? true
-                                                                                                   :ops     (hops/->HtmlOps)}))
+                                                                                                   :character-escaper     (hops/->HtmlEscaper)}))
                           "&" "&amp;"
                           "<" "&lt;"
                           ">" "&gt;"
