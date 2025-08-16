@@ -10,6 +10,7 @@
           relative-path-obj (Paths/get relative-path (make-array String 0))
           parent-path (or (.getParent base-path-obj)
                           (Paths/get "" (make-array String 0)))]
+
       (-> parent-path
           (.resolve relative-path-obj)
           (.normalize)

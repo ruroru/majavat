@@ -1,6 +1,7 @@
 (ns jj.majavat.parser
   (:require [jj.majavat.lexer :as lexer]
-            [jj.majavat.resolver :as cr]))
+            [jj.majavat.resolver :as cr])
+  (:import (java.io FileNotFoundException)))
 
 
 
@@ -22,7 +23,7 @@
          :opening-bracket (recur (rest lexed-list) list current-block parsing-for-body current-file-path content-resolver)
          :closing-bracket (if (not (nil? (:value (last list))))
                             (recur (rest lexed-list) list current-block parsing-for-body current-file-path content-resolver)
-                            (throw (Exception. (format "error on line %s" (:line current-item))))
+                            (throw (Exception. (str (:line current-item))))
                             )
          :block-start (recur (rest lexed-list) list current-block parsing-for-body current-file-path content-resolver)
          :block-end (recur (rest lexed-list) list current-block parsing-for-body current-file-path content-resolver)
@@ -41,8 +42,8 @@
                                         included-lexed (lexer/tokenize file-content)
                                         included-content (parse-ast included-lexed [] {} false resolved-filename content-resolver)]
                                     (recur remaining-after-filename (into list included-content) current-block parsing-for-body current-file-path content-resolver))
-                                  (throw (Exception. (format "%s does not exist" filename)))))
-                              (throw (Exception. (format "error on line %s" (:line file-name-token))))))
+                                  (throw (FileNotFoundException. filename))))
+                              (throw (Exception. (str (:line file-name-token))))))
 
          :keyword-extends (let [remaining (rest lexed-list)
                                 block-name-token (first remaining)
@@ -63,11 +64,11 @@
                                               parent-content (parse-ast parent-lexed [] {block-name block-content} false resolved-file-path content-resolver)]
 
                                           (recur remaining-after-block (into parent-content list) current-block parsing-for-body current-file-path content-resolver))
-                                        (throw (Exception. (format "%s does not exist" file-path)))))
-                                    (throw (Exception. (format "error on line %s" (:line file-path-token))))))
+                                        (throw (FileNotFoundException. file-path))))
+                                    (throw (Exception. (str (:line file-path-token))))))
 
 
-                                (throw (Exception. (format "error on line %s" (:line block-name-token)))))))
+                                (throw (Exception. (str (:line block-name-token)))))))
 
          :keyword-block (let [remaining (rest lexed-list)
                               block-name-token (first remaining)
@@ -98,9 +99,9 @@
                                                   :body       body}]
 
                                     (recur remaining-after-body (conj list for-node) current-block parsing-for-body current-file-path content-resolver))
-                                  (throw (Exception. (format "error on line %s" (:line block-end-token))))))
-                              (throw (Exception. (format "error on line %s" (:line (first remaining-after-id)))))))
-                          (throw (Exception. (format "error on line %s" (:line identifier-token))))))
+                                  (throw (Exception. (str (:line block-end-token))))))
+                              (throw (Exception. (str (:line (first remaining-after-id)))))))
+                          (throw (Exception. (str (:line identifier-token))))))
 
          :keyword-if (let [remaining (rest lexed-list)
                            condition-token (first remaining)
@@ -119,7 +120,7 @@
                                     :when-false when-false}]
                        (if (some? (:value condition-token))
                          (recur remaining-final (conj list if-node) current-block parsing-for-body current-file-path content-resolver)
-                         (throw (Exception. (format "error on line %s" (:line condition-token))))))
+                         (throw (Exception. (str (:line condition-token))))))
 
          :end-for (if parsing-for-body
                     [list (rest lexed-list)]
@@ -148,8 +149,13 @@
           lexed-value (lexer/tokenize file-content)]
       (try
         (parse-ast lexed-value [] {} false resource-path content-resolver)
+        (catch FileNotFoundException e
+               {:type          "template-not-found-error"
+                :error-message (format "%s template can not be found" (.getMessage ^Exception e))
+                })
         (catch Exception e
-          {:type    :error
-           :message (.getMessage ^Exception e)})))
-    {:type    :error
-     :message (format "%s resource can not be found." resource-path)}))
+          {:type          "syntax-error"
+           :error-message (format "error on line %s" (.getMessage ^Exception e))
+           :line          (.getMessage ^Exception e)})))
+    {:type "template-not-found-error"
+     :error-message (format "%s can not be found." resource-path)}))

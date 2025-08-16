@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{ page-title }}</title>
+</head>
+<body>
+
+<header>
+    <h1>{{ site-name }}</h1>
+    <nav>
+        <ul>
+{% for item in nav-items %}
+            <li><a href="{{ item.url }}">{{ item.label }}</a></li>
+{% endfor %}
+        </ul>
+    </nav>
+</header>
+
+<main>
+{% if is-home-page %}
+    <section id="home">
+        <h2>{{ welcome-heading }}</h2>
+        <p>{{ welcome-message }}</p>
+    </section>
+{% endif %}
+
+{% if posts %}
+    <section id="blog-posts">
+        <h2>Latest Posts</h2>
+{% for post in posts %}
+        <article>
+            <h3><a href="{{ post.url }}">{{  }}</a></h3>
+            <p>{{ post.excerpt }}</p>
+            <small>Published on {{ post.date }}</small>
+        </article>
+{% endfor %}
+    </section>
+{% endif %}
+
+    <section id="about">
+        <h2>About Us</h2>
+        <p>{{ about-content }}</p>
+    </section>
+</main>
+
+<footer>
+    <p>&copy; {{ current-year }} . All Rights Reserved.</p>
+</footer>
+
+</body>
+</html>

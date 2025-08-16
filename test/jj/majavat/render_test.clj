@@ -1,5 +1,6 @@
 (ns jj.majavat.render-test
   (:require
+    [clojure.java.io :as io]
     [clojure.string :as str]
     [clojure.test :refer [deftest is are]]
     [jj.majavat.parser :as parser]
@@ -178,20 +179,20 @@ this is a  footer"
 
 
 (deftest test-not-existing-file
-  (let [expected-string "not-existing-file resource can not be found."
+  (let [expected-string (slurp (io/resource "render-template-not-found.html"))
         template (parser/parse "not-existing-file" contentResolver)
         context {}]
     (assert-render template context expected-string)))
 
 (deftest include-not-existing
-  (let [expected-string "not-existing-include-file does not exist"
+  (let [expected-string (slurp (io/resource "include/not-existing.html"))
         template (parser/parse "includes-not-existing-test" contentResolver)
         context {}]
     (assert-render template context expected-string)))
 
 
 (deftest extends-not-existing-file
-  (let [expected-string "./not-existing-file does not exist"
+  (let [expected-string (slurp (io/resource "extends/not-existing-extends-error.html"))
         template (parser/parse "extends-not-existing-test" contentResolver)
         context {}]
     (assert-render template context expected-string)))

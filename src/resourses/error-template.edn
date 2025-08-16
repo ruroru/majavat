@@ -1,0 +1,25 @@
+[{:type :text,
+  :value   "<!DOCTYPE html>\n<html lang=\"en\">\n<head>\n    <meta charset=\"UTF-8\">\n    <meta name=\"viewport\" content=\"width=device-width, initial-scale=1.0\">\n    <title>Syntax Error</title>\n    <style>\n        body {\n            font-family: Arial, sans-serif;\n            margin: 0;\n            padding: 20px;\n            background-color: #f5f5f5;\n        }\n\n        .error-box {\n            background: white;\n            border: 1px solid #ddd;\n            border-radius: 8px;\n            padding: 20px;\n        }\n\n        /* Error type specific styles */\n        .error-box.syntax-error {\n            border-left: 4px solid #ff1744;\n            background: #ffebee;\n        }\n\n        .error-box.syntax-error .error-type {\n            color: #ff1744;\n        }\n\n        .error-box.template-not-found-error {\n            border-left: 4px solid #ff9800;\n            background: #fff3e0;\n        }\n\n        .error-box.template-not-found-error .error-type {\n            color: #ff9800;\n        }\n\n        .error-box.permission-denied {\n            border-left: 4px solid #9c27b0;\n            background: #f3e5f5;\n        }\n\n        .error-box.permission-denied .error-type {\n            color: #9c27b0;\n        }\n\n        .error-box.network-error {\n            border-left: 4px solid #2196f3;\n            background: #e3f2fd;\n        }\n\n        .error-box.network-error .error-type {\n            color: #2196f3;\n        }\n\n        .error-box.timeout {\n            border-left: 4px solid #ff5722;\n            background: #fbe9e7;\n        }\n\n        .error-box.timeout .error-type {\n            color: #ff5722;\n        }\n\n        .error-box.validation-error {\n            border-left: 4px solid #e91e63;\n            background: #fce4ec;\n        }\n\n        .error-box.validation-error .error-type {\n            color: #e91e63;\n        }\n\n        .error-type {\n            font-size: 18px;\n            font-weight: bold;\n            margin-bottom: 10px;\n        }\n\n        .error-line {\n            color: #666;\n            margin-bottom: 5px;\n        }\n\n        .error-message {\n            background: #f8f8f8;\n            padding: 10px;\n            border-radius: 4px;\n            font-family: monospace;\n            color: #333;\n            margin-top: 10px;\n        }\n    </style>\n</head>\n<body>\n<div class=\"error-box "}
+
+ {:type :value-node, :value [:type]}
+
+ {:type :text, :value "\">\n    <div class=\"error-type\">"}
+
+ {:type :value-node, :value [:type]}
+
+ {:type :text, :value "</div>\n"}
+
+ {:type :if,
+  :condition [:line],
+  :when-true
+  [{:type :text, :value "    <div class=\"error-line\">Line: "}
+   {:type :value-node, :value [:line]}
+   {:type :text, :value "</div>\n"}],
+  :when-false
+  [{:type :text, :value ""}]}
+
+ {:type :text, :value "    <div class=\"error-message\">"}
+
+ {:type :value-node, :value [:error-message]}
+
+ {:type :text, :value "</div>\n</div>\n</body>\n</html>"}]

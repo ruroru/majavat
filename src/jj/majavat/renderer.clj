@@ -1,5 +1,8 @@
 (ns jj.majavat.renderer
-  (:require [jj.majavat.renderer.ops :as rops])
+  (:require [clojure.edn :as edn]
+            [clojure.java.io :as io]
+            [jj.majavat.parser :as parser]
+            [jj.majavat.renderer.ops :as rops])
   (:import (java.io ByteArrayInputStream SequenceInputStream)
            (java.nio.charset Charset StandardCharsets)
 
@@ -49,7 +52,7 @@
 (defn render [template context escape-conf]
   (if-not (map? template)
     (.toString ^StringBuilder (render-nodes template context (StringBuilder.) escape-conf))
-    (:message template)))
+    (render (edn/read-string (slurp (io/resource "error-template.edn"))) template escape-conf)))
 
 
 (defn- render-nodes-to-stream-seq [nodes context charset escape-conf]
@@ -110,7 +113,7 @@
      (let [stream-seq (render-nodes-to-stream-seq template context charset escape-conf)
            enumeration (Collections/enumeration stream-seq)]
        (SequenceInputStream. enumeration))
-     (ByteArrayInputStream. (.getBytes ^String (:message template))))))
+     (ByteArrayInputStream. (.getBytes ^String (render (edn/read-string (slurp (io/resource "error-template.edn"))) template escape-conf))))))
 
 
 (defn pre-render [render-instructions context]
