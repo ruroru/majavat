@@ -40,14 +40,14 @@ All supported options:
 
 #### Inserting value
 
-Rendering file with content
+Rendering `file.txt` with content
 
 ```
 Hello {{ name }}!
 ```
 
 ```clojure
-(render-file "input-file" {:name "world"}) ;; => returns Hello world!
+(render-file "file.txt" {:name "world"}) ;; => returns Hello world!
 ```
 
 #### Conditionals

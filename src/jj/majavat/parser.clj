@@ -1,5 +1,6 @@
 (ns jj.majavat.parser
   (:require [jj.majavat.lexer :as lexer]
+            [clojure.pprint]
             [jj.majavat.resolver :as cr])
   (:import (java.io FileNotFoundException)))
 
@@ -14,7 +15,6 @@
        [list lexed-list]
        list)
      (let [current-item (first lexed-list)]
-
        (case (:type current-item)
          :text (recur (rest lexed-list) (conj list current-item) current-block parsing-for-body current-file-path template-resolver)
 
@@ -121,6 +121,25 @@
                        (if (some? (:value condition-token))
                          (recur remaining-final (conj list if-node) current-block parsing-for-body current-file-path template-resolver)
                          (throw (Exception. (str (:line condition-token))))))
+
+         :keyword-if-not (let [remaining (rest lexed-list)
+                               condition-token (first remaining)
+                               remaining-after-condition (rest remaining)
+                               remaining-after-block-end (rest remaining-after-condition)
+                               [when-true remaining-after-true] (parse-ast remaining-after-block-end [] current-block true current-file-path template-resolver)
+                               [when-false remaining-final] (if (and (seq remaining-after-true)
+                                                                     (= :keyword-else (:type (first remaining-after-true))))
+                                                              (let [remaining-after-else (rest (rest remaining-after-true))
+                                                                    [else-body remaining-after-else-body] (parse-ast remaining-after-else [] current-block true current-file-path template-resolver)]
+                                                                [else-body remaining-after-else-body])
+                                                              [[{:type :text :value ""}] remaining-after-true])
+                               if-not-node {:type       :if-not
+                                            :condition  (:value condition-token)
+                                            :when-true  when-true
+                                            :when-false when-false}]
+                           (if (some? (:value condition-token))
+                             (recur remaining-final (conj list if-not-node) current-block parsing-for-body current-file-path template-resolver)
+                             (throw (Exception. (str (:line condition-token))))))
 
          :end-for (if parsing-for-body
                     [list (rest lexed-list)]

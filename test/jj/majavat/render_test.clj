@@ -8,7 +8,7 @@
     [jj.majavat.renderer.escape.html :as hops]
     [jj.majavat.resolver.fs :as fcr]
     [jj.majavat.resolver.resource :as rcr]
-    )
+    [mock-clj.core :as mock])
   (:import (java.io InputStream)))
 
 
@@ -16,87 +16,80 @@
   (str/replace s "\r\n" "\n"))
 
 (def contentResolver (rcr/->ResourceResolver))
-
 (deftest prerender-test
-  (is (= [{:type :text :value "hello world"}
-          {:type :value-node :value :not-existing}]
-         (renderer/pre-render [{:type :text :value "hello "}
-                               {:type :value-node :value :name}
-                               {:type :value-node :value :not-existing}]
-                              {:name "world"}))))
+  (are [expected instructions context]
+    (= expected (renderer/pre-render instructions context))
 
+    [{:type :text :value "hello world"}
+     {:type :value-node :value :not-existing}]
+    [{:type :text :value "hello "}
+     {:type :value-node :value :name}
+     {:type :value-node :value :not-existing}]
+    {:name "world"}
 
-(deftest prerender-empty-context-test
-  (is (= [{:type :text :value "hello "}
-          {:type :value-node :value :name}
-          {:type :value-node :value :age}]
-         (renderer/pre-render [{:type :text :value "hello "}
-                               {:type :value-node :value :name}
-                               {:type :value-node :value :age}]
-                              {}))))
+    [{:type :text :value "hello "}
+     {:type :value-node :value :name}
+     {:type :value-node :value :age}]
+    [{:type :text :value "hello "}
+     {:type :value-node :value :name}
+     {:type :value-node :value :age}]
+    {}
 
-(deftest prerender-no-text-nodes-test
-  (is (= [{:type :value-node :value :missing}
-          {:type :value-node :value :also-missing}]
-         (renderer/pre-render [{:type :value-node :value :name}
-                               {:type :value-node :value :missing}
-                               {:type :value-node :value :age}
-                               {:type :value-node :value :also-missing}]
-                              {:name "Alice" :age 30}))))
+    [{:type :value-node :value :missing}
+     {:type :value-node :value :also-missing}]
+    [{:type :value-node :value :name}
+     {:type :value-node :value :missing}
+     {:type :value-node :value :age}
+     {:type :value-node :value :also-missing}]
+    {:name "Alice" :age 30}
 
-(deftest prerender-all-values-exist-test
-  (is (= [{:type :text :value "Hello Alice, You are 30"}]
-         (renderer/pre-render [{:type :text :value "Hello "}
-                               {:type :value-node :value :name}
-                               {:type :text :value ", You are "}
-                               {:type :value-node :value :age}]
-                              {:name "Alice" :age 30}))))
+    [{:type :text :value "Hello Alice, You are 30"}]
+    [{:type :text :value "Hello "}
+     {:type :value-node :value :name}
+     {:type :text :value ", You are "}
+     {:type :value-node :value :age}]
+    {:name "Alice" :age 30}
 
-(deftest prerender-mixed-node-types-test
-  (is (= [{:type :text :value "Department: Engineering"}
-          {:type :for :identifier :employee :source [:dept :employees]}
-          {:type :value-node :value :missing-budget}
-          {:type :if :condition [:dept :active]}]
-         (renderer/pre-render [{:type :text :value "Department: "}
-                               {:type :value-node :value :name}
-                               {:type :for :identifier :employee :source [:dept :employees]}
-                               {:type :value-node :value :missing-budget}
-                               {:type :if :condition [:dept :active]}]
-                              {:name "Engineering" :budget "$500K"}))))
+    [{:type :text :value "Department: Engineering"}
+     {:type :for :identifier :employee :source [:dept :employees]}
+     {:type :value-node :value :missing-budget}
+     {:type :if :condition [:dept :active]}]
+    [{:type :text :value "Department: "}
+     {:type :value-node :value :name}
+     {:type :for :identifier :employee :source [:dept :employees]}
+     {:type :value-node :value :missing-budget}
+     {:type :if :condition [:dept :active]}]
+    {:name "Engineering" :budget "$500K"}
 
+    [{:type :text :value "🎉 Hello 世界!"}
+     {:type :value-node :value :missing}]
+    [{:type :text :value "🎉 Hello "}
+     {:type :value-node :value :greeting}
+     {:type :text :value "!"}
+     {:type :value-node :value :missing}]
+    {:greeting "世界"}
 
+    [{:type :text :value "User: admin"}
+     {:type :value-node :value :role}
+     {:type :value-node :value :missing}]
+    [{:type :text :value "User: "}
+     {:type :value-node :value :username}
+     {:type :value-node :value :role}
+     {:type :value-node :value :missing}]
+    {:username "admin"
+     :profile  {:role "administrator"}}
 
-(deftest prerender-special-characters-test
-  (is (= [{:type :text :value "🎉 Hello 世界!"}
-          {:type :value-node :value :missing}]
-         (renderer/pre-render [{:type :text :value "🎉 Hello "}
-                               {:type :value-node :value :greeting}
-                               {:type :text :value "!"}
-                               {:type :value-node :value :missing}]
-                              {:greeting "世界"}))))
+    []
+    []
+    {:name "test"}
 
-(deftest prerender-nested-context-keys-test
-  (is (= [{:type :text :value "User: admin"}
-          {:type :value-node :value :role}                  ; This should remain since we only check top-level
-          {:type :value-node :value :missing}]
-         (renderer/pre-render [{:type :text :value "User: "}
-                               {:type :value-node :value :username}
-                               {:type :value-node :value :role} ; nested key, should remain
-                               {:type :value-node :value :missing}]
-                              {:username "admin"
-                               :profile  {:role "administrator"}}))))
-
-(deftest prerender-empty-instructions-test
-  (is (= [] (renderer/pre-render [] {:name "test"}))))
-
-(deftest prerender-keyword-vs-string-keys-test
-  (is (= [{:type :text :value "Hello "}
-          {:type :value-node :value :name}                  ; keyword not found in string-key context
-          {:type :value-node :value :missing}]
-         (renderer/pre-render [{:type :text :value "Hello "}
-                               {:type :value-node :value :name}
-                               {:type :value-node :value :missing}]
-                              {"name" "Alice"}))))          ; string key, not keyword
+    [{:type :text :value "Hello "}
+     {:type :value-node :value :name}
+     {:type :value-node :value :missing}]
+    [{:type :text :value "Hello "}
+     {:type :value-node :value :name}
+     {:type :value-node :value :missing}]
+    {"name" "Alice"}))
 
 (defn assert-render [template context expected-string]
   (is (= (crlf->lf expected-string)
@@ -234,8 +227,8 @@ this is a  footer"
 
 (deftest escape-test
   (let [template (parser/parse "insert-value.html" contentResolver)]
-    (are [input expected] (= (format "hello %s" expected) (renderer/render template {:name input} {:escape? true
-                                                                                                   :character-escaper     (hops/->HtmlEscaper)}))
+    (are [input expected] (= (format "hello %s" expected) (renderer/render template {:name input} {:escape?           true
+                                                                                                   :character-escaper (hops/->HtmlEscaper)}))
                           "&" "&amp;"
                           "<" "&lt;"
                           ">" "&gt;"
@@ -249,3 +242,12 @@ this is a  footer"
                  "<"
                  ">"
                  "\"")))
+
+(deftest if-not-test
+  (are [template rendered-string]
+    (= rendered-string
+       (mock/with-mock
+         [slurp template]
+         (renderer/render (parser/parse "conditional-test" contentResolver) {:value "some"} nil)))
+    "not {% if not not-existing-value %}world{% endif %}" "not world"
+    "not {% if not value %}foo{% else %}bar{% endif %}" "not bar"))

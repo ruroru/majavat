@@ -43,6 +43,13 @@
           (when (seq when-true) (render-nodes when-true context sb escape-conf))
           (when (seq when-false) (render-nodes when-false context sb escape-conf))))
 
+      :if-not
+      (let [condition (:condition node)
+            when-true (:when-true node)
+            when-false (:when-false node)]
+        (if (not (evaluate-condition condition context))
+          (when (seq when-true) (render-nodes when-true context sb escape-conf))
+          (when (seq when-false) (render-nodes when-false context sb escape-conf))))
       nil))
   sb)
 

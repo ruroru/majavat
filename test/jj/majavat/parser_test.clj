@@ -1,5 +1,5 @@
 (ns jj.majavat.parser-test
-  (:require [clojure.test :refer [deftest is are]]
+  (:require [clojure.test :refer [deftest is are testing]]
             [jj.majavat.parser :as parser]
             [jj.majavat.resolver.resource :as rcr]
             [mock-clj.core :as mock]))
@@ -241,7 +241,82 @@
                   (mock/with-mock
                     [slurp input]
                     (parser/parse "faulty-value" (rcr/->ResourceResolver))))
-               ;"hello\n\n{% for   %}"
+               "hello\n\n{% for   %}"
                "hello\n\n{% for in  %}"
-               ;"hello\n\n{%  for i in   %} "
+               "hello\n\n{%  for i in   %} "
                ))
+
+(deftest if-not-test
+  (are [template expected-ast]
+    (= expected-ast
+       (mock/with-mock
+         [slurp template]
+
+         (parser/parse "conditional-test" (rcr/->ResourceResolver))))
+
+    ;; Basic if-not test
+    "hello {% if not value %}world{% endif %}"
+    [{:type  :text
+      :value "hello "}
+     {:condition  [:value]
+      :type       :if-not
+      :when-false [{:type  :text
+                    :value ""}]
+      :when-true  [{:type  :text
+                    :value "world"}]}]
+
+    ;; If-not with else clause
+    "hello {% if not value %}world{% else %}universe{% endif %}"
+    [{:type  :text
+      :value "hello "}
+     {:condition  [:value]
+      :type       :if-not
+      :when-false [{:type  :text
+                    :value "universe"}]
+      :when-true  [{:type  :text
+                    :value "world"}]}]
+
+    "{% if not outer %}{% if not inner %}nested{% endif %}{% endif %}"
+    [{:condition  [:outer]
+      :type       :if-not
+      :when-false [{:type  :text
+                    :value ""}]
+      :when-true  [{:condition  [:inner]
+                    :type       :if-not
+                    :when-false [{:type  :text
+                                  :value ""}]
+                    :when-true  [{:type  :text
+                                  :value "nested"}]}]}]
+
+    "start {% if not flag %}middle {% if nested %}deep{% endif %} end{% endif %} finish"
+    [{:type  :text
+      :value "start "}
+     {:condition  [:flag]
+      :type       :if-not
+      :when-false [{:type  :text
+                    :value ""}]
+      :when-true  [{:type  :text
+                    :value "middle "}
+                   {:condition  [:nested]
+                    :type       :if
+                    :when-false [{:type  :text
+                                  :value ""}]
+                    :when-true  [{:type  :text
+                                  :value "deep"}]}
+                   {:type  :text
+                    :value " end"}]}
+     {:type  :text
+      :value " finish"}]))
+
+(deftest if-not-negative-test
+  (are [template expected-ast]
+    (= expected-ast
+       (mock/with-mock
+         [slurp template]
+         (parser/parse "conditional-test" (rcr/->ResourceResolver))))
+
+    "hello \n\n{% if not %}world{% endif %}"
+    {:error-message "error on line 3"
+     :line          "3"
+     :type          "syntax-error"}))
+

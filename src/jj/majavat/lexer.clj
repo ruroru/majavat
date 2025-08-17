@@ -102,7 +102,14 @@
           :else
           (recur (rest my-sequence) (str current-string current-char) vector new-line-number))
 
-        (= (:type (last vector)) :keyword-if)
+        (and (= (:type (last vector)) :keyword-if)
+             (= (string/trim current-string) "not")
+             (= current-char \ ))
+        (let [current-vector (pop vector)]
+          (recur (rest my-sequence) "" (conj current-vector {:type :keyword-if-not}) new-line-number))
+
+        (or (= (:type (last vector)) :keyword-if)
+            (= (:type (last vector)) :keyword-if-not))
         (if
           (and (= current-char \ ) (not (string/blank? current-string)))
           (recur (rest my-sequence) (str "" current-char) (conj vector {:type :identifier :value (mapv keyword (-> (string/trim current-string)
