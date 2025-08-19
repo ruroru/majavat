@@ -9,7 +9,10 @@
     [jj.majavat.resolver.fs :as fcr]
     [jj.majavat.resolver.resource :as rcr]
     [mock-clj.core :as mock])
-  (:import (java.io InputStream)))
+  (:import (java.io InputStream)
+           (java.net URI URL)
+           (java.nio.file Paths)
+           (java.time LocalDate LocalDateTime LocalTime)))
 
 
 (defn- crlf->lf [s]
@@ -251,3 +254,12 @@ this is a  footer"
          (renderer/render (parser/parse "conditional-test" contentResolver) {:value "some"} nil)))
     "not {% if not not-existing-value %}world{% endif %}" "not world"
     "not {% if not value %}foo{% else %}bar{% endif %}" "not bar"))
+
+(deftest render-values
+  (are [expected-string context]
+    (= expected-string
+       (renderer/render (parser/parse "insert-value.html" contentResolver) context nil))
+    "hello keyword" {:name :keyword}
+
+
+    ))

@@ -2,7 +2,8 @@
   (:require [clojure.edn :as edn]
             [clojure.java.io :as io]
             [jj.majavat.renderer.escape :as rops])
-  (:import (java.io ByteArrayInputStream SequenceInputStream)
+  (:import (clojure.lang Keyword)
+           (java.io ByteArrayInputStream SequenceInputStream)
            (java.nio.charset Charset StandardCharsets)
            (java.util Collections)))
 
@@ -14,6 +15,12 @@
 (defn- evaluate-condition [condition context]
   (boolean (resolve-path context condition)))
 
+(defn format-node-value [node-value]
+  (cond
+    (string? node-value) node-value
+    (keyword? node-value) (name node-value)
+    :else (str node-value)))
+
 (defn- render-nodes [nodes context ^StringBuilder sb escape-conf]
   (doseq [node nodes]
     (case (:type node)
@@ -23,8 +30,8 @@
       :value-node
       (let [val (resolve-path context (:value node))]
         (if (some? (:character-escaper escape-conf))
-          (.append sb (rops/escape (:character-escaper escape-conf) (str val)))
-          (.append sb (str val))))
+          (.append sb (rops/escape (:character-escaper escape-conf) (format-node-value val)))
+          (.append sb (format-node-value val))))
 
       :for
       (let [identifier (:identifier node)
@@ -74,8 +81,8 @@
           :value-node
           (let [resolved-value (let [val (resolve-path context (:value node))]
                                  (if (some? (:character-escaper escape-conf))
-                                   (rops/escape (:character-escaper escape-conf) (str val))
-                                   (str (resolve-path context (:value node)))))
+                                   (rops/escape (:character-escaper escape-conf) (format-node-value val))
+                                   (format-node-value val)))
                 bytes (.getBytes ^String resolved-value ^Charset charset)]
             (cons (ByteArrayInputStream. bytes)
                   (render-nodes-to-stream-seq (rest nodes) context charset escape-conf)))
