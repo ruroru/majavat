@@ -23,8 +23,7 @@
                                                                     filters []]
                                                                (if (and (seq remaining)
                                                                         (= :filter-tag (:type (first remaining))))
-                                                                 (let [filter-tag (first remaining)
-                                                                       remaining-after-tag (rest remaining)]
+                                                                 (let [remaining-after-tag (rest remaining)]
                                                                    (if (and (seq remaining-after-tag)
                                                                             (= :filter-function (:type (first remaining-after-tag))))
                                                                      (let [filter-function (first remaining-after-tag)
@@ -43,7 +42,14 @@
                             (recur (rest lexed-list) list current-block parsing-for-body current-file-path template-resolver)
                             (throw (Exception. (str (:line current-item))))
                             )
-         :block-start (recur (rest lexed-list) list current-block parsing-for-body current-file-path template-resolver)
+         :block-start (let [remaining (rest lexed-list)]
+                        (if (and (seq remaining) (= :block-end (:type (first remaining))))
+                          (let [remaining-after-block-end (rest remaining)]
+                            (if parsing-for-body
+                              (let [value-node {:type :value-node :value [:foo]}]
+                                (recur remaining-after-block-end (conj list value-node) current-block parsing-for-body current-file-path template-resolver))
+                              (recur remaining-after-block-end list current-block parsing-for-body current-file-path template-resolver)))
+                          (recur remaining list current-block parsing-for-body current-file-path template-resolver)))
          :block-end (recur (rest lexed-list) list current-block parsing-for-body current-file-path template-resolver)
 
          :keyword-include (let [remaining (rest lexed-list)
@@ -97,6 +103,22 @@
                             (recur remaining-after-block-name (into list replacement-content) current-block parsing-for-body current-file-path template-resolver)
                             (let [[block-content remaining-after-block] (parse-ast remaining-after-block-name [] current-block true current-file-path template-resolver)]
                               (recur remaining-after-block (into list block-content) current-block parsing-for-body current-file-path template-resolver))))
+
+         :keyword-let (let [remaining (rest lexed-list)
+                            var-decl-token (first remaining)]
+                        (if (and var-decl-token (= :variable-declaration (:type var-decl-token)))
+                          (let [remaining-after-var-decl (rest remaining)
+                                block-end-token (first remaining-after-var-decl)]
+                            (if (and block-end-token (= :block-end (:type block-end-token)))
+                              (let [remaining-after-block-end (rest remaining-after-var-decl)
+                                    [body remaining-after-body] (parse-ast remaining-after-block-end [] current-block true current-file-path template-resolver)
+                                    let-node {:type           :variable-declaration
+                                              :variable-name  (:variable-name var-decl-token)
+                                              :variable-value (:variable-value var-decl-token)
+                                              :body          body}]
+                                (recur remaining-after-body (conj list let-node) current-block parsing-for-body current-file-path template-resolver))
+                              (throw (Exception. (str (:line (or block-end-token var-decl-token)))))))
+                          (throw (Exception. (str (:line (or var-decl-token current-item)))))))
 
          :keyword-for (let [remaining (rest lexed-list)
                             identifier-token (first remaining)]
@@ -171,7 +193,12 @@
                           [list (rest lexed-list)]
                           (recur (rest lexed-list) list current-block parsing-for-body current-file-path template-resolver))
 
+         :keyword-end-let (if parsing-for-body
+                            [list (rest lexed-list)]
+                            (recur (rest lexed-list) list current-block parsing-for-body current-file-path template-resolver))
+
          :keyword-in (recur (rest lexed-list) list current-block parsing-for-body current-file-path template-resolver)
+         :variable-declaration (recur (rest lexed-list) list current-block parsing-for-body current-file-path template-resolver)
          :identifier (recur (rest lexed-list) list current-block parsing-for-body current-file-path template-resolver)
          :extends-block-name (recur (rest lexed-list) list current-block parsing-for-body current-file-path template-resolver)
          :file-path (recur (rest lexed-list) list current-block parsing-for-body current-file-path template-resolver)

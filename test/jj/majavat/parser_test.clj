@@ -1,5 +1,6 @@
 (ns jj.majavat.parser-test
-  (:require [clojure.test :refer [deftest is are testing]]
+  (:require [clojure.test :refer [are deftest is]]
+            [jj.majavat.lexer :as lexer]
             [jj.majavat.parser :as parser]
             [jj.majavat.resolver.resource :as rcr]
             [mock-clj.core :as mock]))
@@ -333,3 +334,23 @@
                                          :value [:value]
                                          :filters [:upper-case]
                                          }]))
+
+(deftest let-test
+  (println (lexer/tokenize "testing {% let foo = \"bar\" %}hello {% foo %}{% endlet %}baz"))
+  (are [template expected-ast]
+    (= expected-ast
+       (mock/with-mock
+         [slurp template]
+         (parser/parse "conditional-test" (rcr/->ResourceResolver))))
+
+    "testing {% let foo = \"bar\" %}hello {% foo %}{% endlet %}baz" [{:type  :text
+                                                                      :value "testing "}
+                                                                     {:type           :variable-declaration
+                                                                      :variable-name  :foo
+                                                                      :variable-value "bar"
+                                                                      :body           [{:type  :text
+                                                                                        :value "hello "}
+                                                                                       {:type :value-node :value [:foo]}]}
+                                                                     {:type  :text
+                                                                      :value "baz"}
+                                                                     ]))

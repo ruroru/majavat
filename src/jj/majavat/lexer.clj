@@ -6,6 +6,20 @@
 (defn- rrest [s]
   (rest (rest s)))
 
+(defn- parse-let-assignment [assignment-string]
+  (let [trimmed (string/trim assignment-string)
+        parts (string/split trimmed #"\s*=\s*" 2)]
+    (if (= 2 (count parts))
+      (let [var-name (keyword (string/trim (first parts)))
+            var-value-str (string/trim (second parts))
+            var-value (if (and (string/starts-with? var-value-str "\"")
+                               (string/ends-with? var-value-str "\""))
+                        (subs var-value-str 1 (dec (count var-value-str)))
+                        var-value-str)]
+
+        {:variable-name var-name :variable-value var-value})
+      {:variable-name nil :variable-value nil})))
+
 (defn- tokenize-recursively [my-sequence current-string vector line-number]
   (if-not (empty? my-sequence)
     (let [current-char (first my-sequence)
@@ -38,6 +52,9 @@
             (= "endfor" trimmed-string)
             (recur (rrest my-sequence) "" (conj vector {:type :end-for} {:type :block-end :line line-number}) new-line-number)
 
+            (= "endlet" trimmed-string)
+            (recur (rrest my-sequence) "" (conj vector {:type :keyword-end-let} {:type :block-end :line line-number}) new-line-number)
+
             (= "endif" trimmed-string)
             (recur (rrest my-sequence) "" (conj vector {:type :keyword-endif} {:type :block-end :line line-number}) new-line-number)
 
@@ -48,6 +65,9 @@
             (recur (rrest my-sequence) "" (conj vector {:type :block-end :line line-number}) new-line-number)
 
             (and (= "" trimmed-string) (= (:type (last vector)) :keyword-block))
+            (recur (rrest my-sequence) "" (conj vector {:type :block-end :line line-number}) new-line-number)
+
+            (= (:type (last vector)) :keyword-let)
             (recur (rrest my-sequence) "" (conj vector {:type :block-end :line line-number}) new-line-number)
 
             :else
@@ -101,6 +121,9 @@
           (= (string/trim current-string) "for")
           (recur (rest my-sequence) "" (conj vector {:type :keyword-for}) new-line-number)
 
+          (= (string/trim current-string) "let")
+          (recur (rest my-sequence) "" (conj vector {:type :keyword-let}) new-line-number)
+
           (= (string/trim current-string) "if")
           (recur (rest my-sequence) "" (conj vector {:type :keyword-if}) new-line-number)
 
@@ -131,6 +154,15 @@
           (and (= current-char \ ) (not (string/blank? current-string)))
           (recur (rest my-sequence) (str "" current-char) (conj vector {:type :identifier :value (mapv keyword (-> (string/trim current-string)
                                                                                                                    (str/split #"\.")))}) new-line-number)
+          (recur (rest my-sequence) (str current-string current-char) vector new-line-number))
+
+        (= (:type (last vector)) :keyword-let)
+        (if (= next-char \%)
+          (let [{:keys [variable-name variable-value]} (parse-let-assignment (str/trim current-string))]
+
+            (recur (rest my-sequence) "" (conj vector {:type            :variable-declaration
+                                                       :variable-name  variable-name
+                                                       :variable-value variable-value}) new-line-number))
           (recur (rest my-sequence) (str current-string current-char) vector new-line-number))
 
         (= (:type (last vector)) :keyword-for)

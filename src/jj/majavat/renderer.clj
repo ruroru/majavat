@@ -14,7 +14,7 @@
 (defn- evaluate-condition [condition context]
   (boolean (resolve-path context condition)))
 
-(defn escape-if-needed [val escape-thingy]
+(defn- escape-if-needed [val escape-thingy]
   (if (nil? escape-thingy)
     val
     (rops/escape escape-thingy val)))
@@ -53,6 +53,13 @@
         (.append sb (-> filtered-val
                         ->str
                         (escape-if-needed (:character-escaper escape-conf)))))
+
+      :variable-declaration
+      (let [variable-name (:variable-name node)
+            variable-value (:variable-value node)
+            body (:body node)
+            new-context (assoc context variable-name variable-value)]
+        (render-nodes body new-context sb escape-conf))
 
       :for
       (let [identifier (:identifier node)
@@ -111,6 +118,13 @@
             (cons (ByteArrayInputStream. (.getBytes ^String resolved-value ^Charset charset))
                   (render-nodes-to-stream-seq (rest nodes) context charset escape-conf)))
 
+          :variable-declaration
+          (let [variable-name (:variable-name node)
+                variable-value (:variable-value node)
+                body (:body node)
+                new-context (assoc context variable-name variable-value)]
+            (concat (render-nodes-to-stream-seq body new-context charset escape-conf)
+                    (render-nodes-to-stream-seq (rest nodes) context charset escape-conf)))
 
           :for
           (let [identifier (:identifier node)

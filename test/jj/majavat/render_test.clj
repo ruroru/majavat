@@ -2,17 +2,14 @@
   (:require
     [clojure.java.io :as io]
     [clojure.string :as str]
-    [clojure.test :refer [deftest is are]]
+    [clojure.test :refer [are deftest testing is]]
     [jj.majavat.parser :as parser]
     [jj.majavat.renderer :as renderer]
     [jj.majavat.renderer.escape.html :as hops]
     [jj.majavat.resolver.fs :as fcr]
     [jj.majavat.resolver.resource :as rcr]
     [mock-clj.core :as mock])
-  (:import (java.io InputStream)
-           (java.net URI URL)
-           (java.nio.file Paths)
-           (java.time LocalDate LocalDateTime LocalTime)))
+  (:import (java.io InputStream)))
 
 
 (defn- crlf->lf [s]
@@ -265,4 +262,22 @@ this is a  footer"
     "foo BAR" "foo {{ value | upper-case }}" {:value "bar"}
     "foo bar" "foo {{ value | lower-case }}" {:value "BAR"}
     "foo keyword" "foo {{ value | name }}" {:value :keyword}))
+
+
+(deftest render-let-value
+  (testing "parsing as a string"
+           (are [expected-value template context]
+             (= expected-value
+                (mock/with-mock
+                  [slurp template]
+                  (renderer/render (parser/parse "conditional-test" contentResolver) context nil)))
+             "testing hello barbaz" "testing {% let foo = \"bar\" %}hello {% foo %}{% endlet %}baz" {}))
+  (testing "parsing to inpustream"
+    (are [expected-value template context]
+      (= expected-value
+         (mock/with-mock
+           [slurp template]
+           (String. (.readAllBytes ^InputStream (renderer/render-is (parser/parse "conditional-test" contentResolver) context nil)))))
+      "testing hello barbaz" "testing {% let foo = \"bar\" %}hello {% foo %}{% endlet %}baz" {})))
+
 

@@ -151,3 +151,23 @@
           {:line 1
            :type :closing-bracket}]
          (lexer/tokenize "testing {{ value | upper-case }}"))))
+
+
+(deftest tokenize-value-with-filter
+  (is (= [{:type  :text
+           :value "testing "}
+          {:type :block-start}
+          {:type  :keyword-let}
+          {:type :variable-declaration
+           :variable-name :foo
+           :variable-value "bar"}
+          {:line 1
+           :type :block-end}
+          {:type  :text
+           :value "hello"}
+          {:type :block-start}
+          {:type  :keyword-end-let}
+          {:line 1
+           :type :block-end}
+          ]
+         (lexer/tokenize "testing {% let foo = \"bar\" %}hello{% endlet %}"))))
