@@ -50,6 +50,22 @@ Hello {{ name }}!
 (render-file "file.txt" {:name "world"}) ;; => returns Hello world!
 ```
 
+or with a filter
+
+```
+Hello {{ name | upper-case }}!
+```
+
+```clojure
+(render-file "file.txt" {:name "world"}) ;; => returns Hello WORLD!
+```
+| supported filters | type    |
+|-------------------|---------|
+| upper-case        | String  |
+| lower-case        | String  |
+| capitalize        | String  |
+| name              | keyword |
+
 #### Conditionals
 
 Rendering input file with content:
@@ -60,6 +76,17 @@ Rendering input file with content:
 
 ```clojure
 (render-file "input-file" {:name "jj"}) ;; returns "Hello jj!"
+(render-file "input-file" {}) ;; returns "Hello world!"
+```
+
+or
+
+```
+"Hello {% if not name %}world{% else %}jj{% endif %}!"
+```
+
+```clojure
+(render-file "input-file" {:name "foo"}) ;; returns "Hello jj!"
 (render-file "input-file" {}) ;; returns "Hello world!"
 ```
 
@@ -93,6 +120,18 @@ included {% include "file.txt" %}
 
 ```clojure
 (render-file "input-file" {}) ;; returns "included foo"
+```
+
+#### Setting value
+
+You can set value within a template via:
+
+```
+hello {% let foo = "baz" %}{{ foo }}{% endlet %}
+```
+
+```clojure
+(render-file "input-file" {}) ;; returns "hello baz"
 ```
 
 #### Extending template
