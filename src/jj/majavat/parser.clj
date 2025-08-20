@@ -18,7 +18,25 @@
        (case (:type current-item)
          :text (recur (rest lexed-list) (conj list current-item) current-block parsing-for-body current-file-path template-resolver)
 
-         :expression (recur (rest lexed-list) (conj list (assoc current-item :type :value-node)) current-block parsing-for-body current-file-path template-resolver)
+         :expression (let [remaining (rest lexed-list)
+                           [filters remaining-after-filters] (loop [remaining remaining
+                                                                    filters []]
+                                                               (if (and (seq remaining)
+                                                                        (= :filter-tag (:type (first remaining))))
+                                                                 (let [filter-tag (first remaining)
+                                                                       remaining-after-tag (rest remaining)]
+                                                                   (if (and (seq remaining-after-tag)
+                                                                            (= :filter-function (:type (first remaining-after-tag))))
+                                                                     (let [filter-function (first remaining-after-tag)
+                                                                           remaining-after-function (rest remaining-after-tag)]
+                                                                       (recur remaining-after-function
+                                                                              (conj filters (:value filter-function))))
+                                                                     [filters remaining]))
+                                                                 [filters remaining]))
+                           value-node (if (empty? filters)
+                                        (assoc current-item :type :value-node)
+                                        (assoc current-item :type :value-node :filters filters))]
+                       (recur remaining-after-filters (conj list value-node) current-block parsing-for-body current-file-path template-resolver))
 
          :opening-bracket (recur (rest lexed-list) list current-block parsing-for-body current-file-path template-resolver)
          :closing-bracket (if (not (nil? (:value (last list))))

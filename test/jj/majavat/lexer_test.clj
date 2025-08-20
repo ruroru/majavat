@@ -138,3 +138,16 @@
            :type :closing-bracket}]
          (lexer/tokenize "testing {{ }}"))))
 
+
+(deftest tokenize-value-with-filter
+  (is (= [{:type  :text
+           :value "testing "}
+          {:type :opening-bracket}
+          {:type  :expression
+           :value [:value]}
+          {:type :filter-tag}
+          {:type :filter-function
+           :value :upper-case}
+          {:line 1
+           :type :closing-bracket}]
+         (lexer/tokenize "testing {{ value | upper-case }}"))))

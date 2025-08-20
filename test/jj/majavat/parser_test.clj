@@ -320,3 +320,16 @@
      :line          "3"
      :type          "syntax-error"}))
 
+(deftest test-filters
+  (are [template expected-ast]
+    (= expected-ast
+       (mock/with-mock
+         [slurp template]
+         (parser/parse "conditional-test" (rcr/->ResourceResolver))))
+
+    "testing {{ value | upper-case }}" [{:type  :text
+                                         :value "testing "}
+                                        {:type  :value-node
+                                         :value [:value]
+                                         :filters [:upper-case]
+                                         }]))

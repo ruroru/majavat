@@ -2,8 +2,7 @@
   (:require [clojure.edn :as edn]
             [clojure.java.io :as io]
             [jj.majavat.renderer.escape :as rops])
-  (:import (clojure.lang Keyword)
-           (java.io ByteArrayInputStream SequenceInputStream)
+  (:import (java.io ByteArrayInputStream SequenceInputStream)
            (java.nio.charset Charset StandardCharsets)
            (java.util Collections)))
 
@@ -15,11 +14,28 @@
 (defn- evaluate-condition [condition context]
   (boolean (resolve-path context condition)))
 
-(defn format-node-value [node-value]
+(defn escape-if-needed [val escape-thingy]
+  (if (nil? escape-thingy)
+    val
+    (rops/escape escape-thingy val)))
+
+(defn ->str [v]
+  (if (string? v)
+    v
+    (str v)))
+
+(defn apply-filter [v filter-name]
   (cond
-    (string? node-value) node-value
-    (keyword? node-value) (name node-value)
-    :else (str node-value)))
+    (string? v) (case filter-name
+                  :upper-case (clojure.string/upper-case v)
+                  :lower-case (clojure.string/lower-case v)
+                  :capitalize (clojure.string/capitalize v)
+                  v)
+    (keyword? v) (case filter-name
+                   :name (name v)
+                   v)
+    :else
+    v))
 
 (defn- render-nodes [nodes context ^StringBuilder sb escape-conf]
   (doseq [node nodes]
@@ -28,10 +44,15 @@
       (.append sb (:value node ""))
 
       :value-node
-      (let [val (resolve-path context (:value node))]
-        (if (some? (:character-escaper escape-conf))
-          (.append sb (rops/escape (:character-escaper escape-conf) (format-node-value val)))
-          (.append sb (format-node-value val))))
+      (let [val (resolve-path context (:value node))
+            filtered-val (if-let [filters (:filters node)]
+                           (reduce (fn [v filter-name]
+                                     (apply-filter v filter-name))
+                                   val filters)
+                           val)]
+        (.append sb (-> filtered-val
+                        ->str
+                        (escape-if-needed (:character-escaper escape-conf)))))
 
       :for
       (let [identifier (:identifier node)
@@ -65,7 +86,6 @@
     (.toString ^StringBuilder (render-nodes template context (StringBuilder.) escape-conf))
     (render (edn/read-string (slurp (io/resource "error-template.edn"))) template escape-conf)))
 
-
 (defn- render-nodes-to-stream-seq [nodes context charset escape-conf]
   (lazy-seq
     (when (seq nodes)
@@ -79,13 +99,18 @@
                     (render-nodes-to-stream-seq (rest nodes) context charset escape-conf))))
 
           :value-node
-          (let [resolved-value (let [val (resolve-path context (:value node))]
-                                 (if (some? (:character-escaper escape-conf))
-                                   (rops/escape (:character-escaper escape-conf) (format-node-value val))
-                                   (format-node-value val)))
-                bytes (.getBytes ^String resolved-value ^Charset charset)]
-            (cons (ByteArrayInputStream. bytes)
+          (let [val (resolve-path context (:value node))
+                filtered-val (if-let [filters (:filters node)]
+                               (reduce (fn [v filter-name]
+                                         (apply-filter v filter-name))
+                                       val filters)
+                               val)
+                resolved-value (-> filtered-val
+                                   ->str
+                                   (escape-if-needed (:character-escaper escape-conf)))]
+            (cons (ByteArrayInputStream. (.getBytes ^String resolved-value ^Charset charset))
                   (render-nodes-to-stream-seq (rest nodes) context charset escape-conf)))
+
 
           :for
           (let [identifier (:identifier node)

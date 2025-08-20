@@ -255,11 +255,14 @@ this is a  footer"
     "not {% if not not-existing-value %}world{% endif %}" "not world"
     "not {% if not value %}foo{% else %}bar{% endif %}" "not bar"))
 
-(deftest render-values
-  (are [expected-string context]
-    (= expected-string
-       (renderer/render (parser/parse "insert-value.html" contentResolver) context nil))
-    "hello keyword" {:name :keyword}
 
+(deftest render-values-test
+  (are [expected-value template context]
+    (= expected-value
+       (mock/with-mock
+         [slurp template]
+         (String. (.readAllBytes ^InputStream (renderer/render-is (parser/parse "conditional-test" contentResolver) context nil)))))
+    "foo BAR" "foo {{ value | upper-case }}" {:value "bar"}
+    "foo bar" "foo {{ value | lower-case }}" {:value "BAR"}
+    "foo keyword" "foo {{ value | name }}" {:value :keyword}))
 
-    ))

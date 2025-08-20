@@ -68,15 +68,32 @@
 
         (and (= current-char \}) (= next-char \}))
         (let [trimmed-string (string/trim current-string)]
-          (if (string/blank? trimmed-string)
+          (cond
+            (= (:type (last vector)) :filter-tag)
+            (if (not (string/blank? trimmed-string))
+              (recur (rrest my-sequence) "" (conj vector {:type :filter-function :value (keyword trimmed-string)}
+                                                  {:type :closing-bracket :line line-number}) new-line-number)
+              (recur (rrest my-sequence) "" (conj vector {:type :closing-bracket :line line-number}) new-line-number))
+
+            (string/blank? trimmed-string)
             (recur (rrest my-sequence) "" (conj vector {:type :expression}
                                                 {:type :closing-bracket :line line-number}) new-line-number)
+
+            :else
             (recur (rrest my-sequence) "" (conj vector {:type  :expression
                                                         :value (mapv keyword (-> trimmed-string
                                                                                  (str/split #"\.")))}
                                                 {:type :closing-bracket :line line-number}) new-line-number)))
 
         (= (:type (last vector)) :opening-bracket)
+        (cond
+          (and (= current-char \|) (not (string/blank? current-string)))
+          (let [trimmed-string (string/trim current-string)]
+            (recur (rest my-sequence) "" (conj vector {:type :expression :value (mapv keyword (-> trimmed-string (str/split #"\.")))} {:type :filter-tag}) new-line-number))
+          :else
+          (recur (rest my-sequence) (str current-string current-char) vector new-line-number))
+
+        (= (:type (last vector)) :filter-tag)
         (recur (rest my-sequence) (str current-string current-char) vector new-line-number)
 
         (= (:type (last vector)) :block-start)
