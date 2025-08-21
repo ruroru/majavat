@@ -2,6 +2,7 @@
   (:require [clojure.test :refer [are deftest is]]
             [jj.majavat.lexer :as lexer]
             [jj.majavat.parser :as parser]
+            [jj.majavat.resolver.fs :as fcr]
             [jj.majavat.resolver.resource :as rcr]
             [mock-clj.core :as mock]))
 
@@ -139,124 +140,96 @@
            :value "this is a subfolder footer"}]
          (parser/parse "subfolder/extends-from-sub-dir" (rcr/->ResourceResolver)))))
 
-(deftest returns-error-on-line-3-if-missing-expression
-  (is (= {:error-message "error on line 3"
-          :line          "3"
-          :type          "syntax-error"}
-         (mock/with-mock
-           [slurp "hello\n\n{{  }}\nworld"]
-           (parser/parse "faulty-value" (rcr/->ResourceResolver))))))
-
-(deftest returns-error-on-line-3-if-for-return
-  (is (= {:error-message "error on line 3"
-          :line          "3"
-          :type          "syntax-error"}
-         (mock/with-mock
-           [slurp "hello\r\r{{  }}\rworld"]
-           (parser/parse "faulty-value" (rcr/->ResourceResolver))))))
-
-(deftest returns-error-on-line-3-for-crlf
-  (is (= {:error-message "error on line 3"
-          :line          "3"
-          :type          "syntax-error"}
-         (mock/with-mock
-           [slurp "hello\r\n\r\n{{  }}\r\nworld"]
-           (parser/parse "faulty-value" (rcr/->ResourceResolver))))))
-
-(deftest successful-crlf-parse
-  (is (= [{:type  :text
-           :value "hello\r\n\r\n"}
-          {:type  :value-node
-           :value [:name]}
-          {:type  :text
-           :value "\r\nworld"}]
-         (mock/with-mock
-           [slurp "hello\r\n\r\n{{ name }}\r\nworld"]
-           (parser/parse "faulty-value" (rcr/->ResourceResolver))))))
-
-(deftest successful-cr-parse
-  (is (= [{:type  :text
-           :value "hello\r\r"}
-          {:type  :value-node
-           :value [:name]}
-          {:type  :text
-           :value "\rworld"}]
-         (mock/with-mock
-           [slurp "hello\r\r{{ name }}\rworld"]
-           (parser/parse "faulty-value" (rcr/->ResourceResolver))))))
+(deftest linebreak-parsing
+  (are [expected linebreak-content] (do
+                                      (spit "./target/linebreak" linebreak-content)
+                                      (= expected (parser/parse "./target/linebreak" (fcr/->FsResolver))))
+                                    [{:type  :text
+                                      :value "hello\r\r"}
+                                     {:type  :value-node
+                                      :value [:name]}
+                                     {:type  :text
+                                      :value "\rworld"}]
+                                    "hello\r\r{{ name }}\rworld"
+                                    [{:type  :text
+                                      :value "hello\r\n\r\n"}
+                                     {:type  :value-node
+                                      :value [:name]}
+                                     {:type  :text
+                                      :value "\r\nworld"}]
+                                    "hello\r\n\r\n{{ name }}\r\nworld"
+                                    {:error-message "error on line 3"
+                                     :line          "3"
+                                     :type          "syntax-error"}
+                                    "hello\n\n{{  }}\nworld"
+                                    {:error-message "error on line 3"
+                                     :line          "3"
+                                     :type          "syntax-error"}
+                                    "hello\r\n\r\n{{  }}\r\nworld"
+                                    {:error-message "error on line 3"
+                                     :line          "3"
+                                     :type          "syntax-error"}
+                                    "hello\r\r{{  }}\rworld"))
 
 
 (deftest returns-error-with-line-3-if-missing-condition-in-if
   (is (= {:error-message "error on line 3"
           :line          "3"
           :type          "syntax-error"}
-         (mock/with-mock
-           [slurp "hello\n\n{% if %}\nworld{% endif %}"]
-           (parser/parse "faulty-value" (rcr/->ResourceResolver))))))
+         (parser/parse "if/missing-condition" (rcr/->ResourceResolver)))))
 
 
-(deftest returns-error-with-line-3-if-missing-block-name
-  (is (= {:error-message "error on line 3"
-          :line          "3"
-          :type          "syntax-error"}
-         (mock/with-mock
-           [slurp "hello\n\n{% extends %}\nworld"]
-           (parser/parse "faulty-value" (rcr/->ResourceResolver))))))
+(deftest extends-errors
+  (are [expected file-path]
+    (= expected
+       (parser/parse file-path (rcr/->ResourceResolver)))
+    {:error-message "error on line 3"
+     :line          "3"
+     :type          "syntax-error"}
+    "extends/missing-block-keyword"
+    {:error-message "error on line 3"
+     :line          "3"
+     :type          "syntax-error"}
+    "extends/contains-only-extends"
+    {:error-message "./asdasdasd template can not be found"
+     :type          "template-not-found-error"}
+    "extends/parent-template-does-not-exist"))
 
-(deftest returns-error-with-line-3-if-missing-file-name
-  (is (= {:error-message "error on line 3"
-          :line          "3"
-          :type          "syntax-error"}
-         (mock/with-mock
-           [slurp "hello\n\n{% extends block-name %}}"]
-           (parser/parse "faulty-value" (rcr/->ResourceResolver))))))
+(deftest include-errors
+  (are [expected file-path]
+    (= expected
+       (parser/parse file-path (rcr/->ResourceResolver)))
+    {:error-message "error on line 3"
+     :line          "3"
+     :type          "syntax-error"}
+    "include/missing-file-name"
+    {:error-message "error on line 3"
+     :line          "3"
+     :type          "syntax-error"}
+    "include/missing-file-name"
+    {:error-message "error on line 3"
+     :line          "3"
+     :type          "syntax-error"}
+    "include/not-existing-file"
+    ))
 
 
-(deftest returns-not-existing-file-error
-  (is (= {:error-message "./asdasdasd template can not be found"
-          :type          "template-not-found-error"}
-         (mock/with-mock
-           [slurp "hello\n\n{% extends blockname1 \"./asdasdasd\" %}"]
-           (parser/parse "faulty-value" (rcr/->ResourceResolver))))))
-
-(deftest returns-error-when-include-file-is-not-defined
-  (is (= {:error-message "error on line 3"
-          :line          "3"
-          :type          "syntax-error"}
-         (mock/with-mock
-           [slurp "hello\n\n{% include  %}"]
-           (parser/parse "faulty-value" (rcr/->ResourceResolver))))))
-
-
-(deftest returns-error-when-fail-to-include-not-existing-file
-  (is (= {:error-message "not-existing-file.txt template can not be found"
-          :type          "template-not-found-error"}
-         (mock/with-mock
-           [slurp "hello\n\n{% include \"not-existing-file.txt\" %}"]
-           (parser/parse "faulty-value" (rcr/->ResourceResolver))))))
 
 (deftest faulty-for-loop
-  (are [input] (= {:error-message "error on line 3"
-                   :line          "3"
-                   :type          "syntax-error"}
-                  (mock/with-mock
-                    [slurp input]
-                    (parser/parse "faulty-value" (rcr/->ResourceResolver))))
-               "hello\n\n{% for   %}"
-               "hello\n\n{% for in  %}"
-               "hello\n\n{%  for i in   %} "
-               ))
+  (are [file-path] (= {:error-message "error on line 3"
+                       :line          "3"
+                       :type          "syntax-error"}
+                      (parser/parse file-path (rcr/->ResourceResolver)))
+                   "loop/for"
+                   "loop/for-in"
+                   "loop/for-i-in"
+                   ))
 
 (deftest if-not-test
   (are [template expected-ast]
     (= expected-ast
-       (mock/with-mock
-         [slurp template]
-
-         (parser/parse "conditional-test" (rcr/->ResourceResolver))))
-
-    ;; Basic if-not test
-    "hello {% if not value %}world{% endif %}"
+       (parser/parse template (rcr/->ResourceResolver)))
+    "if/if-not"
     [{:type  :text
       :value "hello "}
      {:condition  [:value]
@@ -266,8 +239,7 @@
       :when-true  [{:type  :text
                     :value "world"}]}]
 
-    ;; If-not with else clause
-    "hello {% if not value %}world{% else %}universe{% endif %}"
+    "if/if-not-else"
     [{:type  :text
       :value "hello "}
      {:condition  [:value]
@@ -277,19 +249,12 @@
       :when-true  [{:type  :text
                     :value "world"}]}]
 
-    "{% if not outer %}{% if not inner %}nested{% endif %}{% endif %}"
-    [{:condition  [:outer]
-      :type       :if-not
-      :when-false [{:type  :text
-                    :value ""}]
-      :when-true  [{:condition  [:inner]
-                    :type       :if-not
-                    :when-false [{:type  :text
-                                  :value ""}]
-                    :when-true  [{:type  :text
-                                  :value "nested"}]}]}]
+    "if/if-not-missing-condition"
+    {:error-message "error on line 3"
+     :line          "3"
+     :type          "syntax-error"}
 
-    "start {% if not flag %}middle {% if nested %}deep{% endif %} end{% endif %} finish"
+    "if/nested-if-not-if"
     [{:type  :text
       :value "start "}
      {:condition  [:flag]
@@ -310,47 +275,40 @@
       :value " finish"}]))
 
 (deftest if-not-negative-test
-  (are [template expected-ast]
+  (are [expected-ast]
     (= expected-ast
-       (mock/with-mock
-         [slurp template]
-         (parser/parse "conditional-test" (rcr/->ResourceResolver))))
+       (parser/parse "if/if-not-missing-condition" (rcr/->ResourceResolver)))
 
-    "hello \n\n{% if not %}world{% endif %}"
+
     {:error-message "error on line 3"
      :line          "3"
      :type          "syntax-error"}))
 
 (deftest test-filters
-  (are [template expected-ast]
+  (are [expected-ast]
     (= expected-ast
-       (mock/with-mock
-         [slurp template]
-         (parser/parse "conditional-test" (rcr/->ResourceResolver))))
+       (parser/parse "filters/uppercase" (rcr/->ResourceResolver)))
 
-    "testing {{ value | upper-case }}" [{:type  :text
-                                         :value "testing "}
-                                        {:type  :value-node
-                                         :value [:value]
-                                         :filters [:upper-case]
-                                         }]))
+    [{:type  :text
+      :value "testing "}
+     {:type    :value-node
+      :value   [:value]
+      :filters [:upper-case]
+      }]))
 
 (deftest let-test
-  (println (lexer/tokenize "testing {% let foo = \"bar\" %}hello {% foo %}{% endlet %}baz"))
-  (are [template expected-ast]
-    (= expected-ast
-       (mock/with-mock
-         [slurp template]
-         (parser/parse "conditional-test" (rcr/->ResourceResolver))))
 
-    "testing {% let foo = \"bar\" %}hello {% foo %}{% endlet %}baz" [{:type  :text
-                                                                      :value "testing "}
-                                                                     {:type           :variable-declaration
-                                                                      :variable-name  :foo
-                                                                      :variable-value "bar"
-                                                                      :body           [{:type  :text
-                                                                                        :value "hello "}
-                                                                                       {:type :value-node :value [:foo]}]}
-                                                                     {:type  :text
-                                                                      :value "baz"}
-                                                                     ]))
+  (are [expected-ast]
+    (= expected-ast
+       (parser/parse "let/let-foo" (rcr/->ResourceResolver)))
+    [{:type  :text
+      :value "testing "}
+     {:type           :variable-declaration
+      :variable-name  :foo
+      :variable-value "bar"
+      :body           [{:type  :text
+                        :value "hello "}
+                       {:type :value-node :value [:foo]}]}
+     {:type  :text
+      :value "baz"}
+     ]))

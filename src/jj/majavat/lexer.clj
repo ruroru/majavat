@@ -24,6 +24,7 @@
   (if-not (empty? my-sequence)
     (let [current-char (first my-sequence)
           next-char (first (next my-sequence))
+
           new-line-number (if (= current-char \newline)
                             (inc line-number)
                             (if (and (= current-char \return)

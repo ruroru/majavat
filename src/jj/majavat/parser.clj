@@ -2,8 +2,26 @@
   (:require [jj.majavat.lexer :as lexer]
             [clojure.pprint]
             [jj.majavat.resolver :as cr])
-  (:import (java.io FileNotFoundException)))
+  (:import (java.io FileNotFoundException PushbackReader StringWriter)
+           (java.nio.file Paths)))
 
+(defn- resolve-path [base-path relative-path]
+  (let [base-path-obj (Paths/get base-path (make-array String 0))
+        relative-path-obj (Paths/get relative-path (make-array String 0))
+        parent-path (or (.getParent base-path-obj)
+                        (Paths/get "" (make-array String 0)))]
+
+    (-> parent-path
+        (.resolve relative-path-obj)
+        (.normalize)
+        (.toString))))
+
+(defn- read-content-as-string [template-resolver content-path]
+  (when-let [reader (PushbackReader. (cr/open-reader template-resolver content-path))]
+    (with-open [r reader]
+      (let [writer (StringWriter.)]
+        (.transferTo r writer)
+        (.toString writer)))))
 
 
 (defn- parse-ast
@@ -56,13 +74,12 @@
                                 file-name-token (first remaining)
                                 remaining-after-filename (rest remaining)]
                             (if (not (= :block-end (:type file-name-token)))
-                              (let [
-                                    filename (:value file-name-token)
+                              (let [filename (:value file-name-token)
                                     resolved-filename (if current-file-path
-                                                        (cr/resolve-path template-resolver current-file-path filename)
+                                                        (resolve-path current-file-path filename)
                                                         filename)]
-                                (if (cr/content-exists? template-resolver resolved-filename)
-                                  (let [file-content (cr/read-content template-resolver resolved-filename)
+                                (if (cr/template-exists? template-resolver resolved-filename)
+                                  (let [file-content (read-content-as-string template-resolver resolved-filename)
                                         included-lexed (lexer/tokenize file-content)
                                         included-content (parse-ast included-lexed [] {} false resolved-filename template-resolver)]
                                     (recur remaining-after-filename (into list included-content) current-block parsing-for-body current-file-path template-resolver))
@@ -79,10 +96,10 @@
                                   (if (not (= :block-end (:type file-path-token)))
                                     (let [file-path (:value file-path-token)
                                           resolved-file-path (if current-file-path
-                                                               (cr/resolve-path template-resolver current-file-path file-path)
+                                                               (resolve-path current-file-path file-path)
                                                                file-path)]
-                                      (if (cr/content-exists? template-resolver resolved-file-path)
-                                        (let [parent-content-str (cr/read-content template-resolver resolved-file-path)
+                                      (if (cr/template-exists? template-resolver resolved-file-path)
+                                        (let [parent-content-str (read-content-as-string template-resolver resolved-file-path)
                                               parent-lexed (lexer/tokenize parent-content-str)
                                               [block-content remaining-after-block] (parse-ast remaining-after-file-path [] current-block true current-file-path template-resolver)
                                               parent-content (parse-ast parent-lexed [] {block-name block-content} false resolved-file-path template-resolver)]
@@ -90,7 +107,6 @@
                                           (recur remaining-after-block (into parent-content list) current-block parsing-for-body current-file-path template-resolver))
                                         (throw (FileNotFoundException. file-path))))
                                     (throw (Exception. (str (:line file-path-token))))))
-
 
                                 (throw (Exception. (str (:line block-name-token)))))))
 
@@ -115,7 +131,7 @@
                                     let-node {:type           :variable-declaration
                                               :variable-name  (:variable-name var-decl-token)
                                               :variable-value (:variable-value var-decl-token)
-                                              :body          body}]
+                                              :body           body}]
                                 (recur remaining-after-body (conj list let-node) current-block parsing-for-body current-file-path template-resolver))
                               (throw (Exception. (str (:line (or block-end-token var-decl-token)))))))
                           (throw (Exception. (str (:line (or var-decl-token current-item)))))))
@@ -208,8 +224,8 @@
 
 (defn parse
   [resource-path template-resolver]
-  (if (cr/content-exists? template-resolver resource-path)
-    (let [file-content (cr/read-content template-resolver resource-path)
+  (if (cr/template-exists? template-resolver resource-path)
+    (let [file-content (read-content-as-string template-resolver resource-path)
           lexed-value (lexer/tokenize file-content)]
       (try
         (parse-ast lexed-value [] {} false resource-path template-resolver)

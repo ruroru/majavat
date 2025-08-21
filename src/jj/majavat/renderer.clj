@@ -2,9 +2,16 @@
   (:require [clojure.edn :as edn]
             [clojure.java.io :as io]
             [jj.majavat.renderer.escape :as rops])
-  (:import (java.io ByteArrayInputStream SequenceInputStream)
+  (:import (java.io ByteArrayInputStream SequenceInputStream PushbackReader)
            (java.nio.charset Charset StandardCharsets)
            (java.util Collections)))
+
+(defn- read-edn-resource [resource-path]
+  (when-let [resource (io/resource resource-path)]
+    (with-open [stream (.openStream resource)
+                reader (io/reader stream)
+                pushback-reader (PushbackReader. reader)]
+      (edn/read pushback-reader))))
 
 (defn- resolve-path [context path]
   (if (vector? path)
@@ -91,7 +98,7 @@
 (defn render [template context escape-conf]
   (if-not (map? template)
     (.toString ^StringBuilder (render-nodes template context (StringBuilder.) escape-conf))
-    (render (edn/read-string (slurp (io/resource "error-template.edn"))) template escape-conf)))
+    (render (read-edn-resource "error-template.edn") template escape-conf)))
 
 (defn- render-nodes-to-stream-seq [nodes context charset escape-conf]
   (lazy-seq
@@ -162,7 +169,7 @@
      (let [stream-seq (render-nodes-to-stream-seq template context charset escape-conf)
            enumeration (Collections/enumeration stream-seq)]
        (SequenceInputStream. enumeration))
-     (ByteArrayInputStream. (.getBytes ^String (render (edn/read-string (slurp (io/resource "error-template.edn"))) template escape-conf))))))
+     (ByteArrayInputStream. (.getBytes ^String (render (read-edn-resource "error-template.edn") template escape-conf))))))
 
 
 (defn pre-render [render-instructions context]
@@ -192,4 +199,3 @@
                     (conj acc instruction)))
                 (conj acc instruction)))
             [] render-instructions)))
-

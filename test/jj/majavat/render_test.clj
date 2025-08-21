@@ -244,40 +244,32 @@ this is a  footer"
                  "\"")))
 
 (deftest if-not-test
-  (are [template rendered-string]
+  (are [rendered-string template-path]
     (= rendered-string
-       (mock/with-mock
-         [slurp template]
-         (renderer/render (parser/parse "conditional-test" contentResolver) {:value "some"} nil)))
-    "not {% if not not-existing-value %}world{% endif %}" "not world"
-    "not {% if not value %}foo{% else %}bar{% endif %}" "not bar"))
+       (renderer/render (parser/parse template-path contentResolver) {:value "some"} nil))
+    "hello " "if/if-not"
+    "hello universe" "if/if-not-else"))
 
 
 (deftest render-values-test
-  (are [expected-value template context]
+  (are [expected-value template-path context]
     (= expected-value
-       (mock/with-mock
-         [slurp template]
-         (String. (.readAllBytes ^InputStream (renderer/render-is (parser/parse "conditional-test" contentResolver) context nil)))))
-    "foo BAR" "foo {{ value | upper-case }}" {:value "bar"}
-    "foo bar" "foo {{ value | lower-case }}" {:value "BAR"}
-    "foo keyword" "foo {{ value | name }}" {:value :keyword}))
+       (String. (.readAllBytes ^InputStream (renderer/render-is (parser/parse template-path contentResolver) context nil))))
+    "foo BAR" "filter/upper-case" {:value "bar"}
+    "foo bar" "filter/lower-case" {:value "BAR"}
+    "foo keyword" "filter/keyword" {:value :keyword}))
 
 
 (deftest render-let-value
   (testing "parsing as a string"
-           (are [expected-value template context]
-             (= expected-value
-                (mock/with-mock
-                  [slurp template]
-                  (renderer/render (parser/parse "conditional-test" contentResolver) context nil)))
-             "testing hello barbaz" "testing {% let foo = \"bar\" %}hello {% foo %}{% endlet %}baz" {}))
-  (testing "parsing to inpustream"
-    (are [expected-value template context]
+    (are [expected-value template-path context]
       (= expected-value
-         (mock/with-mock
-           [slurp template]
-           (String. (.readAllBytes ^InputStream (renderer/render-is (parser/parse "conditional-test" contentResolver) context nil)))))
-      "testing hello barbaz" "testing {% let foo = \"bar\" %}hello {% foo %}{% endlet %}baz" {})))
+         (renderer/render (parser/parse template-path contentResolver) context nil))
+      "testing hello barbaz" "let/let-foo" {}))
+  (testing "parsing to inpustream"
+    (are [expected-value template-path context]
+      (= expected-value
+         (String. (.readAllBytes ^InputStream (renderer/render-is (parser/parse template-path contentResolver) context nil))))
+      "testing hello barbaz" "let/let-foo" {})))
 
 

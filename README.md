@@ -155,40 +155,26 @@ bar
 (render-file "input-file" {}) ;; returns "foo\nbar\nbaz"
 ```
 
-## ContentResolver
+## TemplateResolver
 
-The `ContentResolver` protocol provides a uniform interface for accessing template content from different sources.
+The `TemplateResolver` protocol provides a uniform interface for accessing template content from different sources.
 
 ### Protocol Methods
 
-#### `resolve-path`
+#### `open-reader`
 
-Resolve a relative path against a base path.
+Returns reader for that template, or `nil` if not found.
 
 ```clojure
-(resolve-path resolver "/base/path" "../file.txt")
-;; => "/file.txt"
-(resolve-path resolver "/base/path" "./sub/file.txt")
-;; => "/base/sub/file.txt"
-
+(open-reader "/templates/header.html")
 ```
 
-#### `read-content`
+#### `template-exists?`
 
-Read content from a path. Returns the content as a string, or `nil` if not found.
-
-```clojure
-(read-content resolver "/templates/header.html")
-;; => "<header>Welcome</header>"
-```
-
-#### `content-exists?`
-
-Check if content exists at a path.
+Check if template exists at a path.
 
 ```clojure
-(content-exists? resolver "/templates/footer.html")
-;; => true
+(template-exists? resolver "/templates/footer.html") ;; => true
 ```
 
 ### Built-in Implementations
