@@ -21,10 +21,10 @@
 (defn- evaluate-condition [condition context]
   (boolean (resolve-path context condition)))
 
-(defn- escape-if-needed [val escape-thingy]
-  (if (nil? escape-thingy)
+(defn- escape-if-needed [val escaper]
+  (if (nil? escaper)
     val
-    (rops/escape escape-thingy val)))
+    (rops/escape escaper val)))
 
 (defn- ->str [v]
   (if (string? v)
