@@ -1,4 +1,4 @@
-(defproject org.clojars.jj/majavat "1.0.6"
+(defproject org.clojars.jj/majavat "1.0.7-SNAPSHOT"
   :description "Templating engine for clojure"
   :url "https://github.com/ruroru/majavat"
   :license {:name "EPL-2.0"
