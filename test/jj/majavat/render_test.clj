@@ -257,7 +257,9 @@ this is a  footer"
        (String. (.readAllBytes ^InputStream (renderer/render-is (parser/parse template-path contentResolver) context nil))))
     "foo BAR" "filter/upper-case" {:value "bar"}
     "foo bar" "filter/lower-case" {:value "BAR"}
-    "foo keyword" "filter/keyword" {:value :keyword}))
+    "foo keyword" "filter/keyword" {:value :keyword}
+    "id is 3" "filter/inc" {:id 2}
+    "id is 1" "filter/dec" {:id 2}))
 
 
 (deftest render-let-value
@@ -273,3 +275,17 @@ this is a  footer"
       "testing hello barbaz" "let/let-foo" {})))
 
 
+(deftest loop
+  (are [expected template-path]
+    (let [context {:planets ["Mercury" "Venus" "Earth" "Mars" "Jupiter" "Saturn" "Uranus" "Neptune"]}
+          parsed-template (parser/parse template-path contentResolver)
+          render-result (renderer/render parsed-template context nil)
+          render-is-result (String. (.readAllBytes ^InputStream (renderer/render-is parsed-template context nil)))]
+
+      (and (= expected render-result)
+           (= expected render-is-result)
+           (= render-result render-is-result)))
+
+    (slurp (io/resource "loop/expected-for-loop")) "loop/for-loop"
+
+    ))

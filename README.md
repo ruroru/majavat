@@ -65,6 +65,8 @@ Hello {{ name | upper-case }}!
 | lower-case        | String  |
 | capitalize        | String  |
 | name              | keyword |
+| inc               | Number  |
+| dec               | Number  |
 
 #### Conditionals
 
@@ -96,13 +98,23 @@ Rendering input file with content:
 
 ```
 {% for item in items %}
-- {{ item }}
+- {{ item }} is {{ loop.index }} of {{ loop.total }}
 {% endfor %}
 ```
 
 ```clojure
-(render-file "input-file" {:items ["Apple" "Banana" "Orange"]}) ;; returns "-Apple\n- Banana\n- Orange"
+(render-file "input-file" {:items ["Apple" "Banana" "Orange"]}) ;; returns "- Apple is 0 of 3\n- Banana is 1 of 3\n- Orange is 2 of 3"
 ```
+
+The loop context provides access to:
+
+`loop.total` - total number of items in the collection
+
+`loop.index` - current 0-based index position
+
+`loop.first?` - true only for the first item
+
+`loop.last?` - true only for the last item
 
 #### Including template
 

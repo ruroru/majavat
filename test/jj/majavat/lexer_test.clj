@@ -1,5 +1,5 @@
 (ns jj.majavat.lexer-test
-  (:require [clojure.test :refer [deftest is]]
+  (:require [clojure.test :refer [deftest are is]]
             [jj.majavat.lexer :as lexer]))
 
 (deftest lex-test
@@ -133,40 +133,41 @@
   (is (= [{:type  :text
            :value "testing "}
           {:type :opening-bracket}
-          {:type  :expression}
+          {:type :expression}
           {:line 1
            :type :closing-bracket}]
          (lexer/tokenize "testing {{ }}"))))
 
 
 (deftest tokenize-value-with-filter
-  (is (= [{:type  :text
-           :value "testing "}
-          {:type :opening-bracket}
-          {:type  :expression
-           :value [:value]}
-          {:type :filter-tag}
-          {:type :filter-function
-           :value :upper-case}
-          {:line 1
-           :type :closing-bracket}]
-         (lexer/tokenize "testing {{ value | upper-case }}"))))
+  (are [expected input] (= expected (lexer/tokenize input))
+                        [{:type  :text
+                          :value "testing "}
+                         {:type :opening-bracket}
+                         {:type  :expression
+                          :value [:value]}
+                         {:type :filter-tag}
+                         {:type  :filter-function
+                          :value :upper-case}
+                         {:line 1
+                          :type :closing-bracket}]
+                        "testing {{ value | upper-case }}"))
 
 
-(deftest tokenize-value-with-filter
+(deftest tokenize-let
   (is (= [{:type  :text
            :value "testing "}
           {:type :block-start}
-          {:type  :keyword-let}
-          {:type :variable-declaration
-           :variable-name :foo
+          {:type :keyword-let}
+          {:type           :variable-declaration
+           :variable-name  :foo
            :variable-value "bar"}
           {:line 1
            :type :block-end}
           {:type  :text
            :value "hello"}
           {:type :block-start}
-          {:type  :keyword-end-let}
+          {:type :keyword-end-let}
           {:line 1
            :type :block-end}
           ]

@@ -41,6 +41,10 @@
     (keyword? v) (case filter-name
                    :name (name v)
                    v)
+    (number? v) (case filter-name
+                   :inc (inc v)
+                   :dec (dec v)
+                   v)
     :else
     v))
 
@@ -68,14 +72,18 @@
             new-context (assoc context variable-name variable-value)]
         (render-nodes body new-context sb escape-conf))
 
-      :for
-      (let [identifier (:identifier node)
-            source-path (:source node)
-            body (:body node)
-            items (resolve-path context source-path)]
-        (doseq [item items]
-          (let [new-context (assoc context identifier item)]
-            (render-nodes body new-context sb escape-conf))))
+      :for (let [identifier (:identifier node)
+                 source-path (:source node)
+                 body (:body node)
+                 items (resolve-path context source-path)]
+             (doseq [[index item] (map-indexed vector items)]
+               (let [loop-context (assoc context
+                                    :loop {:total  (count items)
+                                           :index  index
+                                           :first? (zero? index)
+                                           :last?  (= index (dec (count items)))})
+                     new-context (assoc loop-context identifier item)]
+                 (render-nodes body new-context sb escape-conf))))
 
       :if
       (let [condition (:condition node)
@@ -138,10 +146,17 @@
                 source-path (:source node)
                 body (:body node)
                 items (resolve-path context source-path)
-                for-streams (mapcat #(render-nodes-to-stream-seq
-                                       body
-                                       (assoc context identifier %)
-                                       charset escape-conf)
+                for-streams (mapcat (fn [index item]
+                                      (let [loop-context (assoc context
+                                                           :loop {:total  (count items)
+                                                                  :index  index
+                                                                  :first? (zero? index)
+                                                                  :last?  (= index (dec (count items)))})]
+                                        (render-nodes-to-stream-seq
+                                          body
+                                          (assoc loop-context identifier item)
+                                          charset escape-conf)))
+                                    (range)
                                     items)]
             (concat for-streams
                     (render-nodes-to-stream-seq (rest nodes) context charset escape-conf)))
