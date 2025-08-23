@@ -172,3 +172,25 @@
            :type :block-end}
           ]
          (lexer/tokenize "testing {% let foo = \"bar\" %}hello{% endlet %}"))))
+
+(deftest new-line-test
+  (is (= [{:type :opening-bracket}
+          {:type  :expression
+           :value [:value]}
+          {:line 1
+           :type :closing-bracket}
+          {:type  :text
+           :value " "}
+          {:type :opening-bracket}
+          {:type  :expression
+           :value [:value]}
+          {:line 1
+           :type :closing-bracket}
+          {:type  :text
+           :value " \n\n "}
+          {:type :opening-bracket}
+          {:type  :expression
+           :value [:value]}
+          {:line 3
+           :type :closing-bracket}]
+         (lexer/tokenize "{{ value }} {{ value }} \n\n {{ value }}"))))

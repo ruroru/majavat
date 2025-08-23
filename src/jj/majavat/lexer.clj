@@ -35,14 +35,14 @@
       (cond
         (and (= current-char \{) (= next-char \{))
         (cond
-          (string/blank? current-string)
+          (empty? current-string)
           (recur (rrest my-sequence) "" (conj vector {:type :opening-bracket}) new-line-number)
           :else
           (recur (rrest my-sequence) "" (conj vector {:type :text :value current-string} {:type :opening-bracket}) new-line-number))
 
         (and (= current-char \{) (= next-char \%))
         (cond
-          (string/blank? current-string)
+          (empty? current-string)
           (recur (rrest my-sequence) "" (conj vector {:type :block-start}) new-line-number)
           :else
           (recur (rrest my-sequence) "" (conj vector {:type :text :value current-string} {:type :block-start}) new-line-number))
@@ -234,10 +234,14 @@
           :else
           (recur (rest my-sequence) (str current-string current-char) vector new-line-number))
 
+        ;; DEFAULT CASE: This handles text accumulation between expressions
+        ;; BUG WAS HERE: The lexer falls through to this case after closing }}
+        ;; and should accumulate text characters normally
         :else
         (recur (rest my-sequence) (str current-string current-char) vector new-line-number)))
 
-    (if-not (string/blank? current-string)
+    ;; Handle any remaining text at the end
+    (if-not (empty? current-string)
       (conj vector {:type :text :value current-string})
       vector)))
 

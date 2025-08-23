@@ -233,6 +233,8 @@
                    :name]}
           {:line 1
            :type :closing-bracket}
+          {:type  :text
+           :value "\n"}
           {:type :block-start}
           {:type :keyword-for}
           {:type  :identifier
@@ -251,6 +253,8 @@
                    :name]}
           {:line 2
            :type :closing-bracket}
+          {:type  :text
+           :value "\n"}
           {:type :block-start}
           {:type :end-for}
           {:line 3
@@ -367,6 +371,8 @@
           {:type :keyword-endif}
           {:line 1
            :type :block-end}
+          {:type  :text
+           :value "\n"}
           {:type :block-start}
           {:type :end-for}
           {:line 2
@@ -438,6 +444,8 @@
            :value [:details]}
           {:line 3
            :type :closing-bracket}
+          {:type  :text
+           :value "\n"}
           {:type :block-start}
           {:type :keyword-endif}
           {:line 4
