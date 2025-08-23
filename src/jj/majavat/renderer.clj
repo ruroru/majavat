@@ -26,12 +26,12 @@
     val
     (rops/escape escape-thingy val)))
 
-(defn ->str [v]
+(defn- ->str [v]
   (if (string? v)
     v
     (str v)))
 
-(defn apply-filter [v filter-name]
+(defn- apply-filter [v filter-name]
   (cond
     (string? v) (case filter-name
                   :upper-case (clojure.string/upper-case v)
