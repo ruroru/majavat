@@ -2,13 +2,12 @@
   (:require
     [clojure.java.io :as io]
     [clojure.string :as str]
-    [clojure.test :refer [are deftest testing is]]
+    [clojure.test :refer [are deftest is testing]]
     [jj.majavat.parser :as parser]
     [jj.majavat.renderer :as renderer]
     [jj.majavat.renderer.escape.html :as hops]
     [jj.majavat.resolver.fs :as fcr]
-    [jj.majavat.resolver.resource :as rcr]
-    [mock-clj.core :as mock])
+    [jj.majavat.resolver.resource :as rcr])
   (:import (java.io InputStream)))
 
 
@@ -257,6 +256,11 @@ this is a  footer"
        (String. (.readAllBytes ^InputStream (renderer/render-is (parser/parse template-path contentResolver) context nil))))
     "foo BAR" "filter/upper-case" {:value "bar"}
     "foo bar" "filter/lower-case" {:value "BAR"}
+    "Foo Bar" "filter/capitalize" {:value "BAR"}
+    "foo the LXXXIV" "filter/upper-roman" {:value "lxxxIv"}
+    "Foo  Bar Baz Qux  Quux" "filter/title-case" {:value "bar baz qux  quux"}
+    "foo bar baz qux  quux" "filter/trim" {:value "  bar baz qux  quux  "}
+    "foo BAR BAZ QUX  QUUX" "filter/multi-filter" {:value "  bar baz qux  quux  "}
     "foo keyword" "filter/keyword" {:value :keyword}
     "id is 3" "filter/inc" {:id 2}
     "id is 1" "filter/dec" {:id 2}))

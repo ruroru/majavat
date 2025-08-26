@@ -115,7 +115,13 @@
           (recur (rest my-sequence) (str current-string current-char) vector new-line-number))
 
         (= (:type (last vector)) :filter-tag)
-        (recur (rest my-sequence) (str current-string current-char) vector new-line-number)
+        (cond
+
+          (and (= current-char \|) (not (string/blank? current-string)))
+          (let [trimmed-string (string/trim current-string)]
+            (recur (rest my-sequence) "" (conj vector {:type :filter-function :value (keyword trimmed-string)} {:type :filter-tag}) new-line-number))
+          :else
+          (recur (rest my-sequence) (str current-string current-char) vector new-line-number))
 
         (= (:type (last vector)) :block-start)
         (cond
@@ -234,13 +240,9 @@
           :else
           (recur (rest my-sequence) (str current-string current-char) vector new-line-number))
 
-        ;; DEFAULT CASE: This handles text accumulation between expressions
-        ;; BUG WAS HERE: The lexer falls through to this case after closing }}
-        ;; and should accumulate text characters normally
         :else
         (recur (rest my-sequence) (str current-string current-char) vector new-line-number)))
 
-    ;; Handle any remaining text at the end
     (if-not (empty? current-string)
       (conj vector {:type :text :value current-string})
       vector)))

@@ -151,7 +151,23 @@
                           :value :upper-case}
                          {:line 1
                           :type :closing-bracket}]
-                        "testing {{ value | upper-case }}"))
+                        "testing {{ value | upper-case }}"
+
+                        [{:type  :text
+                          :value "testing "}
+                         {:type :opening-bracket}
+                         {:type  :expression
+                          :value [:value]}
+                         {:type :filter-tag}
+                         {:type  :filter-function
+                          :value :trim}
+                         {:type :filter-tag}
+                         {:type  :filter-function
+                          :value :upper-case}
+                         {:line 1
+                          :type :closing-bracket}]
+
+                        "testing {{ value | trim | upper-case }}"))
 
 
 (deftest tokenize-let
@@ -174,7 +190,9 @@
          (lexer/tokenize "testing {% let foo = \"bar\" %}hello{% endlet %}"))))
 
 (deftest new-line-test
-  (is (= [{:type :opening-bracket}
+  (is (= [{:type  :text
+           :value " "}
+          {:type :opening-bracket}
           {:type  :expression
            :value [:value]}
           {:line 1
@@ -192,5 +210,7 @@
           {:type  :expression
            :value [:value]}
           {:line 3
-           :type :closing-bracket}]
-         (lexer/tokenize "{{ value }} {{ value }} \n\n {{ value }}"))))
+           :type :closing-bracket}
+          {:type  :text
+           :value " "}]
+         (lexer/tokenize " {{ value }} {{ value }} \n\n {{ value }} "))))

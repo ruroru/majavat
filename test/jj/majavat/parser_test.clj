@@ -1,10 +1,8 @@
 (ns jj.majavat.parser-test
   (:require [clojure.test :refer [are deftest is]]
-            [jj.majavat.lexer :as lexer]
             [jj.majavat.parser :as parser]
             [jj.majavat.resolver.fs :as fcr]
-            [jj.majavat.resolver.resource :as rcr]
-            [mock-clj.core :as mock]))
+            [jj.majavat.resolver.resource :as rcr]))
 
 (def contentResolver (rcr/->ResourceResolver))
 
@@ -285,16 +283,26 @@
      :type          "syntax-error"}))
 
 (deftest test-filters
-  (are [expected-ast]
+  (are [expected-ast file-path]
     (= expected-ast
-       (parser/parse "filters/uppercase" (rcr/->ResourceResolver)))
+       (parser/parse file-path (rcr/->ResourceResolver)))
 
     [{:type  :text
       :value "testing "}
      {:type    :value-node
       :value   [:value]
       :filters [:upper-case]
-      }]))
+      }] "filters/uppercase"
+
+
+    [{:type  :text
+      :value "foo "}
+     {:filters [:trim
+                :upper-case]
+      :type    :value-node
+      :value   [:value]}]
+    "filter/multi-filter"
+    ))
 
 (deftest let-test
 

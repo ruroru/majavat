@@ -59,11 +59,15 @@ Hello {{ name | upper-case }}!
 ```clojure
 (render-file "file.txt" {:name "world"}) ;; => returns Hello WORLD!
 ```
+
 | supported filters | type    |
 |-------------------|---------|
-| upper-case        | String  |
-| lower-case        | String  |
 | capitalize        | String  |
+| lower-case        | String  |
+| title-case        | String  |
+| trim              | String  |
+| upper-case        | String  |
+| upper-roman       | String  |
 | name              | keyword |
 | inc               | Number  |
 | dec               | Number  |
