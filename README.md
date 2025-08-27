@@ -171,6 +171,18 @@ bar
 (render-file "input-file" {}) ;; returns "foo\nbar\nbaz"
 ```
 
+#### Comments
+
+input-file with content
+```
+foo{# bar baz #}
+```
+
+```clojure
+(render-file "input-file" {}) ;; returns "foo"
+```
+
+
 ## TemplateResolver
 
 The `TemplateResolver` protocol provides a uniform interface for accessing template content from different sources.

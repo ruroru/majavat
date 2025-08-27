@@ -189,6 +189,11 @@
           ]
          (lexer/tokenize "testing {% let foo = \"bar\" %}hello{% endlet %}"))))
 
+(deftest tokenize-with-comment
+  (is (= [{:type  :text
+           :value "testing "}]
+         (lexer/tokenize "testing {# this isa {% if value %} {{value}}  comment, and it will not be included #}"))))
+
 (deftest new-line-test
   (is (= [{:type  :text
            :value " "}
