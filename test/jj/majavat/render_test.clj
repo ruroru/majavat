@@ -251,14 +251,14 @@ this is a  footer"
     "hello universe" "if/if-not-else"))
 
 
-(deftest render-values-test
+(deftest render-filters
   (are [expected-value template-path context]
     (= expected-value
        (String. (.readAllBytes ^InputStream (renderer/render-is (parser/parse template-path contentResolver) context nil))))
     "foo BAR" "filter/upper-case" {:value "bar"}
     "foo bar" "filter/lower-case" {:value "BAR"}
     "Foo Bar" "filter/capitalize" {:value "BAR"}
-    "foo the LXXXIV" "filter/upper-roman" {:value "lxxxIv"}
+    "foo the strive LXXXIV ivy" "filter/upper-roman" {:value "lxxxIv"}
     "Foo  Bar Baz Qux  Quux Foo-Bar" "filter/title-case" {:value "bar baz qux  quux foo-bar"}
     "foo bar baz qux  quux" "filter/trim" {:value "  bar baz qux  quux  "}
     "foo BAR BAZ QUX  QUUX" "filter/multi-filter" {:value "  bar baz qux  quux  "}
@@ -295,6 +295,4 @@ this is a  footer"
            (= expected render-is-result)
            (= render-result render-is-result)))
 
-    (slurp (io/resource "loop/expected-for-loop")) "loop/for-loop"
-
-    ))
+    (slurp (io/resource "loop/expected-for-loop")) "loop/for-loop"))
