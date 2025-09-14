@@ -305,10 +305,9 @@
     ))
 
 (deftest let-test
-
-  (are [expected-ast]
+  (are [expected-ast input-file]
     (= expected-ast
-       (parser/parse "let/let-foo" (rcr/->ResourceResolver)))
+       (parser/parse input-file (rcr/->ResourceResolver)))
     [{:type  :text
       :value "testing "}
      {:type           :variable-declaration
@@ -319,4 +318,16 @@
                        {:type :value-node :value [:foo]}]}
      {:type  :text
       :value "baz"}
-     ]))
+     ] "let/let-foo"
+    [{:type  :text
+      :value "testing "}
+     {:type           :variable-assignment
+      :variable-name  :foo
+      :variable-value [:bar :qux]
+      :body           [{:type  :text
+                        :value "hello "}
+                       {:type :value-node :value [:foo]}]}
+     {:type  :text
+      :value "baz"}
+     ]
+    "let/let-bar"))

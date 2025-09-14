@@ -91,6 +91,12 @@
         (.append sb (-> filtered-val
                         ->str
                         (escape-if-needed (:character-escaper escape-conf)))))
+      :variable-assignment
+      (let [variable-name (:variable-name node)
+            variable-value (:variable-value node)
+            body (:body node)
+            new-context (assoc context variable-name (resolve-path context variable-value))]
+        (render-nodes body new-context sb escape-conf))
 
       :variable-declaration
       (let [variable-name (:variable-name node)
@@ -165,6 +171,13 @@
                 variable-value (:variable-value node)
                 body (:body node)
                 new-context (assoc context variable-name variable-value)]
+            (concat (render-nodes-to-stream-seq body new-context charset escape-conf)
+                    (render-nodes-to-stream-seq (rest nodes) context charset escape-conf)))
+          :variable-assignment
+          (let [variable-name (:variable-name node)
+                variable-value (:variable-value node)
+                body (:body node)
+                new-context (assoc context variable-name (resolve-path context variable-value))]
             (concat (render-nodes-to-stream-seq body new-context charset escape-conf)
                     (render-nodes-to-stream-seq (rest nodes) context charset escape-conf)))
 

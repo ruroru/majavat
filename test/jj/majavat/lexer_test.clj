@@ -171,23 +171,42 @@
 
 
 (deftest tokenize-let
-  (is (= [{:type  :text
-           :value "testing "}
-          {:type :block-start}
-          {:type :keyword-let}
-          {:type           :variable-declaration
-           :variable-name  :foo
-           :variable-value "bar"}
-          {:line 1
-           :type :block-end}
-          {:type  :text
-           :value "hello"}
-          {:type :block-start}
-          {:type :keyword-end-let}
-          {:line 1
-           :type :block-end}
-          ]
-         (lexer/tokenize "testing {% let foo = \"bar\" %}hello{% endlet %}"))))
+  (are [expected input] (= expected
+                           (lexer/tokenize input))
+                        [{:type  :text
+                          :value "testing "}
+                         {:type :block-start}
+                         {:type :keyword-let}
+                         {:type           :variable-declaration
+                          :variable-name  :foo
+                          :variable-value "bar"}
+                         {:line 1
+                          :type :block-end}
+                         {:type  :text
+                          :value "hello"}
+                         {:type :block-start}
+                         {:type :keyword-end-let}
+                         {:line 1
+                          :type :block-end}
+                         ]
+                        "testing {% let foo = \"bar\" %}hello{% endlet %}"
+                        [{:type  :text
+                          :value "testing "}
+                         {:type :block-start}
+                         {:type :keyword-let}
+                         {:type           :variable-declaration
+                          :variable-name  :foo
+                          :variable-value [:bar :qux]}
+                         {:line 1
+                          :type :block-end}
+                         {:type  :text
+                          :value "hello"}
+                         {:type :block-start}
+                         {:type :keyword-end-let}
+                         {:line 1
+                          :type :block-end}
+                         ]
+                         "testing {% let foo = bar.qux %}hello{% endlet %}"))
 
 (deftest tokenize-with-comment
   (is (= [{:type  :text

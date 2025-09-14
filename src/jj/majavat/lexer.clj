@@ -15,7 +15,7 @@
             var-value (if (and (string/starts-with? var-value-str "\"")
                                (string/ends-with? var-value-str "\""))
                         (subs var-value-str 1 (dec (count var-value-str)))
-                        var-value-str)]
+                        (mapv keyword (string/split var-value-str #"\.")))]
 
         {:variable-name var-name :variable-value var-value})
       {:variable-name nil :variable-value nil})))

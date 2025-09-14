@@ -149,6 +149,14 @@ hello {% let foo = "baz" %}{{ foo }}{% endlet %}
 ```clojure
 (render-file "input-file" {}) ;; returns "hello baz"
 ```
+or 
+```
+hello {% let foo = bar %}{{ foo.baz }}{% endlet %}
+```
+```clojure
+(render-file "input-file" {:bar {:baz "baz"}}) ;; returns "hello baz"
+```
+
 
 #### Extending template
 

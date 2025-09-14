@@ -4,6 +4,7 @@
     [clojure.string :as str]
     [clojure.test :refer [are deftest is testing]]
     [jj.majavat.parser :as parser]
+    [clojure.pprint :as pprint]
     [jj.majavat.renderer :as renderer]
     [jj.majavat.renderer.escape.html :as hops]
     [jj.majavat.resolver.fs :as fcr]
@@ -271,12 +272,16 @@ this is a  footer"
     (are [expected-value template-path context]
       (= expected-value
          (renderer/render (parser/parse template-path contentResolver) context nil))
-      "testing hello barbaz" "let/let-foo" {}))
+      "testing hello barbaz" "let/let-foo" {}
+      "testing hello barbaz" "let/let-bar" {:bar {:qux "bar"}}
+      "testing hello barbaz" "let/let-qux" {:bar {:qux "bar"}}))
   (testing "parsing to inpustream"
     (are [expected-value template-path context]
       (= expected-value
          (String. (.readAllBytes ^InputStream (renderer/render-is (parser/parse template-path contentResolver) context nil))))
-      "testing hello barbaz" "let/let-foo" {})))
+      "testing hello barbaz" "let/let-foo" {}
+      "testing hello barbaz" "let/let-bar" {:bar {:qux "bar"}}
+      "testing hello barbaz" "let/let-qux" {:bar {:qux "bar"}})))
 
 
 (deftest loop

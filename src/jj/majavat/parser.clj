@@ -58,8 +58,8 @@
          :opening-bracket (recur (rest lexed-list) list current-block parsing-for-body current-file-path template-resolver)
          :closing-bracket (if (not (nil? (:value (last list))))
                             (recur (rest lexed-list) list current-block parsing-for-body current-file-path template-resolver)
-                            (throw (Exception. (str (:line current-item))))
-                            )
+                            (throw (Exception. (str (:line current-item)))))
+
          :block-start (let [remaining (rest lexed-list)]
                         (if (and (seq remaining) (= :block-end (:type (first remaining))))
                           (let [remaining-after-block-end (rest remaining)]
@@ -128,7 +128,10 @@
                             (if (and block-end-token (= :block-end (:type block-end-token)))
                               (let [remaining-after-block-end (rest remaining-after-var-decl)
                                     [body remaining-after-body] (parse-ast remaining-after-block-end [] current-block true current-file-path template-resolver)
-                                    let-node {:type           :variable-declaration
+                                    node-type (if (string? (:variable-value var-decl-token))
+                                                :variable-declaration
+                                                :variable-assignment)
+                                    let-node {:type           node-type
                                               :variable-name  (:variable-name var-decl-token)
                                               :variable-value (:variable-value var-decl-token)
                                               :body           body}]
