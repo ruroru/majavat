@@ -25,7 +25,7 @@
     (loop [index 0 new-word? true]
       (if (< index (count char-array))
         (let [c (aget char-array index)]
-          (if (Character/isWhitespace c)
+          (if (or (Character/isWhitespace c) (= c \-))
             (do
               (.append sb c)
               (recur (inc index) true))

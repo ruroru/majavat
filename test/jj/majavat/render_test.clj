@@ -259,7 +259,7 @@ this is a  footer"
     "foo bar" "filter/lower-case" {:value "BAR"}
     "Foo Bar" "filter/capitalize" {:value "BAR"}
     "foo the LXXXIV" "filter/upper-roman" {:value "lxxxIv"}
-    "Foo  Bar Baz Qux  Quux" "filter/title-case" {:value "bar baz qux  quux"}
+    "Foo  Bar Baz Qux  Quux Foo-Bar" "filter/title-case" {:value "bar baz qux  quux foo-bar"}
     "foo bar baz qux  quux" "filter/trim" {:value "  bar baz qux  quux  "}
     "foo BAR BAZ QUX  QUUX" "filter/multi-filter" {:value "  bar baz qux  quux  "}
     "foo keyword" "filter/keyword" {:value :keyword}
