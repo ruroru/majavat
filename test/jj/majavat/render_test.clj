@@ -309,3 +309,22 @@ this is a  footer"
          (String. (.readAllBytes ^InputStream (renderer/render-is (parser/parse template-path contentResolver) context nil))))
       "foo <input type=\"hidden\" name=\"csrf_token\" value=\"bar\"> " "csrf/csrf" {:csrf-token "bar"}
       "foo <input type=\"hidden\" name=\"csrf_token\" value=\"\"> " "csrf/csrf" {})))
+
+(deftest query-string
+  (println (parser/parse "query-string/query-string" contentResolver))
+  (testing "render to string"
+    (are [expected-value template-path context]
+      (= expected-value
+         (renderer/render (parser/parse template-path contentResolver) context nil))
+      "/some/route" "query-string/query-string" {}
+      "/some/route?key=value" "query-string/query-string" {:foo {:bar {:key "value"}}}
+      "/some/route?key=value" "query-string/query-string" {:foo {:bar {"key" "value"}}}
+      "/some/route?key=value&key1=value1" "query-string/query-string" {:foo {:bar {:key "value" :key1 "value1"}}}))
+  (testing "render to input stream"
+    (are [expected-value template-path context]
+      (= expected-value
+         (String. (.readAllBytes ^InputStream (renderer/render-is (parser/parse template-path contentResolver) context nil))))
+      "/some/route" "query-string/query-string" {}
+      "/some/route?key=value" "query-string/query-string" {:foo {:bar {:key "value"}}}
+      "/some/route?key=value&key1=value1" "query-string/query-string" {:foo {:bar {:key "value" :key1 "value1"}}})))
+

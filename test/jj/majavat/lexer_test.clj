@@ -245,3 +245,12 @@
           {:line 1
            :type :block-end}]
          (lexer/tokenize "{% csrf-token %}"))))
+
+(deftest query-string
+  (is (= [{:type :block-start}
+          {:type :keyword-query-string}
+          {:type           :query-string-declaration
+           :variable-value [:bar :qux]}
+          {:line 1
+           :type :block-end}]
+         (lexer/tokenize "{% query-string bar.qux %}"))))

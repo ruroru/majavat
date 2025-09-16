@@ -20,6 +20,13 @@
         {:variable-name var-name :variable-value var-value})
       {:variable-name nil :variable-value nil})))
 
+(defn- parse-query-string-value [value-string]
+  (let [trimmed (string/trim value-string)]
+    (if (and (string/starts-with? trimmed "\"")
+             (string/ends-with? trimmed "\""))
+      (subs trimmed 1 (dec (count trimmed)))
+      (mapv keyword (string/split trimmed #"\.")))))
+
 (defn- skip-comment [my-sequence line-number]
   (loop [seq-rest my-sequence
          current-line line-number]
@@ -98,6 +105,9 @@
             (= (:type (last vector)) :keyword-let)
             (recur (rrest my-sequence) "" (conj vector {:type :block-end :line line-number}) new-line-number)
 
+            (= (:type (last vector)) :keyword-query-string)
+            (recur (rrest my-sequence) "" (conj vector {:type :block-end :line line-number}) new-line-number)
+
             :else
             (recur (rrest my-sequence) "" (conj vector {:type :block-end :line line-number}) new-line-number)))
 
@@ -158,6 +168,9 @@
           (= (string/trim current-string) "let")
           (recur (rest my-sequence) "" (conj vector {:type :keyword-let}) new-line-number)
 
+          (= (string/trim current-string) "query-string")
+          (recur (rest my-sequence) "" (conj vector {:type :keyword-query-string}) new-line-number)
+
           (= (string/trim current-string) "if")
           (recur (rest my-sequence) "" (conj vector {:type :keyword-if}) new-line-number)
 
@@ -197,6 +210,14 @@
             (recur (rest my-sequence) "" (conj vector {:type           :variable-declaration
                                                        :variable-name  variable-name
                                                        :variable-value variable-value}) new-line-number))
+          (recur (rest my-sequence) (str current-string current-char) vector new-line-number))
+
+        (= (:type (last vector)) :keyword-query-string)
+        (if (= next-char \%)
+          (let [variable-value (parse-query-string-value current-string)]
+            (recur (rest my-sequence) "" (conj vector {:type           :query-string-declaration
+                                                       :variable-value variable-value})
+                   new-line-number))
           (recur (rest my-sequence) (str current-string current-char) vector new-line-number))
 
         (= (:type (last vector)) :keyword-for)

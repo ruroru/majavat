@@ -75,6 +75,25 @@
     :else
     v))
 
+(defn- build-query-string [path context]
+  (let [query-data (resolve-path context path)]
+    (when (map? query-data)
+      (let [sb (StringBuilder.)
+            filtered-params (filter (fn [[k v]] (not (nil? v))) query-data)]
+        (when (seq filtered-params)
+          (.append sb "?")
+          (loop [params (seq filtered-params)
+                 first? true]
+            (when params
+              (let [[k v] (first params)]
+                (when-not first?
+                  (.append sb "&"))
+                (.append sb (name k))
+                (.append sb "=")
+                (.append sb (->str v))
+                (recur (next params) false))))
+          (.toString sb))))))
+
 (defn- render-nodes [nodes context ^StringBuilder sb escape-conf]
   (doseq [node nodes]
     (case (:type node)
@@ -91,6 +110,11 @@
         (.append sb (-> filtered-val
                         ->str
                         (escape-if-needed (:character-escaper escape-conf)))))
+
+      :query-string
+      (when-let [query-str (build-query-string (:value node) context)]
+        (.append sb query-str))
+
       :variable-assignment
       (let [variable-name (:variable-name node)
             variable-value (:variable-value node)
@@ -165,6 +189,13 @@
                                    (escape-if-needed (:character-escaper escape-conf)))]
             (cons (ByteArrayInputStream. (.getBytes ^String resolved-value ^Charset charset))
                   (render-nodes-to-stream-seq (rest nodes) context charset escape-conf)))
+
+          :query-string
+          (let [query-str (build-query-string (:value node) context)]
+            (if query-str
+              (cons (ByteArrayInputStream. (.getBytes ^String query-str ^Charset charset))
+                    (render-nodes-to-stream-seq (rest nodes) context charset escape-conf))
+              (render-nodes-to-stream-seq (rest nodes) context charset escape-conf)))
 
           :variable-declaration
           (let [variable-name (:variable-name node)

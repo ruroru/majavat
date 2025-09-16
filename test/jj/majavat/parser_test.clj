@@ -1,5 +1,7 @@
 (ns jj.majavat.parser-test
-  (:require [clojure.test :refer [are deftest is]]
+  (:require [clojure.java.io :as io]
+            [clojure.test :refer [are deftest is]]
+            [jj.majavat.lexer :as lexer]
             [jj.majavat.parser :as parser]
             [jj.majavat.resolver.fs :as fcr]
             [jj.majavat.resolver.resource :as rcr]))
@@ -337,14 +339,26 @@
        (parser/parse input-file (rcr/->ResourceResolver)))
     [{:type  :text
       :value "foo "}
-     {:type :text
+     {:type  :text
       :value "<input type=\"hidden\" name=\"csrf_token\" value=\""}
-     {:type :value-node
+     {:type  :value-node
       :value [:csrf-token]}
-     {:type :text
+     {:type  :text
       :value "\">"}
      {:type  :text
       :value " "}
      {:type  :value-node
       :value [:foo]}]
     "csrf/csrf"))
+
+(deftest query-string
+  (println (lexer/tokenize (slurp (io/resource "query-string/query-string"))))
+  (are [expected-ast input-file]
+    (= expected-ast
+       (parser/parse input-file (rcr/->ResourceResolver)))
+    [{:type  :text
+      :value "/some/route"}
+     {:type :query-string
+      :value [:foo :bar]}]
+    "query-string/query-string"))
+

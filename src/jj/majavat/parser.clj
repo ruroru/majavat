@@ -77,6 +77,19 @@
                                                                           :value "\">"}))
                                     current-block parsing-for-body current-file-path template-resolver)
 
+         :keyword-query-string (let [remaining (rest lexed-list)
+                                     query-string-decl-token (first remaining)
+                                     remaining-after-decl (rest remaining)]
+                                 (if (and query-string-decl-token (= :query-string-declaration (:type query-string-decl-token)))
+                                   (let [block-end-token (first remaining-after-decl)]
+                                     (if (and block-end-token (= :block-end (:type block-end-token)))
+                                       (let [remaining-after-block-end (rest remaining-after-decl)
+                                             query-string-node {:type :query-string
+                                                                :value (:variable-value query-string-decl-token)}]
+                                         (recur remaining-after-block-end (conj list query-string-node) current-block parsing-for-body current-file-path template-resolver))
+                                       (throw (Exception. (str (:line (or block-end-token query-string-decl-token)))))))
+                                   (throw (Exception. (str (:line (or query-string-decl-token current-item)))))))
+
          :keyword-include (let [remaining (rest lexed-list)
                                 file-name-token (first remaining)
                                 remaining-after-filename (rest remaining)]
@@ -229,6 +242,7 @@
          :extends-block-name (recur (rest lexed-list) list current-block parsing-for-body current-file-path template-resolver)
          :file-path (recur (rest lexed-list) list current-block parsing-for-body current-file-path template-resolver)
          :block-name (recur (rest lexed-list) list current-block parsing-for-body current-file-path template-resolver)
+         :query-string-declaration (recur (rest lexed-list) list current-block parsing-for-body current-file-path template-resolver)
 
          (recur (rest lexed-list) list current-block parsing-for-body current-file-path template-resolver))))))
 
