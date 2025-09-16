@@ -1,7 +1,7 @@
 (ns jj.majavat-test
   (:require [clojure.java.io :as io]
             [clojure.string :as str]
-            [clojure.test :refer [deftest is are testing]]
+            [clojure.test :refer [deftest is testing]]
             [jj.majavat :as majavat]
             [jj.majavat.parser :as parser]
             [jj.majavat.renderer.escape.html :as hops]

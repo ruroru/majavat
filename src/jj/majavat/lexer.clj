@@ -80,6 +80,9 @@
             (= "endlet" trimmed-string)
             (recur (rrest my-sequence) "" (conj vector {:type :keyword-end-let} {:type :block-end :line line-number}) new-line-number)
 
+            (= "csrf-token" trimmed-string)
+            (recur (rrest my-sequence) "" (conj vector {:type :keyword-csrf-token} {:type :block-end :line line-number}) new-line-number)
+
             (= "endif" trimmed-string)
             (recur (rrest my-sequence) "" (conj vector {:type :keyword-endif} {:type :block-end :line line-number}) new-line-number)
 

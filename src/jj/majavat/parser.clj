@@ -1,6 +1,5 @@
 (ns jj.majavat.parser
   (:require [jj.majavat.lexer :as lexer]
-            [clojure.pprint]
             [jj.majavat.resolver :as cr])
   (:import (java.io FileNotFoundException PushbackReader StringWriter)
            (java.nio.file Paths)))
@@ -69,6 +68,14 @@
                               (recur remaining-after-block-end list current-block parsing-for-body current-file-path template-resolver)))
                           (recur remaining list current-block parsing-for-body current-file-path template-resolver)))
          :block-end (recur (rest lexed-list) list current-block parsing-for-body current-file-path template-resolver)
+
+         :keyword-csrf-token (recur (rest lexed-list) (apply conj list '({:type :text
+                                                                          :value "<input type=\"hidden\" name=\"csrf_token\" value=\""}
+                                                                         {:type :value-node
+                                                                          :value [:csrf-token]}
+                                                                         {:type :text
+                                                                          :value "\">"}))
+                                    current-block parsing-for-body current-file-path template-resolver)
 
          :keyword-include (let [remaining (rest lexed-list)
                                 file-name-token (first remaining)

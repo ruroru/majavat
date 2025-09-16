@@ -190,6 +190,16 @@ foo{# bar baz #}
 (render-file "input-file" {}) ;; returns "foo"
 ```
 
+#### CSRF
+CSRF token can be added via
+```
+{% csrf-token %}
+```
+and when rendering file `:csrf-token` has to be provided
+
+```clojure
+(render-file "input-file" {:csrf-token "foobarbaz"}) ;; returns <input type="hidden" name="csrf_token" value="foobarbaz"> 
+```
 
 ## TemplateResolver
 

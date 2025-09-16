@@ -4,7 +4,6 @@
     [clojure.string :as str]
     [clojure.test :refer [are deftest is testing]]
     [jj.majavat.parser :as parser]
-    [clojure.pprint :as pprint]
     [jj.majavat.renderer :as renderer]
     [jj.majavat.renderer.escape.html :as hops]
     [jj.majavat.resolver.fs :as fcr]
@@ -296,3 +295,17 @@ this is a  footer"
            (= render-result render-is-result)))
 
     (slurp (io/resource "loop/expected-for-loop")) "loop/for-loop"))
+
+(deftest csrf-token
+  (testing "render to string"
+    (are [expected-value template-path context]
+      (= expected-value
+         (renderer/render (parser/parse template-path contentResolver) context nil))
+      "foo <input type=\"hidden\" name=\"csrf_token\" value=\"bar\"> " "csrf/csrf" {:csrf-token "bar"}
+      "foo <input type=\"hidden\" name=\"csrf_token\" value=\"\"> " "csrf/csrf" {}))
+  (testing "render to input stream"
+    (are [expected-value template-path context]
+      (= expected-value
+         (String. (.readAllBytes ^InputStream (renderer/render-is (parser/parse template-path contentResolver) context nil))))
+      "foo <input type=\"hidden\" name=\"csrf_token\" value=\"bar\"> " "csrf/csrf" {:csrf-token "bar"}
+      "foo <input type=\"hidden\" name=\"csrf_token\" value=\"\"> " "csrf/csrf" {})))

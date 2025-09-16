@@ -238,3 +238,10 @@
           {:type  :text
            :value " "}]
          (lexer/tokenize " {{ value }} {{ value }} \n\n {{ value }} "))))
+
+(deftest csrf-lex-test
+  (is (= [{:type :block-start}
+          {:type :keyword-csrf-token}
+          {:line 1
+           :type :block-end}]
+         (lexer/tokenize "{% csrf-token %}"))))

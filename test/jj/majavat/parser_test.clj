@@ -301,8 +301,7 @@
                 :upper-case]
       :type    :value-node
       :value   [:value]}]
-    "filter/multi-filter"
-    ))
+    "filter/multi-filter"))
 
 (deftest let-test
   (are [expected-ast input-file]
@@ -331,3 +330,21 @@
       :value "baz"}
      ]
     "let/let-bar"))
+
+(deftest csrf-token-test
+  (are [expected-ast input-file]
+    (= expected-ast
+       (parser/parse input-file (rcr/->ResourceResolver)))
+    [{:type  :text
+      :value "foo "}
+     {:type :text
+      :value "<input type=\"hidden\" name=\"csrf_token\" value=\""}
+     {:type :value-node
+      :value [:csrf-token]}
+     {:type :text
+      :value "\">"}
+     {:type  :text
+      :value " "}
+     {:type  :value-node
+      :value [:foo]}]
+    "csrf/csrf"))
