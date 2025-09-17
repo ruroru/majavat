@@ -263,7 +263,8 @@ this is a  footer"
     "foo BAR BAZ QUX  QUUX" "filter/multi-filter" {:value "  bar baz qux  quux  "}
     "foo keyword" "filter/keyword" {:value :keyword}
     "id is 3" "filter/inc" {:id 2}
-    "id is 1" "filter/dec" {:id 2}))
+    "id is 1" "filter/dec" {:id 2}
+    "file sizes are: 120.2 KB, 67.8 KB and 5 PB" "filter/file-size" {:file1 123123 :file2 "69420" :file3 "5629499534213120"}))
 
 
 (deftest render-let-value
@@ -311,7 +312,6 @@ this is a  footer"
       "foo <input type=\"hidden\" name=\"csrf_token\" value=\"\"> " "csrf/csrf" {})))
 
 (deftest query-string
-  (println (parser/parse "query-string/query-string" contentResolver))
   (testing "render to string"
     (are [expected-value template-path context]
       (= expected-value

@@ -60,17 +60,20 @@ Hello {{ name | upper-case }}!
 (render-file "file.txt" {:name "world"}) ;; => returns Hello WORLD!
 ```
 
-| supported filters | type    |
-|-------------------|---------|
-| capitalize        | String  |
-| lower-case        | String  |
-| title-case        | String  |
-| trim              | String  |
-| upper-case        | String  |
-| upper-roman       | String  |
-| name              | keyword |
-| inc               | Number  |
-| dec               | Number  |
+| supported filters | type    | example                       |
+|-------------------|---------|-------------------------------|
+| capitalize        | String  | "hello world" → "Hello world" |
+| lower-case        | String  | "HELLO WORLD" → "hello world" |
+| title-case        | String  | "hello world" → "Hello World" |
+| trim              | String  | "  hello  " → "hello"         |
+| upper-case        | String  | "hello world" → "HELLO WORLD" |
+| upper-roman       | String  | "iv" → "IV"                   |
+| long              | String  | "123" → 123L                  |
+| int               | String  | "123" → 123                   |
+| name              | keyword | :name → "name"                |
+| inc               | Number  | 5 → 6                         |
+| dec               | Number  | 5 → 4                         |
+| file-size         | Number  | 2048 → "2 KB"                 |
 
 #### Conditionals
 
@@ -149,14 +152,16 @@ hello {% let foo = "baz" %}{{ foo }}{% endlet %}
 ```clojure
 (render-file "input-file" {}) ;; returns "hello baz"
 ```
-or 
+
+or
+
 ```
 hello {% let foo = bar %}{{ foo.baz }}{% endlet %}
 ```
+
 ```clojure
 (render-file "input-file" {:bar {:baz "baz"}}) ;; returns "hello baz"
 ```
-
 
 #### Extending template
 
@@ -182,6 +187,7 @@ bar
 #### Comments
 
 input-file with content
+
 ```
 foo{# bar baz #}
 ```
@@ -191,10 +197,13 @@ foo{# bar baz #}
 ```
 
 #### csrf
+
 CSRF token can be added via
+
 ```
 {% csrf-token %}
 ```
+
 and when rendering file `:csrf-token` has to be provided
 
 ```clojure
@@ -202,10 +211,13 @@ and when rendering file `:csrf-token` has to be provided
 ```
 
 #### Query string
+
 input-file with content
+
 ```
 /foo{% query-string foo %}
 ```
+
 ```clojure
 (render-file "input-file" {:foo {:count 2}}) ;; returns "/foo?count=2"
 ```

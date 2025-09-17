@@ -352,7 +352,6 @@
     "csrf/csrf"))
 
 (deftest query-string
-  (println (lexer/tokenize (slurp (io/resource "query-string/query-string"))))
   (are [expected-ast input-file]
     (= expected-ast
        (parser/parse input-file (rcr/->ResourceResolver)))

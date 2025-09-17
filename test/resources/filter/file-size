@@ -1,0 +1,1 @@
+file sizes are: {{ file1 | file-size-format }}, {{ file2 | int |  file-size-format  }} and {{ file3 | long | file-size-format }}

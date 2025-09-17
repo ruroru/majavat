@@ -1,7 +1,7 @@
 (ns jj.majavat.renderer
   (:require [clojure.edn :as edn]
             [clojure.java.io :as io]
-            [clojure.string :as str]
+            [jj.majavat.renderer.filters :as filters]
             [jj.majavat.renderer.escape :as rops])
   (:import (java.io ByteArrayInputStream SequenceInputStream PushbackReader)
            (java.nio.charset Charset StandardCharsets)
@@ -19,22 +19,6 @@
     (get-in context path)
     (get context path)))
 
-(defn- title-case [s]
-  (let [sb (StringBuilder.)
-        char-array (char-array s)]
-    (loop [index 0 new-word? true]
-      (if (< index (count char-array))
-        (let [c (aget char-array index)]
-          (if (or (Character/isWhitespace c) (= c \-))
-            (do
-              (.append sb c)
-              (recur (inc index) true))
-            (do
-              (if new-word?
-                (.append sb (Character/toUpperCase c))
-                (.append sb (Character/toLowerCase c)))
-              (recur (inc index) false))))
-        (.toString sb)))))
 
 (defn- evaluate-condition [condition context]
   (boolean (resolve-path context condition)))
@@ -49,21 +33,17 @@
     v
     (str v)))
 
-(defn- upper-roman [v]
-  [v]
-  (when v
-    (let [roman-pattern #"(?i)\b(?=[mdclxvi])M{0,4}(?:CM|CD|D?C{0,3})(?:XC|XL|L?X{0,3})(?:IX|IV|V?I{0,3})\b"]
-      (str/replace v roman-pattern str/upper-case))))
-
 (defn- apply-filter [v filter-name]
   (cond
     (string? v) (case filter-name
                   :upper-case (clojure.string/upper-case v)
                   :lower-case (clojure.string/lower-case v)
                   :capitalize (clojure.string/capitalize v)
-                  :title-case (title-case v)
+                  :title-case (filters/title-case v)
                   :trim (clojure.string/trim v)
-                  :upper-roman (upper-roman v)
+                  :upper-roman (filters/upper-roman v)
+                  :int (filters/as-int v)
+                  :long (filters/as-long v)
                   v)
     (keyword? v) (case filter-name
                    :name (name v)
@@ -71,6 +51,7 @@
     (number? v) (case filter-name
                   :inc (inc v)
                   :dec (dec v)
+                  :file-size-format (filters/file-size v)
                   v)
     :else
     v))
