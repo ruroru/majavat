@@ -2,7 +2,7 @@
   (:require [clojure.edn :as edn]
             [clojure.java.io :as io]
             [jj.majavat.renderer.filters :as filters]
-            [jj.majavat.renderer.escape :as rops])
+            [jj.majavat.renderer.sanitizer :refer [sanitize]])
   (:import (java.io ByteArrayInputStream SequenceInputStream PushbackReader)
            (java.nio.charset Charset StandardCharsets)
            (java.util Collections)))
@@ -23,10 +23,10 @@
 (defn- evaluate-condition [condition context]
   (boolean (resolve-path context condition)))
 
-(defn- escape-if-needed [val escaper]
-  (if (nil? escaper)
+(defn- escape-if-needed [val s]
+  (if (nil? s)
     val
-    (rops/escape escaper val)))
+    (sanitize s val)))
 
 (defn- ->str [v]
   (if (string? v)
@@ -90,7 +90,7 @@
                            val)]
         (.append sb (-> filtered-val
                         ->str
-                        (escape-if-needed (:character-escaper escape-conf)))))
+                        (escape-if-needed (:sanitizer escape-conf)))))
 
       :query-string
       (when-let [query-str (build-query-string (:value node) context)]
@@ -167,7 +167,7 @@
                                val)
                 resolved-value (-> filtered-val
                                    ->str
-                                   (escape-if-needed (:character-escaper escape-conf)))]
+                                   (escape-if-needed (:sanitizer escape-conf)))]
             (cons (ByteArrayInputStream. (.getBytes ^String resolved-value ^Charset charset))
                   (render-nodes-to-stream-seq (rest nodes) context charset escape-conf)))
 

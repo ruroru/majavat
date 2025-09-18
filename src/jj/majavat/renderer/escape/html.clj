@@ -1,10 +1,10 @@
 (ns jj.majavat.renderer.escape.html
-  (:require [jj.majavat.renderer.escape])
-  (:import (jj.majavat.renderer.escape CharEscaper)))
+  (:require [jj.majavat.renderer.sanitizer])
+  (:import (jj.majavat.renderer.sanitizer Sanitizer)))
 
-(defrecord HtmlEscaper []
-  CharEscaper
-  (escape [_ s]
+(defrecord Html []
+  Sanitizer
+  (sanitize [_ s]
     (if (nil? s)
       s
       (let [len (.length ^String s)

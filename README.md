@@ -16,7 +16,8 @@ Add majavat to dependency list
 
 ```clojure
 (:require
-  [jj.majavat :as majavat])
+  [jj.majavat :as majavat]
+  [jj.majavat.renderer.escape.html :refer [->Html]])
 
 (majavat/render-file "index.html" {:user "jj"})
 ```
@@ -24,7 +25,8 @@ Add majavat to dependency list
 Additional options can be passed with
 
 ```clojure
-(majavat/render-file "index.html" {:user "jj"} {:return-type :input-stream})
+(majavat/render-file "index.html" {:user "jj"} {:return-type :input-stream
+                                                :sanitizer   (->Html)})
 ```
 
 All supported options:
@@ -34,7 +36,7 @@ All supported options:
 | `return-type`       | `:string`          | `:string`, `:input-stream`            |
 | `template-resolver` | `ResourceResolver` | Any `TemplateResolver` implementation |
 | `cache?`            | `true`             | `true`, `false`                       |
-| `character-escaper` | `nil`              | Any `CharEscaper` implementation      |
+| `sanitizer`         | `nil`              | Any `Sanitizer` implementation        |
 
 ### Creating templates
 
@@ -248,6 +250,20 @@ Check if template exists at a path.
 
 - **ResourceResolver** (default) - Reads from classpath
 - **FsResolver** - Reads from filesystem
+
+## Sanitizer
+
+`Sanitizer` protocol provides a way to sanitize and cleanup values.
+
+
+### Usage
+
+```clojure
+(sanitize  (->Html) "<foo>bar</baz>") ;; => &lt;foo&gt;bar&lt;/baz&gt;
+```
+### Built-in Implementations
+
+- **Html** - implementation for html pages
 
 ## License
 

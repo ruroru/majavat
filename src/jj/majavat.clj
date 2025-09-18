@@ -13,11 +13,11 @@
    (render-file file-path config {}))
   ([file-path config {:keys [return-type
                              template-resolver
-                             character-escaper
+                             sanitizer
                              cache?]
                       :or   {return-type       :string
                              template-resolver default-resolver
-                             character-escaper nil
+                             sanitizer nil
                              cache?            true}}]
 
    (let [template (if cache?
@@ -28,5 +28,5 @@
                     (parser/parse file-path template-resolver))]
 
      (if (= :input-stream return-type)
-       (renderer/render-is template config {:character-escaper character-escaper})
-       (renderer/render template config {:character-escaper character-escaper})))))
+       (renderer/render-is template config {:sanitizer sanitizer})
+       (renderer/render template config {:sanitizer sanitizer})))))

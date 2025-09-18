@@ -4,7 +4,7 @@
             [clojure.test :refer [deftest is testing]]
             [jj.majavat :as majavat]
             [jj.majavat.parser :as parser]
-            [jj.majavat.renderer.escape.html :as hops]
+            [jj.majavat.renderer.escape.html :refer [->Html]]
             [mock-clj.core :as mock])
   (:import (java.io InputStream)))
 
@@ -69,11 +69,13 @@
                                                (majavat/render-file file-path file-content {:return-type :input-stream}))))) "verifying render to input stream"))
     (testing "Escaped html"
       (is (= (crlf->lf (slurp (io/resource "html/expected-escaped.html")))
-             (crlf->lf (majavat/render-file file-path file-content {:character-escaper (hops/->HtmlEscaper)})))
+             (crlf->lf (majavat/render-file file-path file-content {:sanitizer (->Html)})))
           "verifying render to string")
       (is (= (crlf->lf (slurp (io/resource "html/expected-escaped.html")))
              (crlf->lf (String. (.readAllBytes ^InputStream
-                                               (majavat/render-file file-path file-content {:return-type :input-stream :character-escaper (hops/->HtmlEscaper)}))))) "verifying render to input stream"))))
+                                               (majavat/render-file file-path file-content {:return-type :input-stream
+                                                                                            :sanitizer   (->Html)})))))
+          "verifying render to input stream"))))
 
 (deftest cache-enabled-test
   (mock/with-mock
