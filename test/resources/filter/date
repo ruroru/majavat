@@ -1,0 +1,1 @@
+yyyy is {{value | date "yyyy" }} and yyyy/mm/dd is {{ value | date "yyyy/MM/dd" }}

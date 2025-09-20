@@ -1,7 +1,8 @@
 (ns jj.majavat.renderer.filters-test
   (:require
     [jj.majavat.renderer.filters :as filters]
-    [clojure.test :refer [deftest are]]))
+    [clojure.test :refer [deftest are]])
+  (:import (java.time LocalDate)))
 
 
 
@@ -105,8 +106,15 @@
   (are [expected input] (= expected (filters/title-case input))
                         "Foo Bar-Baz Qux. Quux" "foo bar-baz qux. quux"))
 
-
 (deftest get-default
   (are [expected input] (= expected (filters/get-default input ["default"]))
                         "default" nil
                         "foo" "foo"))
+
+(deftest local-date->date
+  (are [expected input] (= expected (filters/->formatted-local-date (LocalDate/of 2022, 01, 01) [input]))
+                        "2022-01-01" "yyyy-MM-dd"
+                        "2022" "yyyy"
+                        "2022-01-01" "not-avalid-format"
+                        ))
+
