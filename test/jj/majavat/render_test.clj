@@ -5,7 +5,7 @@
     [clojure.test :refer [are deftest is testing]]
     [jj.majavat.parser :as parser]
     [jj.majavat.renderer :as renderer]
-    [jj.majavat.renderer.escape.html :refer [->Html]]
+    [jj.majavat.renderer.sanitizer :refer [->Html]]
     [jj.majavat.resolver.fs :as fcr]
     [jj.majavat.resolver.resource :as rcr])
   (:import (java.io InputStream)

@@ -17,7 +17,7 @@ Add majavat to dependency list
 ```clojure
 (:require
   [jj.majavat :as majavat]
-  [jj.majavat.renderer.escape.html :refer [->Html]])
+  [jj.majavat.renderer.sanitizer :refer [->Html]])
 
 (majavat/render-file "index.html" {:user "jj"})
 ```
@@ -267,6 +267,7 @@ Check if template exists at a path.
 ### Built-in Implementations
 
 - **Html** - implementation for html pages
+- **Json** - implementation for Json
 
 ## License
 

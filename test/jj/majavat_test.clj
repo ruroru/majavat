@@ -4,7 +4,7 @@
             [clojure.test :refer [deftest is testing]]
             [jj.majavat :as majavat]
             [jj.majavat.parser :as parser]
-            [jj.majavat.renderer.escape.html :refer [->Html]]
+            [jj.majavat.renderer.sanitizer :refer [->Html]]
             [mock-clj.core :as mock])
   (:import (java.io InputStream)))
 
