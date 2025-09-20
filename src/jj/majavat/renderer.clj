@@ -5,7 +5,7 @@
             [jj.majavat.renderer.sanitizer :refer [sanitize]])
   (:import (java.io ByteArrayInputStream PushbackReader SequenceInputStream)
            (java.nio.charset Charset StandardCharsets)
-           (java.time LocalDate)
+           (java.time LocalDate LocalDateTime)
            (java.util Collections)))
 
 (defn- read-edn-resource [resource-path]
@@ -45,7 +45,6 @@
                     :upper-roman (filters/upper-roman v)
                     :int (filters/as-int v)
                     :long (filters/as-long v)
-
                     v)
       (keyword? v) (case filter-name
                      :name (name v)
@@ -58,6 +57,9 @@
       (instance? LocalDate v) (case filter-name
                                 :date (filters/->formatted-local-date v filter-args)
                                 v)
+      (instance? LocalDateTime v) (case filter-name
+                                    :date (filters/->formatted-local-date-time v filter-args)
+                                    v)
       (nil? v) (case filter-name
                  :default (filters/get-default v filter-args))
       :else

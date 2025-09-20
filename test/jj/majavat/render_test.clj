@@ -9,7 +9,7 @@
     [jj.majavat.resolver.fs :as fcr]
     [jj.majavat.resolver.resource :as rcr])
   (:import (java.io InputStream)
-           (java.time LocalDate)))
+           (java.time LocalDate LocalDateTime)))
 
 
 (defn- crlf->lf [s]
@@ -270,6 +270,7 @@ this is a  footer"
     "file sizes are: 120.2 KB, 67.8 KB and 5 PB" "filter/file-size" {:file1 123123 :file2 "69420" :file3 "5629499534213120"}
     "foo baz" "filter/default" {}
     "yyyy is 2022 and yyyy/mm/dd is 2022/01/01" "filter/date" {:value (LocalDate/of 2022, 01, 01)}
+    "default: 2022-01-01T01:01, format one is 01/01/2022 01:01" "filter/date-time" {:value (LocalDateTime/of 2022, 01, 01,01,01)}
     ))
 
 
