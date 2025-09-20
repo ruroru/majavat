@@ -76,6 +76,7 @@ Hello {{ name | upper-case }}!
 | inc               | Number  | 5 → 6                         |
 | dec               | Number  | 5 → 4                         |
 | file-size         | Number  | 2048 → "2 KB"                 |
+| default           | nil     | nil -> "foo"                  |
 
 #### Conditionals
 
@@ -255,12 +256,12 @@ Check if template exists at a path.
 
 `Sanitizer` protocol provides a way to sanitize and cleanup values.
 
-
 ### Usage
 
 ```clojure
-(sanitize  (->Html) "<foo>bar</baz>") ;; => &lt;foo&gt;bar&lt;/baz&gt;
+(sanitize (->Html) "<foo>bar</baz>") ;; => &lt;foo&gt;bar&lt;/baz&gt;
 ```
+
 ### Built-in Implementations
 
 - **Html** - implementation for html pages

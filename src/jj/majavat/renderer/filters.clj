@@ -74,3 +74,8 @@
   (try
     (Integer/parseInt s)
     (catch Exception _ nil)))
+
+(defn get-default [v filter-args]
+  (if (some? v)
+    v
+    (first filter-args)))

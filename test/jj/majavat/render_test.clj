@@ -1,7 +1,6 @@
 (ns jj.majavat.render-test
   (:require
     [clojure.java.io :as io]
-    [clojure.pprint :as pprint]
     [clojure.string :as str]
     [clojure.test :refer [are deftest is testing]]
     [jj.majavat.parser :as parser]
@@ -253,8 +252,6 @@ this is a  footer"
 
 
 (deftest render-filters
-  (pprint/pprint (parser/parse "filter/upper-case" contentResolver))
-
   (are [expected-value template-path context]
     (= expected-value
        (renderer/render (parser/parse template-path contentResolver) context nil)
@@ -269,7 +266,9 @@ this is a  footer"
     "foo keyword" "filter/keyword" {:value :keyword}
     "id is 3" "filter/inc" {:id 2}
     "id is 1" "filter/dec" {:id 2}
-    "file sizes are: 120.2 KB, 67.8 KB and 5 PB" "filter/file-size" {:file1 123123 :file2 "69420" :file3 "5629499534213120"}))
+    "file sizes are: 120.2 KB, 67.8 KB and 5 PB" "filter/file-size" {:file1 123123 :file2 "69420" :file3 "5629499534213120"}
+    "foo baz" "filter/default" {}
+    ))
 
 
 (deftest render-let-value

@@ -1,8 +1,5 @@
 (ns jj.majavat.parser-test
-  (:require [clojure.java.io :as io]
-            [clojure.test :refer [are deftest is]]
-            [jj.majavat.lexer :as lexer]
-            [clojure.pprint :as pprint]
+  (:require [clojure.test :refer [are deftest is]]
             [jj.majavat.parser :as parser]
             [jj.majavat.resolver.fs :as fcr]
             [jj.majavat.resolver.resource :as rcr]))
@@ -292,16 +289,18 @@
 
     [{:type  :text
       :value "testing "}
-     {:type    :value-node
-      :value   [:value]
-      :filters [:upper-case]
-      }] "filters/uppercase"
+     {:filters [{:args        []
+                 :filter-name :upper-case}]
+      :type    :value-node
+      :value   [:value]}] "filters/uppercase"
 
 
     [{:type  :text
       :value "foo "}
-     {:filters [:trim
-                :upper-case]
+     {:filters [{:args        []
+                 :filter-name :trim}
+                {:args        []
+                 :filter-name :upper-case}]
       :type    :value-node
       :value   [:value]}]
     "filter/multi-filter"))
@@ -369,8 +368,10 @@
     [{:filters [{:args        ["arg1"
                                "arg2"]
                  :filter-name :function1}
-                {:args [] :filter-name :function2}
-                {:args ["pipe-value"] :filter-name :default}]
+                {:args        []
+                 :filter-name :function2}
+                {:args        ["default-value"]
+                 :filter-name :default}]
       :type    :value-node
       :value   [:val]}]
     "filter/pipe"))

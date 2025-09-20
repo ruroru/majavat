@@ -3,7 +3,7 @@
             [clojure.java.io :as io]
             [jj.majavat.renderer.filters :as filters]
             [jj.majavat.renderer.sanitizer :refer [sanitize]])
-  (:import (java.io ByteArrayInputStream SequenceInputStream PushbackReader)
+  (:import (java.io ByteArrayInputStream PushbackReader SequenceInputStream)
            (java.nio.charset Charset StandardCharsets)
            (java.util Collections)))
 
@@ -24,9 +24,7 @@
   (boolean (resolve-path context condition)))
 
 (defn- escape-if-needed [val s]
-  (if (nil? s)
-    val
-    (sanitize s val)))
+  (if (nil? s) val (sanitize s val)))
 
 (defn- ->str [v]
   (if (string? v)
@@ -34,7 +32,8 @@
     (str v)))
 
 (defn- apply-filter [v filter-obj]
-  (let [filter-name (:filter-name filter-obj)]
+  (let [filter-name (:filter-name filter-obj)
+        filter-args (:args filter-obj)]
     (cond
       (string? v) (case filter-name
                     :upper-case (clojure.string/upper-case v)
@@ -45,6 +44,7 @@
                     :upper-roman (filters/upper-roman v)
                     :int (filters/as-int v)
                     :long (filters/as-long v)
+
                     v)
       (keyword? v) (case filter-name
                      :name (name v)
@@ -54,15 +54,16 @@
                     :dec (dec v)
                     :file-size-format (filters/file-size v)
                     v)
+      (nil? v) (case filter-name
+                 :default (filters/get-default v filter-args))
       :else
-      v
-      )))
+      v)))
 
 (defn- build-query-string [path context]
   (let [query-data (resolve-path context path)]
     (when (map? query-data)
       (let [sb (StringBuilder.)
-            filtered-params (filter (fn [[k v]] (not (nil? v))) query-data)]
+            filtered-params (filter (fn [[_ v]] (not (nil? v))) query-data)]
         (when (seq filtered-params)
           (.append sb "?")
           (loop [params (seq filtered-params)
