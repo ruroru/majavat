@@ -2,7 +2,7 @@
   (:require
     [jj.majavat.renderer.filters :as filters]
     [clojure.test :refer [deftest are]])
-  (:import (java.time LocalDate LocalDateTime)))
+  (:import (java.time LocalDate LocalDateTime LocalTime)))
 
 
 
@@ -122,4 +122,11 @@
                         "2022-01-01 01:01" "yyyy-MM-dd hh:mm"
                         "2022" "yyyy"
                         "2022-01-01T01:01" "not-avalid-format"
+                        ))
+
+(deftest local-time->date
+  (are [expected input] (= expected (filters/->formatted-local-time (LocalTime/of  11, 11) [input]))
+                        "11 --- 11" "hh --- mm"
+                        "11" "hh"
+                        "11:11" "not-avalid-format"
                         ))
