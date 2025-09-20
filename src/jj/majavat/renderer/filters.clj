@@ -4,7 +4,8 @@
   (:import (java.time LocalDate LocalDateTime LocalTime)
            (java.time.format DateTimeFormatter)))
 
-(def formatter-cache (atom {}))
+(def ^:private formatter-cache (atom {}))
+(def ^:const ^:private roman-regex #"(?i)\b(?=[mdclxvi])M{0,4}(?:CM|CD|D?C{0,3})(?:XC|XL|L?X{0,3})(?:IX|IV|V?I{0,3})\b")
 
 (defn title-case [s]
   (let [sb (StringBuilder.)
@@ -25,9 +26,7 @@
 
 (defn upper-roman [v]
   [v]
-  (when v
-    (let [roman-pattern #"(?i)\b(?=[mdclxvi])M{0,4}(?:CM|CD|D?C{0,3})(?:XC|XL|L?X{0,3})(?:IX|IV|V?I{0,3})\b"]
-      (str/replace v roman-pattern str/upper-case))))
+  (when v (str/replace v roman-regex str/upper-case)))
 
 (defn file-size
   [bytes]

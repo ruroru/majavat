@@ -32,41 +32,61 @@
     v
     (str v)))
 
+(defn- handle-nil [v filter-name filter-args]
+  (case filter-name
+    :default (filters/get-default v filter-args)
+    v))
+
+(defn- handle-string [v filter-name _]
+  (case filter-name
+    :upper-case (clojure.string/upper-case v)
+    :lower-case (clojure.string/lower-case v)
+    :capitalize (clojure.string/capitalize v)
+    :title-case (filters/title-case v)
+    :trim (clojure.string/trim v)
+    :upper-roman (filters/upper-roman v)
+    :int (filters/as-int v)
+    :long (filters/as-long v)
+    v))
+
+(defn- handle-keyword [v filter-name _]
+  (case filter-name
+    :name (name v)
+    v))
+
+(defn- handle-number [v filter-name _]
+  (case filter-name
+    :inc (inc v)
+    :dec (dec v)
+    :file-size-format (filters/file-size v)
+    v))
+
+(defn- handle-local-date [v filter-name filter-args]
+  (case filter-name
+    :date (filters/->formatted-local-date v filter-args)
+    v))
+
+(defn handle-local-date-time [v filter-name filter-args]
+  (case filter-name
+    :date (filters/->formatted-local-date-time v filter-args)
+    v))
+
+(defn handle-local-time [v filter-name filter-args]
+  (case filter-name
+    :date (filters/->formatted-local-time v filter-args)
+    v))
+
 (defn- apply-filter [v filter-obj]
   (let [filter-name (:filter-name filter-obj)
         filter-args (:args filter-obj)]
     (cond
-      (string? v) (case filter-name
-                    :upper-case (clojure.string/upper-case v)
-                    :lower-case (clojure.string/lower-case v)
-                    :capitalize (clojure.string/capitalize v)
-                    :title-case (filters/title-case v)
-                    :trim (clojure.string/trim v)
-                    :upper-roman (filters/upper-roman v)
-                    :int (filters/as-int v)
-                    :long (filters/as-long v)
-                    v)
-      (keyword? v) (case filter-name
-                     :name (name v)
-                     v)
-      (number? v) (case filter-name
-                    :inc (inc v)
-                    :dec (dec v)
-                    :file-size-format (filters/file-size v)
-                    v)
-      (instance? LocalDate v) (case filter-name
-                                :date (filters/->formatted-local-date v filter-args)
-                                v)
-      (instance? LocalDateTime v) (case filter-name
-                                    :date (filters/->formatted-local-date-time v filter-args)
-                                    v)
-
-      (instance? LocalTime v) (case filter-name
-                                :date (filters/->formatted-local-time v filter-args)
-                                v)
-
-      (nil? v) (case filter-name
-                 :default (filters/get-default v filter-args))
+      (string? v) (handle-string v filter-name filter-args)
+      (keyword? v) (handle-keyword v filter-name filter-args)
+      (number? v) (handle-number v filter-name filter-args)
+      (instance? LocalDate v) (handle-local-date v filter-name filter-args)
+      (instance? LocalDateTime v) (handle-local-date-time v filter-name filter-args)
+      (instance? LocalTime v) (handle-local-time v filter-name filter-args)
+      (nil? v) (handle-nil v filter-name filter-args)
       :else
       v)))
 

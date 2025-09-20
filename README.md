@@ -79,6 +79,7 @@ Hello {{ name | upper-case }}!
 | default "foo" | nil           | nil -> "foo"                        |
 | date  "yyyy"  | LocalDate     | Instance of LocalDate -> "2025"     | 
 | date  "yyyy"  | LocalDateTime | Instance of LocalDateTime -> "2025" | 
+| date "hh/mm"  | LocalTime     | Instance of LocalTime ->  "11/11"   |
 
 #### Conditionals
 
