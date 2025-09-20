@@ -104,3 +104,9 @@
 (deftest title-case
   (are [expected input] (= expected (filters/title-case input))
                         "Foo Bar-Baz Qux. Quux" "foo bar-baz qux. quux"))
+
+
+(deftest get-default
+  (are [expected input] (= expected (filters/get-default input ["default"]))
+                        "default" nil
+                        "foo" "foo"))

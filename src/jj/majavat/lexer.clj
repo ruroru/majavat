@@ -150,38 +150,31 @@
           :else
           (recur (rest my-sequence) (str current-string current-char) vector new-line-number))
 
-        ;; In a filter context - need to parse function names and arguments
         (or (= (:type (last vector)) :filter-tag)
             (= (:type (last vector)) :filter-function)
             (= (:type (last vector)) :filter-arg))
         (cond
-          ;; Handle quoted string start
           (and (= current-char \") (string/blank? (string/trim current-string)))
           (recur (rest my-sequence) "" vector new-line-number)
 
-          ;; Handle quoted string end - create filter-arg
           (and (= current-char \") (not (string/blank? (string/trim current-string))))
           (recur (rest my-sequence) "" (conj vector {:type :filter-arg :value current-string}) new-line-number)
 
-          ;; Handle pipe - start next filter
           (and (= current-char \|) (string/blank? (string/trim current-string)))
           (recur (rest my-sequence) "" (conj vector {:type :filter-tag}) new-line-number)
 
-          ;; Handle space after function name (when we have accumulated a function name)
           (and (= current-char \ )
                (not (string/blank? (string/trim current-string)))
                (= (:type (last vector)) :filter-tag))
           (let [trimmed-string (string/trim current-string)]
             (recur (rest my-sequence) "" (conj vector {:type :filter-function :value (keyword trimmed-string)}) new-line-number))
 
-          ;; Handle pipe after function name
           (and (= current-char \|)
                (not (string/blank? (string/trim current-string)))
                (= (:type (last vector)) :filter-tag))
           (let [trimmed-string (string/trim current-string)]
             (recur (rest my-sequence) "" (conj vector {:type :filter-function :value (keyword trimmed-string)} {:type :filter-tag}) new-line-number))
 
-          ;; Continue building current token (inside quotes or building function name)
           (and (not= current-char \") (not= current-char \|) (not= current-char \}) (not= next-char \}))
           (recur (rest my-sequence) (str current-string current-char) vector new-line-number)
 
