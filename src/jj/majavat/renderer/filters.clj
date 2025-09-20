@@ -1,7 +1,7 @@
 (ns jj.majavat.renderer.filters
   (:require [clojure.string :as str]
             [clojure.tools.logging :as logger])
-  (:import (java.time LocalDate)
+  (:import (java.time LocalDate LocalDateTime)
            (java.time.format DateTimeFormatter)))
 
 (def formatter-cache (atom {}))
@@ -85,7 +85,7 @@
     v
     (first filter-args)))
 
-(defn- get-formatter [pattern]
+(defn- get-date-time-formatter [pattern]
   (try
     (or (get @formatter-cache pattern)
         (let [formatter (DateTimeFormatter/ofPattern pattern)]
@@ -94,11 +94,30 @@
     (catch Exception _
       nil)))
 
+(defn- get-local-date-time-formatter [pattern]
+  (try
+    (or (get @formatter-cache pattern)
+        (let [formatter (DateTimeFormatter/ofPattern pattern)]
+          (swap! formatter-cache assoc pattern formatter)
+          formatter))
+    (catch Exception _
+      nil)))
+
+
 (defn ->formatted-local-date [v filter-args]
   (let [pattern (first filter-args)
-        date-time-formatter (get-formatter pattern)]
+        date-time-formatter (get-date-time-formatter pattern)]
     (if (some? date-time-formatter)
       (.format ^LocalDate v date-time-formatter)
+      (do
+        (logger/errorf "%s is not a valid pattern." pattern)
+        (str v)))))
+
+(defn ->formatted-local-date-time [v filter-args]
+  (let [pattern (first filter-args)
+        date-time-formatter (get-date-time-formatter pattern)]
+    (if (some? date-time-formatter)
+      (.format ^LocalDateTime v date-time-formatter)
       (do
         (logger/errorf "%s is not a valid pattern." pattern)
         (str v)))))
