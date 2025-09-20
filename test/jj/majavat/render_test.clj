@@ -8,7 +8,8 @@
     [jj.majavat.renderer.escape.html :refer [->Html]]
     [jj.majavat.resolver.fs :as fcr]
     [jj.majavat.resolver.resource :as rcr])
-  (:import (java.io InputStream)))
+  (:import (java.io InputStream)
+           (java.time LocalDate)))
 
 
 (defn- crlf->lf [s]
@@ -268,6 +269,7 @@ this is a  footer"
     "id is 1" "filter/dec" {:id 2}
     "file sizes are: 120.2 KB, 67.8 KB and 5 PB" "filter/file-size" {:file1 123123 :file2 "69420" :file3 "5629499534213120"}
     "foo baz" "filter/default" {}
+    "yyyy is 2022 and yyyy/mm/dd is 2022/01/01" "filter/date" {:value (LocalDate/of 2022, 01, 01)}
     ))
 
 

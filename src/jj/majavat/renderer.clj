@@ -5,6 +5,7 @@
             [jj.majavat.renderer.sanitizer :refer [sanitize]])
   (:import (java.io ByteArrayInputStream PushbackReader SequenceInputStream)
            (java.nio.charset Charset StandardCharsets)
+           (java.time LocalDate)
            (java.util Collections)))
 
 (defn- read-edn-resource [resource-path]
@@ -54,6 +55,9 @@
                     :dec (dec v)
                     :file-size-format (filters/file-size v)
                     v)
+      (instance? LocalDate v) (case filter-name
+                                :date (filters/->formatted-local-date v filter-args)
+                                v)
       (nil? v) (case filter-name
                  :default (filters/get-default v filter-args))
       :else
