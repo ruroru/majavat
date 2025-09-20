@@ -144,30 +144,28 @@
                         [{:type  :text
                           :value "testing "}
                          {:type :opening-bracket}
-                         {:type  :expression
-                          :value [:value]}
+                         {:type :expression :value [:value]}
                          {:type :filter-tag}
-                         {:type  :filter-function
-                          :value :upper-case}
-                         {:line 1
-                          :type :closing-bracket}]
-                        "testing {{ value | upper-case }}"
+                         {:type :filter-function :value :function1}
+                         {:line 1 :type :closing-bracket}]
+                        "testing {{ value | function1 }}"
 
                         [{:type  :text
                           :value "testing "}
                          {:type :opening-bracket}
-                         {:type  :expression
-                          :value [:value]}
+                         {:type :expression :value [:value]}
                          {:type :filter-tag}
-                         {:type  :filter-function
-                          :value :trim}
+                         {:type :filter-function :value :function1}
+                         {:type :filter-arg :value "arg1"}
                          {:type :filter-tag}
-                         {:type  :filter-function
-                          :value :upper-case}
-                         {:line 1
-                          :type :closing-bracket}]
+                         {:type :filter-function :value :function2}
+                         {:type :filter-arg :value "arg2"}
+                         {:type :filter-arg :value "arg3"}
+                         {:type :filter-tag}
+                         {:type :filter-function :value :function}
+                         {:line 1 :type :closing-bracket}]
 
-                        "testing {{ value | trim | upper-case }}"))
+                        "testing {{ value |function1 \"arg1\" |           function2         \"arg2\"      \"arg3\"|       function}}"))
 
 
 (deftest tokenize-let
@@ -206,7 +204,7 @@
                          {:line 1
                           :type :block-end}
                          ]
-                         "testing {% let foo = bar.qux %}hello{% endlet %}"))
+                        "testing {% let foo = bar.qux %}hello{% endlet %}"))
 
 (deftest tokenize-with-comment
   (is (= [{:type  :text

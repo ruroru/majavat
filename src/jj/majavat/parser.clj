@@ -23,6 +23,7 @@
         (.toString writer)))))
 
 
+
 (defn- parse-ast
   ([lexed-list list current-block template-resolver]
    (parse-ast lexed-list list current-block false nil template-resolver))
@@ -44,9 +45,14 @@
                                                                    (if (and (seq remaining-after-tag)
                                                                             (= :filter-function (:type (first remaining-after-tag))))
                                                                      (let [filter-function (first remaining-after-tag)
-                                                                           remaining-after-function (rest remaining-after-tag)]
-                                                                       (recur remaining-after-function
-                                                                              (conj filters (:value filter-function))))
+                                                                           remaining-after-function (rest remaining-after-tag)
+                                                                           [args remaining-after-args] (loop [remaining remaining-after-function
+                                                                                                              args []]
+                                                                                                         (if (and (seq remaining) (= :filter-arg (:type (first remaining))))
+                                                                                                           (recur (rest remaining) (conj args (:value (first remaining))))
+                                                                                                           [args remaining]))
+                                                                           parsed-filter {:filter-name (:value filter-function) :args args}]
+                                                                       (recur remaining-after-args (conj filters parsed-filter)))
                                                                      [filters remaining]))
                                                                  [filters remaining]))
                            value-node (if (empty? filters)
@@ -69,12 +75,9 @@
                           (recur remaining list current-block parsing-for-body current-file-path template-resolver)))
          :block-end (recur (rest lexed-list) list current-block parsing-for-body current-file-path template-resolver)
 
-         :keyword-csrf-token (recur (rest lexed-list) (apply conj list '({:type :text
-                                                                          :value "<input type=\"hidden\" name=\"csrf_token\" value=\""}
-                                                                         {:type :value-node
-                                                                          :value [:csrf-token]}
-                                                                         {:type :text
-                                                                          :value "\">"}))
+         :keyword-csrf-token (recur (rest lexed-list) (apply conj list '({:type :text :value "<input type=\"hidden\" name=\"csrf_token\" value=\""}
+                                                                         {:type :value-node :value [:csrf-token]}
+                                                                         {:type :text :value "\">"}))
                                     current-block parsing-for-body current-file-path template-resolver)
 
          :keyword-query-string (let [remaining (rest lexed-list)
@@ -84,7 +87,7 @@
                                    (let [block-end-token (first remaining-after-decl)]
                                      (if (and block-end-token (= :block-end (:type block-end-token)))
                                        (let [remaining-after-block-end (rest remaining-after-decl)
-                                             query-string-node {:type :query-string
+                                             query-string-node {:type  :query-string
                                                                 :value (:variable-value query-string-decl-token)}]
                                          (recur remaining-after-block-end (conj list query-string-node) current-block parsing-for-body current-file-path template-resolver))
                                        (throw (Exception. (str (:line (or block-end-token query-string-decl-token)))))))
@@ -243,6 +246,9 @@
          :file-path (recur (rest lexed-list) list current-block parsing-for-body current-file-path template-resolver)
          :block-name (recur (rest lexed-list) list current-block parsing-for-body current-file-path template-resolver)
          :query-string-declaration (recur (rest lexed-list) list current-block parsing-for-body current-file-path template-resolver)
+         :filter-tag (recur (rest lexed-list) list current-block parsing-for-body current-file-path template-resolver)
+         :filter-function (recur (rest lexed-list) list current-block parsing-for-body current-file-path template-resolver)
+         :filter-arg (recur (rest lexed-list) list current-block parsing-for-body current-file-path template-resolver)
 
          (recur (rest lexed-list) list current-block parsing-for-body current-file-path template-resolver))))))
 

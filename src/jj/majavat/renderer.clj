@@ -33,28 +33,30 @@
     v
     (str v)))
 
-(defn- apply-filter [v filter-name]
-  (cond
-    (string? v) (case filter-name
-                  :upper-case (clojure.string/upper-case v)
-                  :lower-case (clojure.string/lower-case v)
-                  :capitalize (clojure.string/capitalize v)
-                  :title-case (filters/title-case v)
-                  :trim (clojure.string/trim v)
-                  :upper-roman (filters/upper-roman v)
-                  :int (filters/as-int v)
-                  :long (filters/as-long v)
-                  v)
-    (keyword? v) (case filter-name
-                   :name (name v)
-                   v)
-    (number? v) (case filter-name
-                  :inc (inc v)
-                  :dec (dec v)
-                  :file-size-format (filters/file-size v)
-                  v)
-    :else
-    v))
+(defn- apply-filter [v filter-obj]
+  (let [filter-name (:filter-name filter-obj)]
+    (cond
+      (string? v) (case filter-name
+                    :upper-case (clojure.string/upper-case v)
+                    :lower-case (clojure.string/lower-case v)
+                    :capitalize (clojure.string/capitalize v)
+                    :title-case (filters/title-case v)
+                    :trim (clojure.string/trim v)
+                    :upper-roman (filters/upper-roman v)
+                    :int (filters/as-int v)
+                    :long (filters/as-long v)
+                    v)
+      (keyword? v) (case filter-name
+                     :name (name v)
+                     v)
+      (number? v) (case filter-name
+                    :inc (inc v)
+                    :dec (dec v)
+                    :file-size-format (filters/file-size v)
+                    v)
+      :else
+      v
+      )))
 
 (defn- build-query-string [path context]
   (let [query-data (resolve-path context path)]
@@ -84,8 +86,8 @@
       :value-node
       (let [val (resolve-path context (:value node))
             filtered-val (if-let [filters (:filters node)]
-                           (reduce (fn [v filter-name]
-                                     (apply-filter v filter-name))
+                           (reduce (fn [v filter-obj]
+                                     (apply-filter v filter-obj))
                                    val filters)
                            val)]
         (.append sb (-> filtered-val
@@ -161,8 +163,8 @@
           :value-node
           (let [val (resolve-path context (:value node))
                 filtered-val (if-let [filters (:filters node)]
-                               (reduce (fn [v filter-name]
-                                         (apply-filter v filter-name))
+                               (reduce (fn [v filter-obj]
+                                         (apply-filter v filter-obj))
                                        val filters)
                                val)
                 resolved-value (-> filtered-val

@@ -1,6 +1,7 @@
 (ns jj.majavat.render-test
   (:require
     [clojure.java.io :as io]
+    [clojure.pprint :as pprint]
     [clojure.string :as str]
     [clojure.test :refer [are deftest is testing]]
     [jj.majavat.parser :as parser]
@@ -252,8 +253,11 @@ this is a  footer"
 
 
 (deftest render-filters
+  (pprint/pprint (parser/parse "filter/upper-case" contentResolver))
+
   (are [expected-value template-path context]
     (= expected-value
+       (renderer/render (parser/parse template-path contentResolver) context nil)
        (String. (.readAllBytes ^InputStream (renderer/render-is (parser/parse template-path contentResolver) context nil))))
     "foo BAR" "filter/upper-case" {:value "bar"}
     "foo bar" "filter/lower-case" {:value "BAR"}
@@ -328,4 +332,7 @@ this is a  footer"
       "/some/route" "query-string/query-string" {}
       "/some/route?key=value" "query-string/query-string" {:foo {:bar {:key "value"}}}
       "/some/route?key=value&key1=value1" "query-string/query-string" {:foo {:bar {:key "value" :key1 "value1"}}})))
+
+
+
 

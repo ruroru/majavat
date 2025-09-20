@@ -1,7 +1,5 @@
 (ns jj.majavat.lexer
-  (:require
-
-    [clojure.string :as string]))
+  (:require [clojure.string :as string]))
 
 (defn- rrest [s]
   (rest (rest s)))
@@ -57,7 +55,6 @@
                               line-number))]
 
       (cond
-        ;; Handle comment start {#
         (and (= current-char \{) (= next-char \#))
         (let [[remaining-seq updated-line-number] (skip-comment (rrest my-sequence) new-line-number)]
           (if (empty? current-string)
@@ -127,7 +124,9 @@
         (and (= current-char \}) (= next-char \}))
         (let [trimmed-string (string/trim current-string)]
           (cond
-            (= (:type (last vector)) :filter-tag)
+            (or (= (:type (last vector)) :filter-tag)
+                (= (:type (last vector)) :filter-function)
+                (= (:type (last vector)) :filter-arg))
             (if (not (string/blank? trimmed-string))
               (recur (rrest my-sequence) "" (conj vector {:type :filter-function :value (keyword trimmed-string)}
                                                   {:type :closing-bracket :line line-number}) new-line-number)
@@ -151,12 +150,41 @@
           :else
           (recur (rest my-sequence) (str current-string current-char) vector new-line-number))
 
-        (= (:type (last vector)) :filter-tag)
+        ;; In a filter context - need to parse function names and arguments
+        (or (= (:type (last vector)) :filter-tag)
+            (= (:type (last vector)) :filter-function)
+            (= (:type (last vector)) :filter-arg))
         (cond
+          ;; Handle quoted string start
+          (and (= current-char \") (string/blank? (string/trim current-string)))
+          (recur (rest my-sequence) "" vector new-line-number)
 
-          (and (= current-char \|) (not (string/blank? current-string)))
+          ;; Handle quoted string end - create filter-arg
+          (and (= current-char \") (not (string/blank? (string/trim current-string))))
+          (recur (rest my-sequence) "" (conj vector {:type :filter-arg :value current-string}) new-line-number)
+
+          ;; Handle pipe - start next filter
+          (and (= current-char \|) (string/blank? (string/trim current-string)))
+          (recur (rest my-sequence) "" (conj vector {:type :filter-tag}) new-line-number)
+
+          ;; Handle space after function name (when we have accumulated a function name)
+          (and (= current-char \ )
+               (not (string/blank? (string/trim current-string)))
+               (= (:type (last vector)) :filter-tag))
+          (let [trimmed-string (string/trim current-string)]
+            (recur (rest my-sequence) "" (conj vector {:type :filter-function :value (keyword trimmed-string)}) new-line-number))
+
+          ;; Handle pipe after function name
+          (and (= current-char \|)
+               (not (string/blank? (string/trim current-string)))
+               (= (:type (last vector)) :filter-tag))
           (let [trimmed-string (string/trim current-string)]
             (recur (rest my-sequence) "" (conj vector {:type :filter-function :value (keyword trimmed-string)} {:type :filter-tag}) new-line-number))
+
+          ;; Continue building current token (inside quotes or building function name)
+          (and (not= current-char \") (not= current-char \|) (not= current-char \}) (not= next-char \}))
+          (recur (rest my-sequence) (str current-string current-char) vector new-line-number)
+
           :else
           (recur (rest my-sequence) (str current-string current-char) vector new-line-number))
 

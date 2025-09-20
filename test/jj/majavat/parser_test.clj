@@ -2,6 +2,7 @@
   (:require [clojure.java.io :as io]
             [clojure.test :refer [are deftest is]]
             [jj.majavat.lexer :as lexer]
+            [clojure.pprint :as pprint]
             [jj.majavat.parser :as parser]
             [jj.majavat.resolver.fs :as fcr]
             [jj.majavat.resolver.resource :as rcr]))
@@ -357,7 +358,20 @@
        (parser/parse input-file (rcr/->ResourceResolver)))
     [{:type  :text
       :value "/some/route"}
-     {:type :query-string
+     {:type  :query-string
       :value [:foo :bar]}]
     "query-string/query-string"))
+
+
+(deftest filter-with-args
+  (are [expected-ast input-file]
+    (= expected-ast (parser/parse input-file (rcr/->ResourceResolver)))
+    [{:filters [{:args        ["arg1"
+                               "arg2"]
+                 :filter-name :function1}
+                {:args [] :filter-name :function2}
+                {:args ["pipe-value"] :filter-name :default}]
+      :type    :value-node
+      :value   [:val]}]
+    "filter/pipe"))
 
