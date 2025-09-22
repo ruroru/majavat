@@ -66,12 +66,12 @@
     :date (filters/->formatted-local-date v filter-args)
     v))
 
-(defn handle-local-date-time [v filter-name filter-args]
+(defn- handle-local-date-time [v filter-name filter-args]
   (case filter-name
     :date (filters/->formatted-local-date-time v filter-args)
     v))
 
-(defn handle-local-time [v filter-name filter-args]
+(defn- handle-local-time [v filter-name filter-args]
   (case filter-name
     :date (filters/->formatted-local-time v filter-args)
     v))
@@ -90,11 +90,16 @@
       :else
       v)))
 
+(defn- apply-filters [v filter-obj] (apply-filter v filter-obj))
+
+(defn- remove-nil [[_ v]]
+  (not (nil? v)))
+
 (defn- build-query-string [path context]
   (let [query-data (resolve-path context path)]
     (when (map? query-data)
       (let [sb (StringBuilder.)
-            filtered-params (filter (fn [[_ v]] (not (nil? v))) query-data)]
+            filtered-params (filter remove-nil query-data)]
         (when (seq filtered-params)
           (.append sb "?")
           (loop [params (seq filtered-params)
@@ -109,6 +114,13 @@
                 (recur (next params) false))))
           (.toString sb))))))
 
+(defn- get-loop-context [context index count]
+  (assoc context
+    :loop {:total  count
+           :index  index
+           :first? (zero? index)
+           :last?  (= index (dec count))}))
+
 (defn- render-nodes [nodes context ^StringBuilder sb escape-conf]
   (doseq [node nodes]
     (case (:type node)
@@ -118,9 +130,7 @@
       :value-node
       (let [val (resolve-path context (:value node))
             filtered-val (if-let [filters (:filters node)]
-                           (reduce (fn [v filter-obj]
-                                     (apply-filter v filter-obj))
-                                   val filters)
+                           (reduce apply-filters val filters)
                            val)]
         (.append sb (-> filtered-val
                         ->str
@@ -149,11 +159,7 @@
                  body (:body node)
                  items (resolve-path context source-path)]
              (doseq [[index item] (map-indexed vector items)]
-               (let [loop-context (assoc context
-                                    :loop {:total  (count items)
-                                           :index  index
-                                           :first? (zero? index)
-                                           :last?  (= index (dec (count items)))})
+               (let [loop-context (get-loop-context context index (count items))
                      new-context (assoc loop-context identifier item)]
                  (render-nodes body new-context sb escape-conf))))
 
@@ -195,9 +201,7 @@
           :value-node
           (let [val (resolve-path context (:value node))
                 filtered-val (if-let [filters (:filters node)]
-                               (reduce (fn [v filter-obj]
-                                         (apply-filter v filter-obj))
-                                       val filters)
+                               (reduce apply-filter val filters)
                                val)
                 resolved-value (-> filtered-val
                                    ->str
@@ -233,15 +237,8 @@
                 body (:body node)
                 items (resolve-path context source-path)
                 for-streams (mapcat (fn [index item]
-                                      (let [loop-context (assoc context
-                                                           :loop {:total  (count items)
-                                                                  :index  index
-                                                                  :first? (zero? index)
-                                                                  :last?  (= index (dec (count items)))})]
-                                        (render-nodes-to-stream-seq
-                                          body
-                                          (assoc loop-context identifier item)
-                                          charset escape-conf)))
+                                      (let [loop-context (get-loop-context context index (count items))]
+                                        (render-nodes-to-stream-seq body (assoc loop-context identifier item) charset escape-conf)))
                                     (range)
                                     items)]
             (concat for-streams
@@ -273,30 +270,34 @@
      (ByteArrayInputStream. (.getBytes ^String (render (read-edn-resource "error-template.edn") template escape-conf))))))
 
 
+(defn- process-instruction [context has-text-nodes? acc instruction]
+  (case (:type instruction)
+    :text
+    (let [last-instruction (peek acc)]
+      (if (and last-instruction (= :text (:type last-instruction)))
+        (conj (pop acc)
+              (assoc last-instruction
+                :value (str (:value last-instruction) (:value instruction))))
+        (conj acc instruction)))
+
+    :value-node
+    (let [value-key (:value instruction)]
+      (if (contains? context value-key)
+        (if has-text-nodes?
+          (let [resolved-value (get context value-key)
+                last-instruction (peek acc)]
+            (if (and last-instruction (= :text (:type last-instruction)))
+              (conj (pop acc)
+                    (assoc last-instruction
+                      :value (str (:value last-instruction) resolved-value)))
+              (conj acc {:type :text :value resolved-value})))
+          acc)
+        (conj acc instruction)))
+
+    (conj acc instruction)))
+
 (defn pre-render [render-instructions context]
   (let [has-text-nodes? (some #(= :text (:type %)) render-instructions)]
-    (reduce (fn [acc instruction]
-              (case (:type instruction)
-                :text
-                (let [last-instruction (peek acc)]
-                  (if (and last-instruction (= :text (:type last-instruction)))
-                    (conj (pop acc)
-                          (assoc last-instruction
-                            :value (str (:value last-instruction) (:value instruction))))
-                    (conj acc instruction)))
-
-                :value-node
-                (let [value-key (:value instruction)]
-                  (if (contains? context value-key)
-                    (if has-text-nodes?
-                      (let [resolved-value (get context value-key)
-                            last-instruction (peek acc)]
-                        (if (and last-instruction (= :text (:type last-instruction)))
-                          (conj (pop acc)
-                                (assoc last-instruction
-                                  :value (str (:value last-instruction) resolved-value)))
-                          (conj acc {:type :text :value resolved-value})))
-                      acc)
-                    (conj acc instruction)))
-                (conj acc instruction)))
-            [] render-instructions)))
+    (reduce (partial process-instruction context has-text-nodes?)
+            []
+            render-instructions)))
