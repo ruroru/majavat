@@ -2,7 +2,8 @@
   (:require
     [jj.majavat.renderer.filters :as filters]
     [clojure.test :refer [deftest are]])
-  (:import (java.time LocalDate LocalDateTime LocalTime)))
+  (:import (java.time LocalDate LocalDateTime LocalTime ZoneId ZonedDateTime)
+           (java.util Date)))
 
 
 
@@ -125,8 +126,33 @@
                         ))
 
 (deftest local-time->date
-  (are [expected input] (= expected (filters/->formatted-local-time (LocalTime/of  11, 11) [input]))
+  (are [expected input] (= expected (filters/->formatted-local-time (LocalTime/of 11, 11) [input]))
                         "11 --- 11" "hh --- mm"
                         "11" "hh"
                         "11:11" "not-avalid-format"
                         ))
+
+(deftest zoned-date-time
+  (are [expected input] (= expected (filters/->formatted-zoned-date-time (ZonedDateTime/of (LocalDateTime/of 2022, 01, 02, 03, 04) (ZoneId/of "UTC")) input))
+                        "03 --- 04" ["hh --- mm"]
+                        "03" ["hh"]
+                        "2022-01-02T03:04Z[UTC]" ["not-avalid-format"]
+                        "12 --- 04" ["hh --- mm" "Asia/Tokyo"]
+                        ))
+
+
+(deftest instant-date-time
+  (let [test-instant (.toInstant (ZonedDateTime/of (LocalDateTime/of 2022, 01, 02, 03, 04) (ZoneId/of "UTC")))]
+    (are [expected input] (= expected (filters/->formatted-instant test-instant input))
+                          "2022 --- 01 04" ["yyyy --- MM mm"]
+                          "2022 - 04" ["yyyy - mm"]
+                          (str test-instant) ["not-avalid-format"]
+                          "12 --- 12:04" ["hh --- hh:mm" "Asia/Tokyo"])))
+
+
+(deftest java-util-date
+  (let [test-date (Date. 1641088440000)]
+    (are [expected input] (= expected (filters/->formatted-date test-date input))
+                          "03 --- 54" ["hh --- mm"]
+                          "03" ["hh"]
+                          (str test-date) ["not-avalid-format"])))

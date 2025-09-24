@@ -1,8 +1,10 @@
 (ns jj.majavat.renderer.filters
   (:require [clojure.string :as str]
             [clojure.tools.logging :as logger])
-  (:import (java.time LocalDate LocalDateTime LocalTime ZoneId ZonedDateTime)
-           (java.time.format DateTimeFormatter)))
+  (:import (java.text DateFormat SimpleDateFormat)
+           (java.time Instant LocalDate LocalDateTime LocalTime ZoneId ZonedDateTime)
+           (java.time.format DateTimeFormatter)
+           (java.util Date)))
 
 (def ^:private formatter-cache (atom {}))
 (def ^:const ^:private roman-regex #"(?i)\b(?=[mdclxvi])M{0,4}(?:CM|CD|D?C{0,3})(?:XC|XL|L?X{0,3})(?:IX|IV|V?I{0,3})\b")
@@ -135,6 +137,32 @@
       (if (some? time-zone)
         (.format (.withZoneSameInstant ^ZonedDateTime v ^ZoneId time-zone) date-time-formatter)
         (.format ^ZonedDateTime v date-time-formatter))
+      (do
+        (logger/errorf "%s is not a valid pattern." pattern)
+        (str v)))))
+
+(defn ->formatted-date [v filter-args]
+  (let [pattern (first filter-args)
+        date-formatter (try
+                         (SimpleDateFormat. pattern)
+                         (catch Exception e
+                           (logger/errorf "%s is not a valid pattern: %s" pattern (.getMessage e))
+                           nil))]
+    (if (some? date-formatter)
+      (.format ^DateFormat date-formatter ^Date v)
+      (do
+        (logger/errorf "%s is not a valid pattern." pattern)
+        (str v)))))
+
+
+(defn ->formatted-instant [v filter-args]
+  (let [pattern (first filter-args)
+        time-zone (string->time-zone (second filter-args))
+        date-time-formatter (get-date-time-formatter pattern)]
+    (if (some? date-time-formatter)
+      (if (some? time-zone)
+        (.format (.atZone ^Instant v ^ZoneId time-zone) date-time-formatter)
+        (.format (.atZone ^Instant v (ZoneId/systemDefault)) date-time-formatter))
       (do
         (logger/errorf "%s is not a valid pattern." pattern)
         (str v)))))

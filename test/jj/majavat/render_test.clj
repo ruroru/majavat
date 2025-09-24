@@ -9,7 +9,8 @@
     [jj.majavat.resolver.fs :as fcr]
     [jj.majavat.resolver.resource :as rcr])
   (:import (java.io InputStream)
-           (java.time LocalDate LocalDateTime ZoneId ZonedDateTime)))
+           (java.time LocalDate LocalDateTime LocalTime ZoneId ZonedDateTime)
+           (java.util Date)))
 
 
 (defn- crlf->lf [s]
@@ -272,7 +273,10 @@ this is a  footer"
     "foo bar" "filter/default" {:value "bar"}
     "yyyy is 2022 and yyyy/mm/dd is 2022/01/01" "filter/date" {:value (LocalDate/of 2022, 01, 01)}
     "default: 2022-01-01T01:01, format one is 01/01/2022 01:01" "filter/date-local-date-time" {:value (LocalDateTime/of 2022, 01, 01, 01, 01)}
+    "default: 01:01, format one is 01/01" "filter/date-local-time" {:value (LocalTime/of 01, 01)}
     "default: 2022-01-02T03:04Z[UTC], format one is 2022-01-02 03:04 and time in tokyo is 2022-01-02 12:04" "filter/date-zoned-date-time"  {:value (ZonedDateTime/of (LocalDateTime/of 2022, 01, 02, 03, 04) (ZoneId/of "UTC"))}
+    "default: 2022-01-02T03:04:00Z, format one is 2022-01-02 05:04 and time in tokyo is 2022-01-02 12:04" "filter/date-instant"  {:value (.toInstant (ZonedDateTime/of (LocalDateTime/of 2022, 01, 02, 03, 04) (ZoneId/of "UTC")))}
+    "default: Sun Jan 02 03:54:00 EET 2022, format one is 2022-01-02 03:54" "filter/date-util-date"  {:value (Date. 1641088440000)}
     ))
 
 

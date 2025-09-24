@@ -81,6 +81,8 @@ Hello {{ name | upper-case }}!
 | date  "yyyy"              | LocalDateTime | Instance of LocalDateTime -> "2025" | 
 | date "hh/mm"              | LocalTime     | Instance of LocalTime ->  "11/11"   |
 | date "hh/mm" "Asia/Tokyo" | ZonedDateTime | Instance of LocalTime ->  "11/11"   |
+| date "hh/mm" "Asia/Tokyo" | Instant       | Instance of LocalTime ->  "11/11"   |
+| date "hh/mm"              | util.date     | Instance of LocalTime ->  "11/11"   |
 
 #### Conditionals
 
