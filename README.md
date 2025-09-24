@@ -62,24 +62,25 @@ Hello {{ name | upper-case }}!
 (render-file "file.txt" {:name "world"}) ;; => returns Hello WORLD!
 ```
 
-| filters       | type          | example                             |
-|---------------|---------------|-------------------------------------|
-| capitalize    | String        | "hello world" → "Hello world"       |
-| lower-case    | String        | "HELLO WORLD" → "hello world"       |
-| title-case    | String        | "hello world" → "Hello World"       |
-| trim          | String        | "  hello  " → "hello"               |
-| upper-case    | String        | "hello world" → "HELLO WORLD"       |
-| upper-roman   | String        | "iv" → "IV"                         |
-| long          | String        | "123" → 123L                        |
-| int           | String        | "123" → 123                         |
-| name          | keyword       | :name → "name"                      |
-| inc           | Number        | 5 → 6                               |
-| dec           | Number        | 5 → 4                               |
-| file-size     | Number        | 2048 → "2 KB"                       |
-| default "foo" | nil           | nil -> "foo"                        |
-| date  "yyyy"  | LocalDate     | Instance of LocalDate -> "2025"     | 
-| date  "yyyy"  | LocalDateTime | Instance of LocalDateTime -> "2025" | 
-| date "hh/mm"  | LocalTime     | Instance of LocalTime ->  "11/11"   |
+| filters                   | type          | example                             |
+|---------------------------|---------------|-------------------------------------|
+| capitalize                | String        | "hello world" → "Hello world"       |
+| lower-case                | String        | "HELLO WORLD" → "hello world"       |
+| title-case                | String        | "hello world" → "Hello World"       |
+| trim                      | String        | "  hello  " → "hello"               |
+| upper-case                | String        | "hello world" → "HELLO WORLD"       |
+| upper-roman               | String        | "iv" → "IV"                         |
+| long                      | String        | "123" → 123L                        |
+| int                       | String        | "123" → 123                         |
+| name                      | keyword       | :name → "name"                      |
+| inc                       | Number        | 5 → 6                               |
+| dec                       | Number        | 5 → 4                               |
+| file-size                 | Number        | 2048 → "2 KB"                       |
+| default "foo"             | nil           | nil -> "foo"                        |
+| date  "yyyy"              | LocalDate     | Instance of LocalDate -> "2025"     | 
+| date  "yyyy"              | LocalDateTime | Instance of LocalDateTime -> "2025" | 
+| date "hh/mm"              | LocalTime     | Instance of LocalTime ->  "11/11"   |
+| date "hh/mm" "Asia/Tokyo" | ZonedDateTime | Instance of LocalTime ->  "11/11"   |
 
 #### Conditionals
 

@@ -5,7 +5,7 @@
             [jj.majavat.renderer.sanitizer :refer [sanitize]])
   (:import (java.io ByteArrayInputStream PushbackReader SequenceInputStream)
            (java.nio.charset Charset StandardCharsets)
-           (java.time LocalDate LocalDateTime LocalTime)
+           (java.time LocalDate LocalDateTime LocalTime ZonedDateTime)
            (java.util Collections)))
 
 (defn- read-edn-resource [resource-path]
@@ -76,6 +76,13 @@
     :date (filters/->formatted-local-time v filter-args)
     v))
 
+
+
+(defn- handle-zoned-date-time [v filter-name filter-args]
+  (case filter-name
+    :date (filters/->formatted-zoned-date-time v filter-args)
+    v))
+
 (defn- apply-filter [v filter-obj]
   (let [filter-name (:filter-name filter-obj)
         filter-args (:args filter-obj)]
@@ -86,6 +93,7 @@
       (instance? LocalDate v) (handle-local-date v filter-name filter-args)
       (instance? LocalDateTime v) (handle-local-date-time v filter-name filter-args)
       (instance? LocalTime v) (handle-local-time v filter-name filter-args)
+      (instance? ZonedDateTime v) (handle-zoned-date-time v filter-name filter-args)
       (nil? v) (handle-nil v filter-name filter-args)
       :else
       v)))
