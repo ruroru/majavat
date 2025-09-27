@@ -87,6 +87,9 @@
             (= "csrf-token" trimmed-string)
             (recur (rrest my-sequence) "" (conj vector {:type :keyword-csrf-token} {:type :block-end :line line-number}) new-line-number)
 
+            (= "now" trimmed-string)
+            (recur (rrest my-sequence) "" (conj vector {:type :now} {:type :block-end :line line-number}) new-line-number)
+
             (= "endif" trimmed-string)
             (recur (rrest my-sequence) "" (conj vector {:type :keyword-endif} {:type :block-end :line line-number}) new-line-number)
 
@@ -103,6 +106,12 @@
             (recur (rrest my-sequence) "" (conj vector {:type :block-end :line line-number}) new-line-number)
 
             (= (:type (last vector)) :keyword-query-string)
+            (recur (rrest my-sequence) "" (conj vector {:type :block-end :line line-number}) new-line-number)
+
+            (= (:type (last vector)) :now)
+            (recur (rrest my-sequence) "" (conj vector {:type :block-end :line line-number}) new-line-number)
+
+            (and (map? (last vector)) (:now-format (last vector)))
             (recur (rrest my-sequence) "" (conj vector {:type :block-end :line line-number}) new-line-number)
 
             :else
@@ -207,6 +216,9 @@
           (= (string/trim current-string) "block")
           (recur (rest my-sequence) "" (conj vector {:type :keyword-block}) new-line-number)
 
+          (= (string/trim current-string) "now")
+          (recur (rest my-sequence) "" (conj vector {:type :now}) new-line-number)
+
           :else
           (recur (rest my-sequence) (str current-string current-char) vector new-line-number))
 
@@ -239,6 +251,33 @@
             (recur (rest my-sequence) "" (conj vector {:type           :query-string-declaration
                                                        :variable-value variable-value})
                    new-line-number))
+          (recur (rest my-sequence) (str current-string current-char) vector new-line-number))
+
+        (or (= (:type (last vector)) :now)
+            (and (map? (last vector)) (:now-format (last vector))))
+        (cond
+          (and (string/blank? current-string) (= current-char \ ))
+          (recur (rest my-sequence) current-string vector new-line-number)
+
+          (and (string/blank? current-string) (= current-char \"))
+          (recur (rest my-sequence) "" vector new-line-number)
+
+          (and (not (string/blank? current-string)) (= current-char \"))
+          (cond
+            (= (:type (last vector)) :now)
+            (recur (rest my-sequence) "" (conj vector {:now-format current-string}) new-line-number)
+
+            (and (map? (last vector)) (:now-format (last vector)))
+            (recur (rest my-sequence) "" (conj vector {:now-timezone current-string}) new-line-number))
+
+          (and (string/blank? current-string) (= current-char \%) (= next-char \}))
+          (let [updated-vector (conj (pop vector) {:type :now})]
+            (recur (rest my-sequence) (str current-char) updated-vector new-line-number))
+
+          (not (= current-char \"))
+          (recur (rest my-sequence) (str current-string current-char) vector new-line-number)
+
+          :else
           (recur (rest my-sequence) (str current-string current-char) vector new-line-number))
 
         (= (:type (last vector)) :keyword-for)

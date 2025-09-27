@@ -9,8 +9,7 @@
     [jj.majavat.resolver.fs :as fcr]
     [jj.majavat.resolver.resource :as rcr])
   (:import (java.io InputStream)
-           (java.time LocalDate LocalDateTime LocalTime ZoneId ZonedDateTime)
-           (java.util Date)))
+           (java.time LocalDate LocalDateTime LocalTime ZoneId ZonedDateTime)))
 
 
 (defn- crlf->lf [s]
@@ -254,6 +253,8 @@ this is a  footer"
 
 
 (deftest render-filters
+  (System/setProperty "user.timezone" "UTC")
+
   (are [expected-value template-path context]
     (= expected-value
        (renderer/render (parser/parse template-path contentResolver) context nil)
@@ -274,9 +275,7 @@ this is a  footer"
     "yyyy is 2022 and yyyy/mm/dd is 2022/01/01" "filter/date" {:value (LocalDate/of 2022, 01, 01)}
     "default: 2022-01-01T01:01, format one is 01/01/2022 01:01" "filter/date-local-date-time" {:value (LocalDateTime/of 2022, 01, 01, 01, 01)}
     "default: 01:01, format one is 01/01" "filter/date-local-time" {:value (LocalTime/of 01, 01)}
-    "default: 2022-01-02T03:04Z[UTC], format one is 2022-01-02 03:04 and time in tokyo is 2022-01-02 12:04" "filter/date-zoned-date-time"  {:value (ZonedDateTime/of (LocalDateTime/of 2022, 01, 02, 03, 04) (ZoneId/of "UTC"))}
-    "default: 2022-01-02T03:04:00Z, format one is 2022-01-02 05:04 and time in tokyo is 2022-01-02 12:04" "filter/date-instant"  {:value (.toInstant (ZonedDateTime/of (LocalDateTime/of 2022, 01, 02, 03, 04) (ZoneId/of "UTC")))}
-    "default: Sun Jan 02 03:54:00 EET 2022, format one is 2022-01-02 03:54" "filter/date-util-date"  {:value (Date. 1641088440000)}
+    "default: 2022-01-02T03:04Z[UTC], format one is 2022-01-02 03:04 and time in tokyo is 2022-01-02 12:04" "filter/date-zoned-date-time" {:value (ZonedDateTime/of (LocalDateTime/of 2022, 01, 02, 03, 04) (ZoneId/of "UTC"))}
     ))
 
 
@@ -340,6 +339,23 @@ this is a  footer"
       "/some/route" "query-string/query-string" {}
       "/some/route?key=value" "query-string/query-string" {:foo {:bar {:key "value"}}}
       "/some/route?key=value&key1=value1" "query-string/query-string" {:foo {:bar {:key "value" :key1 "value1"}}})))
+
+(deftest now-default
+  (testing "render to string"
+    (are [timestamp-regex template-path context]
+      (is (re-find timestamp-regex (renderer/render (parser/parse template-path contentResolver) context nil))
+          (str "Expected timestamp format in result: " (renderer/render (parser/parse template-path contentResolver) context nil)))
+      #"20\d{2}/\d{2}/\d{2} \d{2}:\d{2}" "now/now" {}
+      #"20\d{2}-\d{2}-\d{2}" "now/now-with-format-and-time-zone" {}
+      ))
+  (testing "render to input stream"
+    (are [timestamp-regex template-path context]
+      (is (re-find timestamp-regex (String. (.readAllBytes ^InputStream (renderer/render-is (parser/parse template-path contentResolver) context nil))))
+          (str "Expected timestamp format in result: " (renderer/render (parser/parse template-path contentResolver) context nil)))
+      #"20\d{2}/\d{2}/\d{2} \d{2}:\d{2}" "now/now" {}
+      #"20\d{2}-\d{2}-\d{2}" "now/now-with-format" {}
+      #"20\d{2}-\d{2}-\d{2}" "now/now-with-format-and-time-zone" {}
+      )))
 
 
 

@@ -6,7 +6,7 @@
   (:import (java.io ByteArrayInputStream PushbackReader SequenceInputStream)
            (java.nio.charset Charset StandardCharsets)
            (java.time Instant LocalDate LocalDateTime LocalTime ZonedDateTime)
-           (java.util Collections Date)))
+           (java.util Collections)))
 
 (defn- read-edn-resource [resource-path]
   (when-let [resource (io/resource resource-path)]
@@ -83,10 +83,6 @@
     :date (filters/->formatted-zoned-date-time v filter-args)
     v))
 
-(defn handle-date [v filter-name filter-args]
-  (case filter-name
-    :date (filters/->formatted-date v filter-args)
-    v))
 
 (defn handle-instant [v filter-name filter-args]
   (case filter-name
@@ -104,7 +100,6 @@
       (instance? LocalDateTime v) (handle-local-date-time v filter-name filter-args)
       (instance? LocalTime v) (handle-local-time v filter-name filter-args)
       (instance? ZonedDateTime v) (handle-zoned-date-time v filter-name filter-args)
-      (instance? Date v) (handle-date v filter-name filter-args)
       (instance? Instant v) (handle-instant v filter-name filter-args)
       (nil? v) (handle-nil v filter-name filter-args)
       :else
@@ -159,6 +154,9 @@
       :query-string
       (when-let [query-str (build-query-string (:value node) context)]
         (.append sb query-str))
+
+      :keyword-now
+      (.append sb (filters/->formatted-instant (Instant/now) [(get node :format)]) )
 
       :variable-assignment
       (let [variable-name (:variable-name node)
@@ -263,6 +261,11 @@
                                     items)]
             (concat for-streams
                     (render-nodes-to-stream-seq (rest nodes) context charset escape-conf)))
+
+          :keyword-now
+          (let [now-str (filters/->formatted-instant (Instant/now) [(get node :format)])]
+            (cons (ByteArrayInputStream. (.getBytes ^String now-str ^Charset charset))
+                  (render-nodes-to-stream-seq (rest nodes) context charset escape-conf)))
 
           :if
           (let [condition (:condition node)

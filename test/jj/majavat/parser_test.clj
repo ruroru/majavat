@@ -1,8 +1,11 @@
 (ns jj.majavat.parser-test
-  (:require [clojure.test :refer [are deftest is]]
+  (:require [clojure.java.io :as io]
+            [clojure.test :refer [are deftest is]]
+            [jj.majavat.lexer :as lexer]
             [jj.majavat.parser :as parser]
             [jj.majavat.resolver.fs :as fcr]
-            [jj.majavat.resolver.resource :as rcr]))
+            [jj.majavat.resolver.resource :as rcr])
+  (:import (java.time ZoneId)))
 
 (def contentResolver (rcr/->ResourceResolver))
 
@@ -375,4 +378,28 @@
       :type    :value-node
       :value   [:val]}]
     "filter/pipe"))
+
+(deftest now
+  (are [expected-ast input-file]
+    (= expected-ast (parser/parse input-file (rcr/->ResourceResolver)))
+    [{:type  :text
+      :value "current time is "}
+     {:format "yyyy/MM/dd hh:mm"
+      :type   :keyword-now
+      :time-zone (.toString ^ZoneId (ZoneId/systemDefault))}]
+    "now/now"
+    [{:type  :text
+      :value "current time is "}
+     {:format    "yyyy-MM-dd"
+      :time-zone (.toString ^ZoneId (ZoneId/systemDefault))
+      :type      :keyword-now}]
+    "now/now-with-format"
+
+    [{:type  :text
+      :value "current time is  "}
+     {:format    "yyyy-MM-dd"
+      :time-zone "Asia/Tokyo"
+      :type      :keyword-now}]
+    "now/now-with-format-and-time-zone"))
+
 

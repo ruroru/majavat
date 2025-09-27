@@ -82,7 +82,6 @@ Hello {{ name | upper-case }}!
 | date "hh/mm"              | LocalTime     | Instance of LocalTime ->  "11/11"   |
 | date "hh/mm" "Asia/Tokyo" | ZonedDateTime | Instance of LocalTime ->  "11/11"   |
 | date "hh/mm" "Asia/Tokyo" | Instant       | Instance of LocalTime ->  "11/11"   |
-| date "hh/mm"              | util.date     | Instance of LocalTime ->  "11/11"   |
 
 #### Conditionals
 
@@ -230,6 +229,22 @@ input-file with content
 ```clojure
 (render-file "input-file" {:foo {:count 2}}) ;; returns "/foo?count=2"
 ```
+
+
+#### Now
+input-file with content
+
+```
+default format {% now %}
+formatted {% now "yyyy-MM-dd" %}
+formatted with tz {% now "yyyy-MM-dd hh:mm " "Asia/Tokyo" %}
+```
+
+```clojure
+(render-file "input-file" {}) ;; returns "default format 2011/11/11 11:11\nformatted 2011-11-11\ntormatted with tz 2011-11-11 23:11"
+```
+
+
 
 ## TemplateResolver
 

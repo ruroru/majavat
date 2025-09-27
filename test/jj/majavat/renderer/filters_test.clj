@@ -1,9 +1,8 @@
 (ns jj.majavat.renderer.filters-test
   (:require
-    [jj.majavat.renderer.filters :as filters]
-    [clojure.test :refer [deftest are]])
-  (:import (java.time LocalDate LocalDateTime LocalTime ZoneId ZonedDateTime)
-           (java.util Date)))
+    [clojure.test :refer [are deftest]]
+    [jj.majavat.renderer.filters :as filters])
+  (:import (java.time LocalDate LocalDateTime LocalTime ZoneId ZonedDateTime)))
 
 
 
@@ -150,9 +149,4 @@
                           "12 --- 12:04" ["hh --- hh:mm" "Asia/Tokyo"])))
 
 
-(deftest java-util-date
-  (let [test-date (Date. 1641088440000)]
-    (are [expected input] (= expected (filters/->formatted-date test-date input))
-                          "03 --- 54" ["hh --- mm"]
-                          "03" ["hh"]
-                          (str test-date) ["not-avalid-format"])))
+

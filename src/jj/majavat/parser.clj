@@ -2,7 +2,8 @@
   (:require [jj.majavat.lexer :as lexer]
             [jj.majavat.resolver :as cr])
   (:import (java.io FileNotFoundException PushbackReader StringWriter)
-           (java.nio.file Paths)))
+           (java.nio.file Paths)
+           (java.time ZoneId)))
 
 (defn- resolve-path [base-path relative-path]
   (let [base-path-obj (Paths/get base-path (make-array String 0))
@@ -74,6 +75,26 @@
                               (recur remaining-after-block-end list current-block parsing-for-body current-file-path template-resolver)))
                           (recur remaining list current-block parsing-for-body current-file-path template-resolver)))
          :block-end (recur (rest lexed-list) list current-block parsing-for-body current-file-path template-resolver)
+
+         :now (let [remaining (rest lexed-list)
+                    [now-node final-remaining] (loop [remaining remaining
+                                                      format "yyyy/MM/dd hh:mm"
+                                                      timezone (.toString ^ZoneId (ZoneId/systemDefault))]
+                                                 (let [current-token (first remaining)]
+                                                   (cond
+                                                     (and current-token (contains? current-token :now-format))
+                                                     (recur (rest remaining) (:now-format current-token) timezone)
+
+                                                     (and current-token (contains? current-token :now-timezone))
+                                                     (recur (rest remaining) format (:now-timezone current-token))
+
+                                                     :else
+                                                     [{:type :keyword-now
+                                                       :format format
+                                                       :time-zone timezone} remaining])))]
+                (recur final-remaining (conj list now-node) current-block parsing-for-body current-file-path template-resolver))
+
+
 
          :keyword-csrf-token (recur (rest lexed-list) (apply conj list '({:type :text :value "<input type=\"hidden\" name=\"csrf_token\" value=\""}
                                                                          {:type :value-node :value [:csrf-token]}

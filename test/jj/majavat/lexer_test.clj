@@ -252,3 +252,33 @@
           {:line 1
            :type :block-end}]
          (lexer/tokenize "{% query-string bar.qux %}"))))
+
+(deftest now
+  (are [expected input] (= expected (lexer/tokenize input))
+                        [{:type  :text
+                          :value "current time is "}
+                         {:type :block-start}
+                         {:type :now}
+
+                         {:line 1
+                          :type :block-end}]
+                        "current time is {% now %}"
+                        [{:type  :text
+                          :value "current time is "}
+                         {:type :block-start}
+                         {:type :now}
+                         {:now-format "yyyy-MM-dd/hh:mm"}
+                         {:line 1
+                          :type :block-end}]
+                        "current time is {% now \"yyyy-MM-dd/hh:mm\" %}"
+                        [{:type  :text
+                          :value "current time is "}
+                         {:type :block-start}
+                         {:type :now}
+                         {:now-format "yyyy-MM-dd/hh:mm"}
+                         {:now-timezone "Asia/Tokyo"}
+                         {:line 1 :type :block-end}]
+                        "current time is {% now \"yyyy-MM-dd/hh:mm\" \"Asia/Tokyo\" %}"
+
+                        ))
+
