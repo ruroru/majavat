@@ -16,11 +16,11 @@
   (let [file-path "html/index-with-error.html"
         file-content {}]
     (is (= (crlf->lf (slurp (io/resource "html/expected-error.html")))
-           (crlf->lf (majavat/render-file file-path file-content {})))
+           (crlf->lf (majavat/render file-path file-content {})))
         "verifying render to string")
     (is (= (crlf->lf (slurp (io/resource "html/expected-error.html")))
            (crlf->lf (String. (.readAllBytes ^InputStream
-                                             (majavat/render-file file-path file-content {:return-type :input-stream}))))) "verifying render to input stream")))
+                                             (majavat/render file-path file-content {:return-type :input-stream}))))) "verifying render to input stream")))
 
 (deftest render-test
   (let [file-path "html/index.html"
@@ -62,43 +62,43 @@
                       :current-year    2025}]
     (testing "Not escaped html"
       (is (= (crlf->lf (slurp (io/resource "html/expected.html")))
-             (crlf->lf (majavat/render-file file-path file-content {})))
+             (crlf->lf (majavat/render file-path file-content {})))
           "verifying render to string")
       (is (= (crlf->lf (slurp (io/resource "html/expected.html")))
              (crlf->lf (String. (.readAllBytes ^InputStream
-                                               (majavat/render-file file-path file-content {:return-type :input-stream}))))) "verifying render to input stream"))
+                                               (majavat/render file-path file-content {:return-type :input-stream}))))) "verifying render to input stream"))
     (testing "Escaped html"
       (is (= (crlf->lf (slurp (io/resource "html/expected-escaped.html")))
-             (crlf->lf (majavat/render-file file-path file-content {:sanitizer (->Html)})))
+             (crlf->lf (majavat/render file-path file-content {:sanitizer (->Html)})))
           "verifying render to string")
       (is (= (crlf->lf (slurp (io/resource "html/expected-escaped.html")))
              (crlf->lf (String. (.readAllBytes ^InputStream
-                                               (majavat/render-file file-path file-content {:return-type :input-stream
-                                                                                            :sanitizer   (->Html)})))))
+                                               (majavat/render file-path file-content {:return-type    :input-stream
+                                                                                            :sanitizer (->Html)})))))
           "verifying render to input stream"))))
 
 (deftest cache-enabled-test
   (mock/with-mock
     [parser/parse [{:type  :text
                     :value "text"}]]
-    (majavat/render-file "somefile" {})
-    (majavat/render-file "somefile" {})
-    (majavat/render-file "somefile" {})
+    (majavat/render "somefile" {})
+    (majavat/render "somefile" {})
+    (majavat/render "somefile" {})
     (is (= 1 (mock/call-count parser/parse)))))
 
 (deftest cache-disabled-test
   (mock/with-mock
     [parser/parse [{:type  :text
                     :value "text"}]]
-    (majavat/render-file "somefile" {} {:cache? false})
-    (majavat/render-file "somefile" {} {:cache? false})
-    (majavat/render-file "somefile" {} {:cache? false})
+    (majavat/render "somefile" {} {:cache? false})
+    (majavat/render "somefile" {} {:cache? false})
+    (majavat/render "somefile" {} {:cache? false})
     (is (= 3 (mock/call-count parser/parse)))))
 
 
 (deftest try-rendering-file-that-does-not-exist
   (is (= (crlf->lf (slurp (io/resource "render-template-not-found.html")))
-         (crlf->lf (majavat/render-file "not-existing-file" {}))) "verifying failure to render string")
+         (crlf->lf (majavat/render "not-existing-file" {}))) "verifying failure to render string")
   (is (= (crlf->lf (slurp (io/resource "render-template-not-found.html")))
          (crlf->lf (String. (.readAllBytes ^InputStream
-                                           (majavat/render-file "not-existing-file" {} {:return-type :input-stream}))))) "verifying failure to render input stream"))
+                                           (majavat/render "not-existing-file" {} {:return-type :input-stream}))))) "verifying failure to render input stream"))

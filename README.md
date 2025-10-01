@@ -19,14 +19,14 @@ Add majavat to dependency list
   [jj.majavat :as majavat]
   [jj.majavat.renderer.sanitizer :refer [->Html]])
 
-(majavat/render-file "index.html" {:user "jj"})
+(majavat/render "index.html" {:user "jj"})
 ```
 
 Additional options can be passed with
 
 ```clojure
-(majavat/render-file "index.html" {:user "jj"} {:return-type :input-stream
-                                                :sanitizer   (->Html)})
+(majavat/render "index.html" {:user "jj"} {:return-type :input-stream
+                                           :sanitizer   (->Html)})
 ```
 
 All supported options:
@@ -49,7 +49,7 @@ Hello {{ name }}!
 ```
 
 ```clojure
-(render-file "file.txt" {:name "world"}) ;; => returns Hello world!
+(render "file.txt" {:name "world"}) ;; => returns Hello world!
 ```
 
 or with a filter
@@ -59,7 +59,7 @@ Hello {{ name | upper-case }}!
 ```
 
 ```clojure
-(render-file "file.txt" {:name "world"}) ;; => returns Hello WORLD!
+(render "file.txt" {:name "world"}) ;; => returns Hello WORLD!
 ```
 
 | filters                   | type          | example                               |
@@ -92,8 +92,8 @@ Rendering input file with content:
 ```
 
 ```clojure
-(render-file "input-file" {:name "jj"}) ;; returns "Hello jj!"
-(render-file "input-file" {}) ;; returns "Hello world!"
+(render "input-file" {:name "jj"}) ;; returns "Hello jj!"
+(render "input-file" {}) ;; returns "Hello world!"
 ```
 
 or
@@ -103,8 +103,8 @@ or
 ```
 
 ```clojure
-(render-file "input-file" {:name "foo"}) ;; returns "Hello jj!"
-(render-file "input-file" {}) ;; returns "Hello world!"
+(render "input-file" {:name "foo"}) ;; returns "Hello jj!"
+(render "input-file" {}) ;; returns "Hello world!"
 ```
 
 #### Looping
@@ -118,7 +118,7 @@ Rendering input file with content:
 ```
 
 ```clojure
-(render-file "input-file" {:items ["Apple" "Banana" "Orange"]}) ;; returns "- Apple is 0 of 3\n- Banana is 1 of 3\n- Orange is 2 of 3"
+(render "input-file" {:items ["Apple" "Banana" "Orange"]}) ;; returns "- Apple is 0 of 3\n- Banana is 1 of 3\n- Orange is 2 of 3"
 ```
 
 The loop context provides access to:
@@ -146,7 +146,7 @@ included {% include "file.txt" %}
 ```
 
 ```clojure
-(render-file "input-file" {}) ;; returns "included foo"
+(render "input-file" {}) ;; returns "included foo"
 ```
 
 #### Setting value
@@ -158,7 +158,7 @@ hello {% let foo = "baz" %}{{ foo }}{% endlet %}
 ```
 
 ```clojure
-(render-file "input-file" {}) ;; returns "hello baz"
+(render "input-file" {}) ;; returns "hello baz"
 ```
 
 or
@@ -168,7 +168,7 @@ hello {% let foo = bar %}{{ foo.baz }}{% endlet %}
 ```
 
 ```clojure
-(render-file "input-file" {:bar {:baz "baz"}}) ;; returns "hello baz"
+(render "input-file" {:bar {:baz "baz"}}) ;; returns "hello baz"
 ```
 
 #### Extending template
@@ -189,7 +189,7 @@ bar
 ```
 
 ```clojure
-(render-file "input-file" {}) ;; returns "foo\nbar\nbaz"
+(render "input-file" {}) ;; returns "foo\nbar\nbaz"
 ```
 
 #### Comments
@@ -201,7 +201,7 @@ foo{# bar baz #}
 ```
 
 ```clojure
-(render-file "input-file" {}) ;; returns "foo"
+(render "input-file" {}) ;; returns "foo"
 ```
 
 #### csrf
@@ -215,7 +215,7 @@ CSRF token can be added via
 and when rendering file `:csrf-token` has to be provided
 
 ```clojure
-(render-file "input-file" {:csrf-token "foobarbaz"}) ;; returns <input type="hidden" name="csrf_token" value="foobarbaz"> 
+(render "input-file" {:csrf-token "foobarbaz"}) ;; returns <input type="hidden" name="csrf_token" value="foobarbaz"> 
 ```
 
 #### Query string
@@ -227,7 +227,7 @@ input-file with content
 ```
 
 ```clojure
-(render-file "input-file" {:foo {:count 2}}) ;; returns "/foo?count=2"
+(render "input-file" {:foo {:count 2}}) ;; returns "/foo?count=2"
 ```
 
 #### Now
@@ -241,7 +241,7 @@ formatted with tz {% now "yyyy-MM-dd hh:mm " "Asia/Tokyo" %}
 ```
 
 ```clojure
-(render-file "input-file" {}) ;; returns "default format 2011/11/11 11:11\nformatted 2011-11-11\ntormatted with tz 2011-11-11 23:11"
+(render "input-file" {}) ;; returns "default format 2011/11/11 11:11\nformatted 2011-11-11\ntormatted with tz 2011-11-11 23:11"
 ```
 
 ## TemplateResolver

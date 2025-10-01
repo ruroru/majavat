@@ -156,7 +156,7 @@
         (.append sb query-str))
 
       :keyword-now
-      (.append sb (filters/->formatted-instant (Instant/now) [(get node :format)]) )
+      (.append sb (filters/->formatted-instant (Instant/now) [(get node :format)]))
 
       :variable-assignment
       (let [variable-name (:variable-name node)
@@ -199,10 +199,7 @@
       nil))
   sb)
 
-(defn render [template context escape-conf]
-  (if-not (map? template)
-    (.toString ^StringBuilder (render-nodes template context (StringBuilder.) escape-conf))
-    (render (read-edn-resource "error-template.edn") template escape-conf)))
+
 
 (defn- render-nodes-to-stream-seq [nodes context charset escape-conf]
   (lazy-seq
@@ -282,16 +279,6 @@
                 (render-nodes-to-stream-seq (rest nodes) context charset escape-conf))))
           (render-nodes-to-stream-seq (rest nodes) context charset escape-conf))))))
 
-(defn render-is
-  ([template context escape-conf]
-   (render-is template context StandardCharsets/UTF_8 escape-conf))
-  ([template context charset escape-conf]
-   (if-not (map? template)
-     (let [stream-seq (render-nodes-to-stream-seq template context charset escape-conf)
-           enumeration (Collections/enumeration stream-seq)]
-       (SequenceInputStream. enumeration))
-     (ByteArrayInputStream. (.getBytes ^String (render (read-edn-resource "error-template.edn") template escape-conf))))))
-
 
 (defn- process-instruction [context has-text-nodes? acc instruction]
   (case (:type instruction)
@@ -324,3 +311,23 @@
     (reduce (partial process-instruction context has-text-nodes?)
             []
             render-instructions)))
+
+(defprotocol Renderer
+  (render [this config]))
+
+(defrecord StringRenderer [template config]
+  Renderer
+  (render [this context]
+
+    (if-not (map? template)
+      (.toString ^StringBuilder (render-nodes template context (StringBuilder.) (:config this)))
+      (render (->StringRenderer (read-edn-resource "error-template.edn") {}) template))))
+
+(defrecord InputStreamRenderer [template config]
+  Renderer
+  (render [this context]
+    (if-not (map? template)
+      (let [stream-seq (render-nodes-to-stream-seq template context StandardCharsets/UTF_8 (:config this))
+            enumeration (Collections/enumeration stream-seq)]
+        (SequenceInputStream. enumeration))
+      (render (->InputStreamRenderer (read-edn-resource "error-template.edn") {}) template))))
