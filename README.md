@@ -244,6 +244,20 @@ formatted with tz {% now "yyyy-MM-dd hh:mm " "Asia/Tokyo" %}
 (render "input-file" {}) ;; returns "default format 2011/11/11 11:11\nformatted 2011-11-11\ntormatted with tz 2011-11-11 23:11"
 ```
 
+### Verbatim
+
+input-file with content
+
+```
+{% verbatim %}foo{{bar}}{%baz%}{#qux#}quux{% endverbatim %}
+```
+
+```clojure
+(render "input-file" {}) ;; returns "foo{{bar}}{%baz%}{#qux#}quux"
+```
+
+
+
 ## TemplateResolver
 
 The `TemplateResolver` protocol provides a uniform interface for accessing template content from different sources.

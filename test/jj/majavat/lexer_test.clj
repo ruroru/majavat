@@ -278,7 +278,25 @@
                          {:now-format "yyyy-MM-dd/hh:mm"}
                          {:now-timezone "Asia/Tokyo"}
                          {:line 1 :type :block-end}]
-                        "current time is {% now \"yyyy-MM-dd/hh:mm\" \"Asia/Tokyo\" %}"
+                        "current time is {% now \"yyyy-MM-dd/hh:mm\" \"Asia/Tokyo\" %}"))
 
-                        ))
-
+(deftest verbatim-tokenize
+  (are [input expected] (= expected (lexer/tokenize input))
+                        "testing {% verbatim %}foo{{}}{%%}{##}bar{% endverbatim %}"
+                        [{:type :text :value "testing "}
+                         {:type :block-start}
+                         {:type :verbatim}
+                         {:line 1 :type :block-end}
+                         {:type :text :value "foo{{}}{%%}{##}bar"}
+                         {:type :block-start}
+                         {:type :end-verbatim}
+                         {:line 1 :type :block-end}]
+                        "testing {% verbatim %}  foo{{}}{%%}{##}bar  {% endverbatim %}"
+                        [{:type :text :value "testing "}
+                         {:type :block-start}
+                         {:type :verbatim}
+                         {:line 1 :type :block-end}
+                         {:type :text :value "  foo{{}}{%%}{##}bar  "}
+                         {:type :block-start}
+                         {:type :end-verbatim}
+                         {:line 1 :type :block-end}]))

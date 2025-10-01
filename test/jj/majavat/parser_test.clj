@@ -384,8 +384,8 @@
     (= expected-ast (parser/parse input-file (rcr/->ResourceResolver)))
     [{:type  :text
       :value "current time is "}
-     {:format "yyyy/MM/dd hh:mm"
-      :type   :keyword-now
+     {:format    "yyyy/MM/dd hh:mm"
+      :type      :keyword-now
       :time-zone (.toString ^ZoneId (ZoneId/systemDefault))}]
     "now/now"
     [{:type  :text
@@ -402,4 +402,10 @@
       :type      :keyword-now}]
     "now/now-with-format-and-time-zone"))
 
-
+(deftest verbatim
+  (are [expected-ast input-file]
+    (= expected-ast (parser/parse input-file (rcr/->ResourceResolver)))
+    [{:type  :text
+      :value "testing "}
+     {:type  :text
+      :value "foo{{d}}{%d%}{#d#}bar"}] "verbatim/verbatim"))

@@ -42,6 +42,28 @@
           [(rrest seq-rest) new-line-number]
           (recur (rest seq-rest) new-line-number))))))
 
+(defn- collect-verbatim-content [my-sequence line-number]
+  (loop [seq-rest my-sequence
+         current-line line-number
+         accumulated ""]
+    (if (empty? seq-rest)
+      [seq-rest current-line accumulated]
+      (let [current-char (first seq-rest)
+            next-char (first (next seq-rest))
+            new-line-number (if (= current-char \newline)
+                              (inc current-line)
+                              (if (and (= current-char \return)
+                                       (not= next-char \newline))
+                                (inc current-line)
+                                current-line))]
+        (if (and (= current-char \{) (= next-char \%))
+          (let [remaining (drop 2 seq-rest)
+                tag-str (apply str (take-while #(not= % \%) remaining))]
+            (if (= (string/trim tag-str) "endverbatim")
+              [seq-rest new-line-number accumulated]
+              (recur (rest seq-rest) new-line-number (str accumulated current-char))))
+          (recur (rest seq-rest) new-line-number (str accumulated current-char)))))))
+
 (defn- tokenize-recursively [my-sequence current-string vector line-number]
   (if-not (empty? my-sequence)
     (let [current-char (first my-sequence)
@@ -81,6 +103,9 @@
             (= "endfor" trimmed-string)
             (recur (rrest my-sequence) "" (conj vector {:type :end-for} {:type :block-end :line line-number}) new-line-number)
 
+            (= "endverbatim" trimmed-string)
+            (recur (rrest my-sequence) "" (conj vector {:type :end-verbatim} {:type :block-end :line line-number}) new-line-number)
+
             (= "endlet" trimmed-string)
             (recur (rrest my-sequence) "" (conj vector {:type :keyword-end-let} {:type :block-end :line line-number}) new-line-number)
 
@@ -113,6 +138,12 @@
 
             (and (map? (last vector)) (:now-format (last vector)))
             (recur (rrest my-sequence) "" (conj vector {:type :block-end :line line-number}) new-line-number)
+
+            (= (:type (last vector)) :verbatim)
+            (let [[remaining-seq updated-line-number verbatim-content] (collect-verbatim-content (rrest my-sequence) new-line-number)]
+              (if (empty? verbatim-content)
+                (recur remaining-seq "" (conj vector {:type :block-end :line line-number}) updated-line-number)
+                (recur remaining-seq "" (conj vector {:type :block-end :line line-number} {:type :text :value verbatim-content}) updated-line-number)))
 
             :else
             (recur (rrest my-sequence) "" (conj vector {:type :block-end :line line-number}) new-line-number)))
@@ -218,6 +249,9 @@
 
           (= (string/trim current-string) "now")
           (recur (rest my-sequence) "" (conj vector {:type :now}) new-line-number)
+
+          (= (string/trim current-string) "verbatim")
+          (recur (rest my-sequence) "" (conj vector {:type :verbatim}) new-line-number)
 
           :else
           (recur (rest my-sequence) (str current-string current-char) vector new-line-number))
