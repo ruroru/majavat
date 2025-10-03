@@ -313,21 +313,20 @@
             render-instructions)))
 
 (defprotocol Renderer
-  (render [this config]))
+  (render [this template context]))
 
-(defrecord StringRenderer [template config]
+(defrecord StringRenderer [config]
   Renderer
-  (render [this context]
-
+  (render [this template context]
     (if-not (map? template)
       (.toString ^StringBuilder (render-nodes template context (StringBuilder.) (:config this)))
-      (render (->StringRenderer (read-edn-resource "error-template.edn") {}) template))))
+      (render (->StringRenderer {}) (read-edn-resource "error-template.edn") template))))
 
-(defrecord InputStreamRenderer [template config]
+(defrecord InputStreamRenderer [config]
   Renderer
-  (render [this context]
+  (render [this template context]
     (if-not (map? template)
       (let [stream-seq (render-nodes-to-stream-seq template context StandardCharsets/UTF_8 (:config this))
             enumeration (Collections/enumeration stream-seq)]
         (SequenceInputStream. enumeration))
-      (render (->InputStreamRenderer (read-edn-resource "error-template.edn") {}) template))))
+      (render (->InputStreamRenderer {}) (read-edn-resource "error-template.edn") template))))

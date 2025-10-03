@@ -93,9 +93,9 @@
 
 (defn assert-render [template context expected-string]
   (is (= (crlf->lf expected-string)
-         (crlf->lf (renderer/render (->StringRenderer template {}) context))) "string assertion")
+         (crlf->lf (renderer/render (->StringRenderer {}) template context)))  "string assertion")
   (is (= (crlf->lf expected-string)
-         (crlf->lf (String. (.readAllBytes ^InputStream (renderer/render (->InputStreamRenderer template {}) context)))))
+         (crlf->lf (String. (.readAllBytes ^InputStream (renderer/render (->InputStreamRenderer {}) template context)))))
       "input stream assertion"))
 
 (deftest advanced-test
@@ -227,7 +227,7 @@ this is a  footer"
 
 (deftest escape-test
   (let [template (parser/parse "insert-value.html" contentResolver)]
-    (are [input expected] (= (format "hello %s" expected) (renderer/render (->StringRenderer template {:sanitizer (->Html)}) {:name input}))
+    (are [input expected] (= (format "hello %s" expected) (renderer/render (->StringRenderer {:sanitizer (->Html)}) template {:name input}))
                           "&" "&amp;"
                           "<" "&lt;"
                           ">" "&gt;"
@@ -238,7 +238,7 @@ this is a  footer"
 (deftest if-not-test
   (are [rendered-string template-path]
     (= rendered-string
-       (renderer/render (->StringRenderer (parser/parse template-path contentResolver) {:sanitizer (->Html)}) {:value "some"}))
+       (renderer/render (->StringRenderer {:sanitizer (->Html)}) (parser/parse template-path contentResolver) {:value "some"}))
     "hello " "if/if-not"
     "hello universe" "if/if-not-else"))
 
@@ -250,8 +250,8 @@ this is a  footer"
     (let []
 
       (= expected-value
-         (renderer/render (->StringRenderer (parser/parse template-path contentResolver) {:sanitizer (->Html)}) context)
-         (String. (.readAllBytes ^InputStream (renderer/render (->InputStreamRenderer (parser/parse template-path contentResolver) {:sanitizer (->Html)}) context))))
+         (renderer/render (->StringRenderer {:sanitizer (->Html)}) (parser/parse template-path contentResolver) context)
+         (String. (.readAllBytes ^InputStream (renderer/render (->InputStreamRenderer {:sanitizer (->Html)}) (parser/parse template-path contentResolver) context))))
       )
 
     "foo BAR" "filter/upper-case" {:value "bar"}
@@ -278,7 +278,7 @@ this is a  footer"
   (testing "parsing as a string"
     (are [expected-value template-path context]
       (= expected-value
-         (renderer/render (->StringRenderer (parser/parse template-path contentResolver) {:sanitizer (->Html)}) context))
+         (renderer/render (->StringRenderer {:sanitizer (->Html)}) (parser/parse template-path contentResolver) context))
       "testing hello barbaz" "let/let-foo" {}
       "testing hello barbaz" "let/let-bar" {:bar {:qux "bar"}}
       "testing hello barbaz" "let/let-qux" {:bar {:qux "bar"}}))
@@ -286,7 +286,7 @@ this is a  footer"
     (are [expected-value template-path context]
       (= expected-value
 
-         (String. (.readAllBytes ^InputStream (renderer/render (->InputStreamRenderer (parser/parse template-path contentResolver) {:sanitizer (->Html)}) context))))
+         (String. (.readAllBytes ^InputStream (renderer/render (->InputStreamRenderer {:sanitizer (->Html)}) (parser/parse template-path contentResolver) context))))
       "testing hello barbaz" "let/let-foo" {}
       "testing hello barbaz" "let/let-bar" {:bar {:qux "bar"}}
       "testing hello barbaz" "let/let-qux" {:bar {:qux "bar"}})))
@@ -295,9 +295,9 @@ this is a  footer"
 (deftest loop
   (are [expected template-path]
     (let [context {:planets ["Mercury" "Venus" "Earth" "Mars" "Jupiter" "Saturn" "Uranus" "Neptune"]}
-          render-result (renderer/render (->StringRenderer (parser/parse template-path contentResolver) {:sanitizer (->Html)}) context)
+          render-result (renderer/render (->StringRenderer {:sanitizer (->Html)}) (parser/parse template-path contentResolver) context)
           render-is-result (String. (.readAllBytes ^InputStream (renderer/render
-                                                                  (->InputStreamRenderer (parser/parse template-path contentResolver) {:sanitizer (->Html)}) context)))]
+                                                                  (->InputStreamRenderer {:sanitizer (->Html)}) (parser/parse template-path contentResolver) context)))]
 
       (and (= expected render-result)
            (= expected render-is-result)
@@ -309,13 +309,13 @@ this is a  footer"
   (testing "render to string"
     (are [expected-value template-path context]
       (= expected-value
-         (renderer/render (->StringRenderer (parser/parse template-path contentResolver) {:sanitizer (->Html)}) context))
+         (renderer/render (->StringRenderer  {:sanitizer (->Html)}) (parser/parse template-path contentResolver) context))
       "foo <input type=\"hidden\" name=\"csrf_token\" value=\"bar\"> " "csrf/csrf" {:csrf-token "bar"}
       "foo <input type=\"hidden\" name=\"csrf_token\" value=\"\"> " "csrf/csrf" {}))
   (testing "render to input stream"
     (are [expected-value template-path context]
       (= expected-value
-         (String. (.readAllBytes ^InputStream (renderer/render (->InputStreamRenderer (parser/parse template-path contentResolver) {:sanitizer (->Html)}) context))))
+         (String. (.readAllBytes ^InputStream (renderer/render (->InputStreamRenderer  {:sanitizer (->Html)}) (parser/parse template-path contentResolver) context))))
       "foo <input type=\"hidden\" name=\"csrf_token\" value=\"bar\"> " "csrf/csrf" {:csrf-token "bar"}
       "foo <input type=\"hidden\" name=\"csrf_token\" value=\"\"> " "csrf/csrf" {})))
 
@@ -323,7 +323,7 @@ this is a  footer"
   (testing "render to string"
     (are [expected-value template-path context]
       (= expected-value
-         (renderer/render (->StringRenderer (parser/parse template-path contentResolver) {:sanitizer (->Html)}) context))
+         (renderer/render (->StringRenderer  {:sanitizer (->Html)}) (parser/parse template-path contentResolver) context))
       "/some/route" "query-string/query-string" {}
       "/some/route?key=value" "query-string/query-string" {:foo {:bar {:key "value"}}}
       "/some/route?key=value" "query-string/query-string" {:foo {:bar {"key" "value"}}}
@@ -331,7 +331,7 @@ this is a  footer"
   (testing "render to input stream"
     (are [expected-value template-path context]
       (= expected-value
-         (String. (.readAllBytes ^InputStream (renderer/render (->InputStreamRenderer (parser/parse template-path contentResolver) {:sanitizer (->Html)}) context))))
+         (String. (.readAllBytes ^InputStream (renderer/render (->InputStreamRenderer  {:sanitizer (->Html)}) (parser/parse template-path contentResolver) context))))
       "/some/route" "query-string/query-string" {}
       "/some/route?key=value" "query-string/query-string" {:foo {:bar {:key "value"}}}
       "/some/route?key=value&key1=value1" "query-string/query-string" {:foo {:bar {:key "value" :key1 "value1"}}})))
@@ -339,15 +339,15 @@ this is a  footer"
 (deftest now-default
   (testing "render to string"
     (are [timestamp-regex template-path context]
-      (is (re-find timestamp-regex (renderer/render (->StringRenderer (parser/parse template-path contentResolver) {:sanitizer (->Html)}) context))
-          (str "Expected timestamp format in result: " (renderer/render (->StringRenderer (parser/parse template-path contentResolver) {:sanitizer (->Html)}) context)))
+      (is (re-find timestamp-regex (renderer/render (->StringRenderer {:sanitizer (->Html)}) (parser/parse template-path contentResolver) context))
+          (str "Expected timestamp format in result: " (renderer/render (->StringRenderer {:sanitizer (->Html)}) (parser/parse template-path contentResolver) context)))
       #"20\d{2}/\d{2}/\d{2} \d{2}:\d{2}" "now/now" {}
       #"20\d{2}-\d{2}-\d{2}" "now/now-with-format-and-time-zone" {}
       ))
   (testing "render to input stream"
     (are [timestamp-regex template-path context]
-      (is (re-find timestamp-regex (String. (.readAllBytes ^InputStream (renderer/render (->InputStreamRenderer (parser/parse template-path contentResolver) {:sanitizer (->Html)}) context))))
-          (str "Expected timestamp format in result: " (renderer/render (->InputStreamRenderer (parser/parse template-path contentResolver) {:sanitizer (->Html)}) context)))
+      (is (re-find timestamp-regex (String. (.readAllBytes ^InputStream (renderer/render (->InputStreamRenderer {:sanitizer (->Html)}) (parser/parse template-path contentResolver) context))))
+          (str "Expected timestamp format in result: " (renderer/render (->InputStreamRenderer {:sanitizer (->Html)}) (parser/parse template-path contentResolver) context)))
       #"20\d{2}/\d{2}/\d{2} \d{2}:\d{2}" "now/now" {}
       #"20\d{2}-\d{2}-\d{2}" "now/now-with-format" {}
       #"20\d{2}-\d{2}-\d{2}" "now/now-with-format-and-time-zone" {})))

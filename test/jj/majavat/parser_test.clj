@@ -1,7 +1,5 @@
 (ns jj.majavat.parser-test
-  (:require [clojure.java.io :as io]
-            [clojure.test :refer [are deftest is]]
-            [jj.majavat.lexer :as lexer]
+  (:require [clojure.test :refer [are deftest is]]
             [jj.majavat.parser :as parser]
             [jj.majavat.resolver.fs :as fcr]
             [jj.majavat.resolver.resource :as rcr])

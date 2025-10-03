@@ -19,14 +19,18 @@ Add majavat to dependency list
   [jj.majavat :as majavat]
   [jj.majavat.renderer.sanitizer :refer [->Html]])
 
-(majavat/render "index.html" {:user "jj"})
+(def render-fn (render "index.html"))
+
+(render-fn "index.html" {:user "jj"})
 ```
 
 Additional options can be passed with
 
 ```clojure
-(majavat/render "index.html" {:user "jj"} {:return-type :input-stream
-                                           :sanitizer   (->Html)})
+(def render-fn (render "index.html" {:return-type :input-stream
+                                     :sanitizer   (->Html)}))
+
+(render-fn {:user "jj"} )
 ```
 
 All supported options:
@@ -35,7 +39,6 @@ All supported options:
 |---------------------|--------------------|---------------------------------------|
 | `return-type`       | `:string`          | `:string`, `:input-stream`            |
 | `template-resolver` | `ResourceResolver` | Any `TemplateResolver` implementation |
-| `cache?`            | `true`             | `true`, `false`                       |
 | `sanitizer`         | `nil`              | Any `Sanitizer` implementation        |
 
 ### Creating templates
@@ -49,7 +52,8 @@ Hello {{ name }}!
 ```
 
 ```clojure
-(render "file.txt" {:name "world"}) ;; => returns Hello world!
+(def render-fn (render "file.txt"))
+(render-fn {:name "world"}) ;; => returns Hello world!
 ```
 
 or with a filter
@@ -59,7 +63,8 @@ Hello {{ name | upper-case }}!
 ```
 
 ```clojure
-(render "file.txt" {:name "world"}) ;; => returns Hello WORLD!
+(def render-fn (render "file.txt"))
+(render-fn {:name "world"}) ;; => returns Hello WORLD!
 ```
 
 | filters                   | type          | example                               |
@@ -92,8 +97,10 @@ Rendering input file with content:
 ```
 
 ```clojure
-(render "input-file" {:name "jj"}) ;; returns "Hello jj!"
-(render "input-file" {}) ;; returns "Hello world!"
+(def render-fn (render "input-file"))
+
+(render-fn {:name "jj"}) ;; returns "Hello jj!"
+(render-fn {}) ;; returns "Hello world!"
 ```
 
 or
@@ -103,8 +110,10 @@ or
 ```
 
 ```clojure
-(render "input-file" {:name "foo"}) ;; returns "Hello jj!"
-(render "input-file" {}) ;; returns "Hello world!"
+(def render-fn (render "input-file"))
+
+(render-fn {:name "foo"}) ;; returns "Hello jj!"
+(render-fn {}) ;; returns "Hello world!"
 ```
 
 #### Looping
@@ -118,7 +127,9 @@ Rendering input file with content:
 ```
 
 ```clojure
-(render "input-file" {:items ["Apple" "Banana" "Orange"]}) ;; returns "- Apple is 0 of 3\n- Banana is 1 of 3\n- Orange is 2 of 3"
+(def render-fn (render "input-file"))
+
+(render-fn {:items ["Apple" "Banana" "Orange"]}) ;; returns "- Apple is 0 of 3\n- Banana is 1 of 3\n- Orange is 2 of 3"
 ```
 
 The loop context provides access to:
@@ -146,7 +157,9 @@ included {% include "file.txt" %}
 ```
 
 ```clojure
-(render "input-file" {}) ;; returns "included foo"
+(def render-fn (render "input-file"))
+
+(render-fn {}) ;; returns "included foo"
 ```
 
 #### Setting value
@@ -158,7 +171,9 @@ hello {% let foo = "baz" %}{{ foo }}{% endlet %}
 ```
 
 ```clojure
-(render "input-file" {}) ;; returns "hello baz"
+(def render-fn (render "input-file"))
+
+(render-fn {}) ;; returns "hello baz"
 ```
 
 or
@@ -168,7 +183,9 @@ hello {% let foo = bar %}{{ foo.baz }}{% endlet %}
 ```
 
 ```clojure
-(render "input-file" {:bar {:baz "baz"}}) ;; returns "hello baz"
+(def render-fn (render "input-file"))
+
+(render-fn {:bar {:baz "baz"}}) ;; returns "hello baz"
 ```
 
 #### Extending template
@@ -189,7 +206,9 @@ bar
 ```
 
 ```clojure
-(render "input-file" {}) ;; returns "foo\nbar\nbaz"
+(def render-fn (render "input-file"))
+
+(render-fn {}) ;; returns "foo\nbar\nbaz"
 ```
 
 #### Comments
@@ -201,7 +220,9 @@ foo{# bar baz #}
 ```
 
 ```clojure
-(render "input-file" {}) ;; returns "foo"
+(def render-fn (render "input-file"))
+
+(render-fn {}) ;; returns "foo"
 ```
 
 #### csrf
@@ -215,7 +236,9 @@ CSRF token can be added via
 and when rendering file `:csrf-token` has to be provided
 
 ```clojure
-(render "input-file" {:csrf-token "foobarbaz"}) ;; returns <input type="hidden" name="csrf_token" value="foobarbaz"> 
+(def render-fn (render "input-file"))
+
+(render-fn {:csrf-token "foobarbaz"}) ;; returns <input type="hidden" name="csrf_token" value="foobarbaz"> 
 ```
 
 #### Query string
@@ -227,7 +250,9 @@ input-file with content
 ```
 
 ```clojure
-(render "input-file" {:foo {:count 2}}) ;; returns "/foo?count=2"
+(def render-fn (render "input-file"))
+
+(render-fn {:foo {:count 2}}) ;; returns "/foo?count=2"
 ```
 
 #### Now
@@ -241,7 +266,9 @@ formatted with tz {% now "yyyy-MM-dd hh:mm " "Asia/Tokyo" %}
 ```
 
 ```clojure
-(render "input-file" {}) ;; returns "default format 2011/11/11 11:11\nformatted 2011-11-11\ntormatted with tz 2011-11-11 23:11"
+(def render-fn (render "input-file"))
+
+(render-fn {}) ;; returns "default format 2011/11/11 11:11\nformatted 2011-11-11\ntormatted with tz 2011-11-11 23:11"
 ```
 
 ### Verbatim
@@ -253,10 +280,10 @@ input-file with content
 ```
 
 ```clojure
-(render "input-file" {}) ;; returns "foo{{bar}}{%baz%}{#qux#}quux"
+(def render-fn (render "input-file"))
+
+(render-fn {}) ;; returns "foo{{bar}}{%baz%}{#qux#}quux"
 ```
-
-
 
 ## TemplateResolver
 
