@@ -2,7 +2,9 @@
   (:require [clojure.java.io :as io]
             [clojure.string :as str]
             [clojure.test :refer [deftest is testing]]
+            [mock-clj.core :as mock]
             [jj.majavat :as majavat]
+            [jj.majavat.parser :as parser]
             [jj.majavat.renderer.sanitizer :refer [->Html]])
   (:import (java.io InputStream)))
 
@@ -82,3 +84,24 @@
   (is (= (crlf->lf (slurp (io/resource "render-template-not-found.html")))
          (crlf->lf (String. (.readAllBytes ^InputStream
                                            ((majavat/render "not-existing-file" {:return-type :input-stream}) {}))))) "verifying failure to render input stream"))
+
+
+(deftest cache-disabled-test
+  (mock/with-mock
+    [parser/parse [{:type  :text
+                    :value "text"}]]
+    (let [render-fn (majavat/render "somefile" {:cache? false})]
+      (render-fn {})
+      (render-fn {})
+      (render-fn {}))
+    (is (= 3 (mock/call-count parser/parse)))))
+
+(deftest cache-enabled-test
+  (mock/with-mock
+    [parser/parse [{:type  :text
+                    :value "text"}]]
+    (let [render-fn (majavat/render "somefile" {})]
+      (render-fn {})
+      (render-fn {})
+      (render-fn {}))
+    (is (= 1 (mock/call-count parser/parse)))))

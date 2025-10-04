@@ -30,7 +30,7 @@ Additional options can be passed with
 (def render-fn (render "index.html" {:return-type :input-stream
                                      :sanitizer   (->Html)}))
 
-(render-fn {:user "jj"} )
+(render-fn {:user "jj"})
 ```
 
 All supported options:
@@ -38,6 +38,7 @@ All supported options:
 | Option              | Default Value      | Supported Options                     |
 |---------------------|--------------------|---------------------------------------|
 | `return-type`       | `:string`          | `:string`, `:input-stream`            |
+| `cache?`            | `true`             | `true`, `false`                       |
 | `template-resolver` | `ResourceResolver` | Any `TemplateResolver` implementation |
 | `sanitizer`         | `nil`              | Any `Sanitizer` implementation        |
 
