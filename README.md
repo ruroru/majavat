@@ -28,18 +28,19 @@ Additional options can be passed with
 
 ```clojure
 (def render-fn (majavat/build-renderer "index.html" {:cache?   false
-                                                    :renderer (->StringRenderer {:sanitizer (->Html)})}))
+                                                     :renderer (->StringRenderer {:sanitizer (->Html)})}))
 
 (render-fn {:user "jj"})
 ```
 
 All supported options:
 
-| Option              | Default Value      | Supported Options                     |
-|---------------------|--------------------|---------------------------------------|
-| `renderer`          | `Renderer`         | Any `Renderer` implementation         |
-| `cache?`            | `true`             | `true`, `false`                       |
-| `template-resolver` | `ResourceResolver` | Any `TemplateResolver` implementation |
+| Option              | Default Value                          | Supported Options                                   |
+| ------------------- | -------------------------------------- | --------------------------------------------------- |
+| `renderer`          | [`StringRenderer`](#renderer-protocol) | Any [`Renderer`](#renderer-protocol) implementation |
+| `cache?`            | `true`                                 | `true`, `false`                                     |
+| `template-resolver` | [`ResourceResolver`](#templateresolver)                    | [`TemplateResolver`](#templateresolver)               |
+
 
 ### Creating templates
 
@@ -283,6 +284,38 @@ input-file with content
 (def render-fn (build-renderer "input-file"))
 
 (render-fn {}) ;; returns "foo{{bar}}{%baz%}{#qux#}quux"
+```
+
+## Renderer Protocol
+
+### Configuration
+
+Supported options:
+
+**:sanitizer** - Input sanitization strategy
+
+### render
+
+Renders a template using the provided context data.
+- renderer - Renderer instance
+- template - template AST
+- context - Map of variables for template interpolation
+
+**Returns** - Rendered output
+
+### Built-in Implementations
+
+#### StringRenderer 
+Returns rendered output as a String
+clojure
+```clojure
+(->StringRenderer {:sanitizer (->Html)})
+```
+
+#### InputStreamRenderer
+Returns rendered output as an InputStream for streaming large content
+```clojure
+(->InputStreamRenderer {:sanitizer (->Json)})
 ```
 
 ## TemplateResolver
