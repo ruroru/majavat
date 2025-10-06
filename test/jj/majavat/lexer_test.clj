@@ -109,11 +109,10 @@
            :value "hello world "}
           {:type :block-start}
           {:type :keyword-block}
-          {:type  :block-name
-           :value :special-block}
+          {:type :content}
           {:line 1
            :type :block-end}]
-         (lexer/tokenize "hello world {% block special-block %}"))))
+         (lexer/tokenize "hello world {% block  %}"))))
 
 
 (deftest extends-test
@@ -121,13 +120,11 @@
            :value "testing "}
           {:type :block-start}
           {:type :keyword-extends}
-          {:type  :extends-block-name
-           :value :special-block}
           {:type  :file-path
            :value "file.txt"}
           {:line 1
            :type :block-end}]
-         (lexer/tokenize "testing {% extends special-block \"file.txt\" %}"))))
+         (lexer/tokenize "testing {% extends  \"file.txt\" %}"))))
 
 (deftest tokenize-without-value
   (is (= [{:type  :text

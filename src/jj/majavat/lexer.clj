@@ -125,7 +125,7 @@
             (recur (rrest my-sequence) "" (conj vector {:type :block-end :line line-number}) new-line-number)
 
             (and (= "" trimmed-string) (= (:type (last vector)) :keyword-block))
-            (recur (rrest my-sequence) "" (conj vector {:type :block-end :line line-number}) new-line-number)
+            (recur (rrest my-sequence) "" (conj vector {:type :content} {:type :block-end :line line-number}) new-line-number)
 
             (= (:type (last vector)) :keyword-let)
             (recur (rrest my-sequence) "" (conj vector {:type :block-end :line line-number}) new-line-number)
@@ -340,20 +340,6 @@
           (recur (rest my-sequence) (str current-string current-char) vector new-line-number))
 
         (= (:type (last vector)) :keyword-extends)
-        (cond
-          (and (string/blank? current-string) (= current-char \ ))
-          (recur (rest my-sequence) current-string vector new-line-number)
-
-          (and (not (string/blank? current-string)) (not= current-char \ ))
-          (recur (rest my-sequence) (str current-string current-char) vector new-line-number)
-
-          (and (not (string/blank? current-string)) (= current-char \ ))
-          (recur (rest my-sequence) "" (conj vector {:type :extends-block-name :value (keyword (string/trim current-string))}) new-line-number)
-
-          :else
-          (recur (rest my-sequence) (str current-string current-char) vector new-line-number))
-
-        (= (:type (last vector)) :extends-block-name)
         (cond
           (and (string/blank? current-string) (= current-char \ ))
           (recur (rest my-sequence) current-string vector new-line-number)

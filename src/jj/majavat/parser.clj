@@ -131,32 +131,26 @@
                               (throw (Exception. (str (:line file-name-token))))))
 
          :keyword-extends (let [remaining (rest lexed-list)
-                                block-name-token (first remaining)
-                                remaining-after-block-name (rest remaining)]
-                            (let [block-name (:value block-name-token)]
-                              (if (not (= :block-end (:type block-name-token)))
-                                (let [file-path-token (first remaining-after-block-name)
-                                      remaining-after-file-path (rest remaining-after-block-name)]
-                                  (if (not (= :block-end (:type file-path-token)))
-                                    (let [file-path (:value file-path-token)
-                                          resolved-file-path (if current-file-path
-                                                               (resolve-path current-file-path file-path)
-                                                               file-path)]
-                                      (if (cr/template-exists? template-resolver resolved-file-path)
-                                        (let [parent-content-str (read-content-as-string template-resolver resolved-file-path)
-                                              parent-lexed (lexer/tokenize parent-content-str)
-                                              [block-content remaining-after-block] (parse-ast remaining-after-file-path [] current-block true current-file-path template-resolver)
-                                              parent-content (parse-ast parent-lexed [] {block-name block-content} false resolved-file-path template-resolver)]
+                                file-path-token (first remaining)
+                                remaining-after-file-path (rest remaining)]
+                            (if (not (= :block-end (:type file-path-token)))
+                              (let [file-path (:value file-path-token)
+                                    resolved-file-path (if current-file-path
+                                                         (resolve-path current-file-path file-path)
+                                                         file-path)]
+                                (if (cr/template-exists? template-resolver resolved-file-path)
+                                  (let [parent-content-str (read-content-as-string template-resolver resolved-file-path)
+                                        parent-lexed (lexer/tokenize parent-content-str)
+                                        [block-content remaining-after-block] (parse-ast remaining-after-file-path [] current-block true current-file-path template-resolver)
+                                        parent-content (parse-ast parent-lexed [] {:content block-content} false resolved-file-path template-resolver)]
 
-                                          (recur remaining-after-block (into parent-content list) current-block parsing-for-body current-file-path template-resolver))
-                                        (throw (FileNotFoundException. file-path))))
-                                    (throw (Exception. (str (:line file-path-token))))))
-
-                                (throw (Exception. (str (:line block-name-token)))))))
+                                    (recur remaining-after-block (into parent-content list) current-block parsing-for-body current-file-path template-resolver))
+                                  (throw (FileNotFoundException. file-path))))
+                              (throw (Exception. (str (:line file-path-token))))))
 
          :keyword-block (let [remaining (rest lexed-list)
                               block-name-token (first remaining)
-                              block-name (:value block-name-token)
+                              block-name (or (:value block-name-token) (:type block-name-token))
                               remaining-after-block-name (rest remaining)
                               replacement-content (get current-block block-name)]
                           (if replacement-content
@@ -263,7 +257,6 @@
          :keyword-in (recur (rest lexed-list) list current-block parsing-for-body current-file-path template-resolver)
          :variable-declaration (recur (rest lexed-list) list current-block parsing-for-body current-file-path template-resolver)
          :identifier (recur (rest lexed-list) list current-block parsing-for-body current-file-path template-resolver)
-         :extends-block-name (recur (rest lexed-list) list current-block parsing-for-body current-file-path template-resolver)
          :file-path (recur (rest lexed-list) list current-block parsing-for-body current-file-path template-resolver)
          :block-name (recur (rest lexed-list) list current-block parsing-for-body current-file-path template-resolver)
          :query-string-declaration (recur (rest lexed-list) list current-block parsing-for-body current-file-path template-resolver)

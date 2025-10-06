@@ -1,1 +1,1 @@
-{% extends block-name "./sub/extends-parent-file" %}hello world
+{% extends "./sub/extends-parent-file" %}hello world

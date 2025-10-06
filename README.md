@@ -35,12 +35,11 @@ Additional options can be passed with
 
 All supported options:
 
-| Option              | Default Value                          | Supported Options                                   |
-| ------------------- | -------------------------------------- | --------------------------------------------------- |
-| `renderer`          | [`StringRenderer`](#renderer-protocol) | Any [`Renderer`](#renderer-protocol) implementation |
-| `cache?`            | `true`                                 | `true`, `false`                                     |
-| `template-resolver` | [`ResourceResolver`](#templateresolver)                    | [`TemplateResolver`](#templateresolver)               |
-
+| Option              | Default Value                           | Supported Options                                   |
+|---------------------|-----------------------------------------|-----------------------------------------------------|
+| `renderer`          | [`StringRenderer`](#renderer-protocol)  | Any [`Renderer`](#renderer-protocol) implementation |
+| `cache?`            | `true`                                  | `true`, `false`                                     |
+| `template-resolver` | [`ResourceResolver`](#templateresolver) | [`TemplateResolver`](#templateresolver)             |
 
 ### Creating templates
 
@@ -195,14 +194,14 @@ file.txt content
 
 ```
 foo
-{% block content %}
+{% block %}
 baz
 ```
 
 Rendering input file with content:
 
 ```
-{% extends content "file.txt" %}
+{% extends "file.txt" %}
 bar
 ```
 
@@ -297,6 +296,7 @@ Supported options:
 ### render
 
 Renders a template using the provided context data.
+
 - renderer - Renderer instance
 - template - template AST
 - context - Map of variables for template interpolation
@@ -305,15 +305,19 @@ Renders a template using the provided context data.
 
 ### Built-in Implementations
 
-#### StringRenderer 
+#### StringRenderer
+
 Returns rendered output as a String
 clojure
+
 ```clojure
 (->StringRenderer {:sanitizer (->Html)})
 ```
 
 #### InputStreamRenderer
+
 Returns rendered output as an InputStream for streaming large content
+
 ```clojure
 (->InputStreamRenderer {:sanitizer (->Json)})
 ```

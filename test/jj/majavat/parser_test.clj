@@ -1,5 +1,7 @@
 (ns jj.majavat.parser-test
-  (:require [clojure.test :refer [are deftest is]]
+  (:require [clojure.java.io :as io]
+            [clojure.test :refer [are deftest is]]
+            [jj.majavat.lexer :as lexer]
             [jj.majavat.parser :as parser]
             [jj.majavat.resolver.fs :as fcr]
             [jj.majavat.resolver.resource :as rcr])
@@ -122,6 +124,8 @@
          (parser/parse "extends-file" (rcr/->ResourceResolver)))))
 
 (deftest extends-from-parent-dir
+  (println (lexer/tokenize (slurp (io/resource "subfolder/extends-from-parent-dir"))))
+  (println (lexer/tokenize (slurp (io/resource "extends-parent-file"))))
   (is (= [{:type  :text
            :value "this is a header"}
           {:type  :text
@@ -182,10 +186,6 @@
   (are [expected file-path]
     (= expected
        (parser/parse file-path (rcr/->ResourceResolver)))
-    {:error-message "error on line 3"
-     :line          "3"
-     :type          "syntax-error"}
-    "extends/missing-block-keyword"
     {:error-message "error on line 3"
      :line          "3"
      :type          "syntax-error"}
