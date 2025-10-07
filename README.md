@@ -21,7 +21,7 @@ Add majavat to dependency list
 
 (def render-fn (majavat/build-renderer "index.html"))
 
-(render-fn "index.html" {:user "jj"})
+(render-fn {:user "jj"})
 ```
 
 Additional options can be passed with
