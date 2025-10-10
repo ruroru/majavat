@@ -1,8 +1,10 @@
 (ns jj.majavat.renderer.filters-test
   (:require
-    [clojure.test :refer [are deftest]]
+    [clojure.test :refer [are is deftest]]
     [jj.majavat.renderer.filters :as filters])
-  (:import (java.time LocalDate LocalDateTime LocalTime ZoneId ZonedDateTime)))
+  (:import (java.util UUID)
+           (java.net URI URL)
+           (java.time LocalDate LocalDateTime LocalTime ZoneId ZonedDateTime)))
 
 
 
@@ -148,5 +150,14 @@
                           (str test-instant) ["not-avalid-format"]
                           "12 --- 12:04" ["hh --- hh:mm" "Asia/Tokyo"])))
 
+(deftest test-uuid-as-string
+  (are [expected input] (= expected (filters/->uuid-as-string input))
+                        "550e8400-e29b-41d4-a716-446655440000" (UUID/fromString "550e8400-e29b-41d4-a716-446655440000")))
 
+(deftest url
+  (are [expected input] (= expected (filters/->url-to-string input))
+                        "http://www.example.com" (URL. "http://www.example.com")))
 
+(deftest uri
+  (are [expected input] (= expected (filters/->uri-to-string input))
+                        "/some/path" (URI. "/some/path")))

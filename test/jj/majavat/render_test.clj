@@ -9,7 +9,9 @@
     [jj.majavat.resolver.fs :as fcr]
     [jj.majavat.resolver.resource :as rcr])
   (:import (java.io InputStream)
-           (java.time LocalDate LocalDateTime LocalTime ZoneId ZonedDateTime)))
+           (java.net URI URL)
+           (java.time LocalDate LocalDateTime LocalTime ZoneId ZonedDateTime)
+           (java.util UUID)))
 
 
 (defn- crlf->lf [s]
@@ -248,11 +250,9 @@ this is a  footer"
 
   (are [expected-value template-path context]
     (let []
-
       (= expected-value
          (renderer/render (->StringRenderer {:sanitizer (->Html)}) (parser/parse template-path contentResolver) context)
-         (String. (.readAllBytes ^InputStream (renderer/render (->InputStreamRenderer {:sanitizer (->Html)}) (parser/parse template-path contentResolver) context))))
-      )
+         (String. (.readAllBytes ^InputStream (renderer/render (->InputStreamRenderer {:sanitizer (->Html)}) (parser/parse template-path contentResolver) context)))))
 
     "foo BAR" "filter/upper-case" {:value "bar"}
     "foo bar" "filter/lower-case" {:value "BAR"}
@@ -271,6 +271,9 @@ this is a  footer"
     "default: 2022-01-01T01:01, format one is 01/01/2022 01:01" "filter/date-local-date-time" {:value (LocalDateTime/of 2022, 01, 01, 01, 01)}
     "default: 01:01, format one is 01/01" "filter/date-local-time" {:value (LocalTime/of 01, 01)}
     "default: 2022-01-02T03:04Z[UTC], format one is 2022-01-02 03:04 and time in tokyo is 2022-01-02 12:04" "filter/date-zoned-date-time" {:value (ZonedDateTime/of (LocalDateTime/of 2022, 01, 02, 03, 04) (ZoneId/of "UTC"))}
+    "value is 550e8400-e29b-41d4-a716-446655440000" "filter/value" {:value (UUID/fromString "550e8400-e29b-41d4-a716-446655440000")}
+    "value is http://www.example.com" "filter/value" {:value (.toURL (URI.   "http://www.example.com"))}
+    "value is /some/path" "filter/value" {:value (URI. "/some/path")}
     ))
 
 
@@ -285,7 +288,6 @@ this is a  footer"
   (testing "parsing to inpustream"
     (are [expected-value template-path context]
       (= expected-value
-
          (String. (.readAllBytes ^InputStream (renderer/render (->InputStreamRenderer {:sanitizer (->Html)}) (parser/parse template-path contentResolver) context))))
       "testing hello barbaz" "let/let-foo" {}
       "testing hello barbaz" "let/let-bar" {:bar {:qux "bar"}}

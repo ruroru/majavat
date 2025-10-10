@@ -4,9 +4,10 @@
             [jj.majavat.renderer.filters :as filters]
             [jj.majavat.renderer.sanitizer :refer [sanitize]])
   (:import (java.io ByteArrayInputStream PushbackReader SequenceInputStream)
+           (java.net URI URL)
            (java.nio.charset Charset StandardCharsets)
            (java.time Instant LocalDate LocalDateTime LocalTime ZonedDateTime)
-           (java.util Collections)))
+           (java.util Collections UUID)))
 
 (defn- read-edn-resource [resource-path]
   (when-let [resource (io/resource resource-path)]
@@ -39,11 +40,11 @@
 
 (defn- handle-string [v filter-name _]
   (case filter-name
-    :upper-case (clojure.string/upper-case v)
-    :lower-case (clojure.string/lower-case v)
+    :upper-case (.toUpperCase ^String  v)
+    :lower-case (.toLowerCase ^String  v)
     :capitalize (clojure.string/capitalize v)
     :title-case (filters/title-case v)
-    :trim (clojure.string/trim v)
+    :trim (.trim ^String v)
     :upper-roman (filters/upper-roman v)
     :int (filters/as-int v)
     :long (filters/as-long v)
@@ -89,6 +90,15 @@
     :date (filters/->formatted-instant v filter-args)
     v))
 
+(defn- handle-uri [v]
+  (filters/->uri-to-string v))
+
+(defn- handle-url [v]
+  (filters/->url-to-string v))
+
+(defn- handle-uuid [v]
+  (filters/->uuid-as-string v))
+
 (defn- apply-filter [v filter-obj]
   (let [filter-name (:filter-name filter-obj)
         filter-args (:args filter-obj)]
@@ -101,6 +111,9 @@
       (instance? LocalTime v) (handle-local-time v filter-name filter-args)
       (instance? ZonedDateTime v) (handle-zoned-date-time v filter-name filter-args)
       (instance? Instant v) (handle-instant v filter-name filter-args)
+      (instance? URL v) (handle-url v)
+      (instance? URI v) (handle-uri v)
+      (instance? UUID v) (handle-uuid v)
       (nil? v) (handle-nil v filter-name filter-args)
       :else
       v)))

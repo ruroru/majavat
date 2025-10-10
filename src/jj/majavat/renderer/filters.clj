@@ -2,6 +2,8 @@
   (:require [clojure.string :as str]
             [clojure.tools.logging :as logger])
   (:import (java.time Instant LocalDate LocalDateTime LocalTime ZoneId ZonedDateTime)
+           (java.util UUID)
+           (java.net URL URI)
            (java.time.format DateTimeFormatter)))
 
 (def ^:private formatter-cache (atom {}))
@@ -126,6 +128,10 @@
     (catch Exception _
       nil)))
 
+
+(defn ->uuid-as-string [^UUID uuid]
+  (.toString uuid))
+
 (defn ->formatted-zoned-date-time [v filter-args]
   (let [pattern (first filter-args)
         time-zone (string->time-zone (second filter-args))
@@ -151,3 +157,9 @@
       (do
         (logger/errorf "%s is not a valid pattern." pattern)
         (str v)))))
+
+(defn ->url-to-string [^URL url]
+  (.toString url))
+
+(defn ->uri-to-string [^URI uri]
+  (.toString uri))
