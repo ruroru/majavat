@@ -290,6 +290,21 @@
                 (concat (render-nodes-to-stream-seq when-false context charset escape-conf)
                         (render-nodes-to-stream-seq (rest nodes) context charset escape-conf))
                 (render-nodes-to-stream-seq (rest nodes) context charset escape-conf))))
+
+          :if-not
+          (let [condition (:condition node)
+                when-true (:when-true node)
+                when-false (:when-false node)]
+            (if (not (evaluate-condition condition context))
+              (if when-true
+                (concat (render-nodes-to-stream-seq when-true context charset escape-conf)
+                        (render-nodes-to-stream-seq (rest nodes) context charset escape-conf))
+                (render-nodes-to-stream-seq (rest nodes) context charset escape-conf))
+              (if when-false
+                (concat (render-nodes-to-stream-seq when-false context charset escape-conf)
+                        (render-nodes-to-stream-seq (rest nodes) context charset escape-conf))
+                (render-nodes-to-stream-seq (rest nodes) context charset escape-conf))))
+
           (render-nodes-to-stream-seq (rest nodes) context charset escape-conf))))))
 
 

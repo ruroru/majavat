@@ -238,11 +238,14 @@ this is a  footer"
 
 
 (deftest if-not-test
-  (are [rendered-string template-path]
-    (= rendered-string
-       (renderer/render (->StringRenderer {:sanitizer (->Html)}) (parser/parse template-path contentResolver) {:value "some"}))
-    "hello " "if/if-not"
-    "hello universe" "if/if-not-else"))
+  (let [context {:value "some"}]
+    (are [rendered-string template-path]
+
+      (= rendered-string
+         (String. (.readAllBytes ^InputStream (renderer/render (->InputStreamRenderer {:sanitizer (->Html)}) (parser/parse template-path contentResolver) context)))
+         (renderer/render (->StringRenderer {:sanitizer (->Html)}) (parser/parse template-path contentResolver) context))
+      "hello " "if/if-not"
+      "hello universe" "if/if-not-else")))
 
 
 (deftest render-filters
@@ -294,7 +297,7 @@ this is a  footer"
       "testing hello barbaz" "let/let-qux" {:bar {:qux "bar"}})))
 
 
-(deftest loop
+(deftest loop-over-sequence
   (are [expected template-path]
     (let [context {:planets ["Mercury" "Venus" "Earth" "Mars" "Jupiter" "Saturn" "Uranus" "Neptune"]}
           render-result (renderer/render (->StringRenderer {:sanitizer (->Html)}) (parser/parse template-path contentResolver) context)

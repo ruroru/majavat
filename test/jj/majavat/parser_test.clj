@@ -1,5 +1,6 @@
 (ns jj.majavat.parser-test
   (:require [clojure.java.io :as io]
+            [clojure.pprint :as pprint]
             [clojure.test :refer [are deftest is]]
             [jj.majavat.lexer :as lexer]
             [jj.majavat.parser :as parser]
@@ -124,8 +125,6 @@
          (parser/parse "extends-file" (rcr/->ResourceResolver)))))
 
 (deftest extends-from-parent-dir
-  (println (lexer/tokenize (slurp (io/resource "subfolder/extends-from-parent-dir"))))
-  (println (lexer/tokenize (slurp (io/resource "extends-parent-file"))))
   (is (= [{:type  :text
            :value "this is a header"}
           {:type  :text
@@ -407,3 +406,17 @@
       :value "testing "}
      {:type  :text
       :value "foo{{d}}{%d%}{#d#}bar"}] "verbatim/verbatim"))
+
+(deftest filter-without-function
+  (are [expected-ast input-file]
+    (= expected-ast (parser/parse input-file (rcr/->ResourceResolver)))
+    {:error-message "error on line 3"
+     :line          "3"
+     :type          "syntax-error"}
+    "filter/empty-filter"
+    {:error-message "error on line 3"
+     :line          "3"
+     :type          "syntax-error"}
+    "filter/piped-empty-filter"
+    ))
+

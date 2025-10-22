@@ -54,7 +54,7 @@
                                                                                                            [args remaining]))
                                                                            parsed-filter {:filter-name (:value filter-function) :args args}]
                                                                        (recur remaining-after-args (conj filters parsed-filter)))
-                                                                     [filters remaining]))
+                                                                     (throw (Exception. (str (:line (first remaining-after-tag)))))))
                                                                  [filters remaining]))
                            value-node (if (empty? filters)
                                         (assoc current-item :type :value-node)
