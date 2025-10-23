@@ -1,5 +1,6 @@
 (ns jj.majavat.renderer.filters
   (:require [clojure.string :as str]
+            [clojure.pprint :as pprint]
             [clojure.tools.logging :as logger])
   (:import (java.time Instant LocalDate LocalDateTime LocalTime ZoneId ZonedDateTime)
            (java.util UUID)
@@ -163,3 +164,12 @@
 
 (defn ->uri-to-string [^URI uri]
   (.toString uri))
+
+(defn ->handle-where [v filter-args]
+  (into []
+        (let [[filter-key filter-value] filter-args]
+          (filter #(= (get % filter-key) filter-value) v))))
+
+(defn seq->str [v]
+  (str v))
+

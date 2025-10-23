@@ -1,10 +1,10 @@
 (ns jj.majavat.renderer.filters-test
   (:require
-    [clojure.test :refer [are is deftest]]
+    [clojure.test :refer [are deftest]]
     [jj.majavat.renderer.filters :as filters])
-  (:import (java.util UUID)
-           (java.net URI URL)
-           (java.time LocalDate LocalDateTime LocalTime ZoneId ZonedDateTime)))
+  (:import (java.net URI URL)
+           (java.time LocalDate LocalDateTime LocalTime ZoneId ZonedDateTime)
+           (java.util UUID)))
 
 
 
@@ -161,3 +161,19 @@
 (deftest uri
   (are [expected input] (= expected (filters/->uri-to-string input))
                         "/some/path" (URI. "/some/path")))
+
+(deftest map-where
+  (are [expected input args] (= expected (filters/->handle-where input args))
+                             (list
+                               {:key "y" :random "d" :value "d"}
+                               {:key "y" :random "f" :value "t"}
+                               {:key "y" :random "i" :value "r"})
+                             [
+                              {:key "a" :value "b" :random "c"}
+                              {:key "y" :value "d" :random "d"}
+                              {:key "b" :value "b" :random "e"}
+                              {:key "y" :value "t" :random "f"}
+                              {:key "d" :value "t" :random "g"}
+                              {:key "d" :value "b" :random "h"}
+                              {:key "y" :value "r" :random "i"}]
+                             [:key "y"]))

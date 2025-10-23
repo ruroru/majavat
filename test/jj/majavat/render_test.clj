@@ -235,8 +235,6 @@ this is a  footer"
                           ">" "&gt;"
                           "\"" "&quot;")))
 
-
-
 (deftest if-not-test
   (let [context {:value "some"}]
     (are [rendered-string template-path]
@@ -277,6 +275,7 @@ this is a  footer"
     "value is 550e8400-e29b-41d4-a716-446655440000" "filter/value" {:value (UUID/fromString "550e8400-e29b-41d4-a716-446655440000")}
     "value is http://www.example.com" "filter/value" {:value (.toURL (URI.   "http://www.example.com"))}
     "value is /some/path" "filter/value" {:value (URI. "/some/path")}
+    "testing [{&quot;key1&quot; &quot;value1&quot;, &quot;value&quot; &quot;b&quot;}]" "filter/where" {:value [{"key1" "value1" "value" "b" } {"key1" "value2" "value" "b" }]}
     ))
 
 

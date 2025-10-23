@@ -292,7 +292,7 @@
      {:filters [{:args        []
                  :filter-name :upper-case}]
       :type    :value-node
-      :value   [:value]}] "filters/uppercase"
+      :value   [:value]}] "filter/uppercase"
 
 
     [{:type  :text
@@ -420,3 +420,16 @@
     "filter/piped-empty-filter"
     ))
 
+(deftest filter-with-args
+  (are [expected-ast input-file]
+    (= expected-ast (parser/parse input-file (rcr/->ResourceResolver)))
+    [{:type  :text
+      :value "testing "}
+     {:filters [{:args        ["key1"
+                               "value1"]
+                 :filter-name :where}
+                {:args        []
+                 :filter-name :str}]
+      :type    :value-node
+      :value   [:value]}]
+    "filter/where"))

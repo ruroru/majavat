@@ -40,8 +40,8 @@
 
 (defn- handle-string [v filter-name _]
   (case filter-name
-    :upper-case (.toUpperCase ^String  v)
-    :lower-case (.toLowerCase ^String  v)
+    :upper-case (.toUpperCase ^String v)
+    :lower-case (.toLowerCase ^String v)
     :capitalize (clojure.string/capitalize v)
     :title-case (filters/title-case v)
     :trim (.trim ^String v)
@@ -99,6 +99,15 @@
 (defn- handle-uuid [v]
   (filters/->uuid-as-string v))
 
+(defn- handle-sequential [v filter-name filter-args]
+
+  (case filter-name
+    :where (filters/->handle-where v filter-args)
+    :str (filters/seq->str v)
+    v))
+
+
+
 (defn- apply-filter [v filter-obj]
   (let [filter-name (:filter-name filter-obj)
         filter-args (:args filter-obj)]
@@ -114,6 +123,7 @@
       (instance? URL v) (handle-url v)
       (instance? URI v) (handle-uri v)
       (instance? UUID v) (handle-uuid v)
+      (sequential? v) (handle-sequential v filter-name filter-args)
       (nil? v) (handle-nil v filter-name filter-args)
       :else
       v)))
