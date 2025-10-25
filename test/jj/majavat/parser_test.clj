@@ -1,12 +1,11 @@
 (ns jj.majavat.parser-test
-  (:require [clojure.java.io :as io]
-            [clojure.pprint :as pprint]
-            [clojure.test :refer [are deftest is]]
-            [jj.majavat.lexer :as lexer]
+  (:require [clojure.test :refer [are deftest is]]
             [jj.majavat.parser :as parser]
             [jj.majavat.resolver.fs :as fcr]
             [jj.majavat.resolver.resource :as rcr])
-  (:import (java.time ZoneId)))
+  (:import (java.io File)
+           (java.nio.file Files)
+           (java.time ZoneId)))
 
 (def contentResolver (rcr/->ResourceResolver))
 
@@ -143,6 +142,7 @@
          (parser/parse "subfolder/extends-from-sub-dir" (rcr/->ResourceResolver)))))
 
 (deftest linebreak-parsing
+  (.mkdir ^File (File. "./target"))
   (are [expected linebreak-content] (do
                                       (spit "./target/linebreak" linebreak-content)
                                       (= expected (parser/parse "./target/linebreak" (fcr/->FsResolver))))

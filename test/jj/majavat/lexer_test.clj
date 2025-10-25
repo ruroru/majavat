@@ -297,3 +297,37 @@
                          {:type :block-start}
                          {:type :end-verbatim}
                          {:line 1 :type :block-end}]))
+
+(deftest tokenize-keyword-arguments
+  (let [expected [{:type  :text
+                   :value "testing "}
+                  {:type :opening-bracket}
+                  {:type :expression :value [:value]}
+                  {:type :filter-tag}
+                  {:type :filter-function :value :function1}
+                  {:type :filter-arg :value :arg}
+                  {:type :filter-tag}
+                  {:type :filter-function :value :function2}
+                  {:type :filter-arg :value :foo}
+                  {:type :filter-arg :value :bar}
+                  {:type :filter-arg :value :baz}
+                  {:type :filter-tag}
+                  {:type :filter-function :value :func3}
+                  {:type :filter-arg :value :qaz}
+                  {:type :filter-arg :value :quux}
+                  {:line 1 :type :closing-bracket}]
+        input "testing {{ value |function1 arg |     function2   foo bar baz|func3 qaz   quux   }}"]
+    (is (= expected (lexer/tokenize input)))))
+
+(deftest tokenize-keyword-arguments-with-space
+  (let [expected [{:type  :text
+                   :value "testing "}
+                  {:type :opening-bracket}
+                  {:type :expression :value [:value]}
+                  {:type :filter-tag}
+                  {:type :filter-function :value :function}
+                  {:type :filter-arg :value "foo bar"}
+                  {:type :filter-arg :value :baz}
+                  {:line 1 :type :closing-bracket}]
+        input "testing {{ value | function   \"foo bar\" baz}}"]
+    (is (= expected (lexer/tokenize input)))))

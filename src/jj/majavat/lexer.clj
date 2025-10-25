@@ -162,14 +162,18 @@
         (recur (rest my-sequence) (str current-string current-char) vector new-line-number)
 
         (and (= current-char \}) (= next-char \}))
-        (let [trimmed-string (string/trim current-string)]
+        (let [trimmed-string (string/trim current-string)
+              last-type (:type (last vector))]
           (cond
-            (or (= (:type (last vector)) :filter-tag)
-                (= (:type (last vector)) :filter-function)
-                (= (:type (last vector)) :filter-arg))
+            (or (= last-type :filter-tag)
+                (= last-type :filter-function)
+                (= last-type :filter-arg))
             (if (not (string/blank? trimmed-string))
-              (recur (rrest my-sequence) "" (conj vector {:type :filter-function :value (keyword trimmed-string)}
-                                                  {:type :closing-bracket :line line-number}) new-line-number)
+              (let [token-type (if (= last-type :filter-tag)
+                                 :filter-function
+                                 :filter-arg)]
+                (recur (rrest my-sequence) "" (conj vector {:type token-type :value (keyword trimmed-string)}
+                                                    {:type :closing-bracket :line line-number}) new-line-number))
               (recur (rrest my-sequence) "" (conj vector {:type :closing-bracket :line line-number}) new-line-number))
 
             (string/blank? trimmed-string)
@@ -195,19 +199,10 @@
             (= (:type (last vector)) :filter-arg))
         (cond
           (and (= current-char \") (string/blank? (string/trim current-string)))
-          (recur (rest my-sequence) "" vector new-line-number)
+          (recur (rest my-sequence) "\"" vector new-line-number)
 
-          (and (= current-char \") (not (string/blank? (string/trim current-string))))
-          (recur (rest my-sequence) "" (conj vector {:type :filter-arg :value current-string}) new-line-number)
-
-          (and (= current-char \|) (string/blank? (string/trim current-string)))
-          (recur (rest my-sequence) "" (conj vector {:type :filter-tag}) new-line-number)
-
-          (and (= current-char \ )
-               (not (string/blank? (string/trim current-string)))
-               (= (:type (last vector)) :filter-tag))
-          (let [trimmed-string (string/trim current-string)]
-            (recur (rest my-sequence) "" (conj vector {:type :filter-function :value (keyword trimmed-string)}) new-line-number))
+          (and (= current-char \") (string/starts-with? current-string "\""))
+          (recur (rest my-sequence) "" (conj vector {:type :filter-arg :value (subs current-string 1)}) new-line-number)
 
           (and (= current-char \|)
                (not (string/blank? (string/trim current-string)))
@@ -215,11 +210,42 @@
           (let [trimmed-string (string/trim current-string)]
             (recur (rest my-sequence) "" (conj vector {:type :filter-function :value (keyword trimmed-string)} {:type :filter-tag}) new-line-number))
 
-          (and (not= current-char \") (not= current-char \|) (not= current-char \}) (not= next-char \}))
+          (and (= current-char \|)
+               (not (string/blank? (string/trim current-string)))
+               (or (= (:type (last vector)) :filter-function)
+                   (= (:type (last vector)) :filter-arg)))
+          (let [trimmed-string (string/trim current-string)]
+            (recur (rest my-sequence) "" (conj vector {:type :filter-arg :value (keyword trimmed-string)} {:type :filter-tag}) new-line-number))
+
+          (and (= current-char \|) (string/blank? (string/trim current-string)))
+          (recur (rest my-sequence) "" (conj vector {:type :filter-tag}) new-line-number)
+
+          (and (= current-char \ )
+               (not (string/blank? (string/trim current-string)))
+               (not (string/starts-with? current-string "\""))
+               (= (:type (last vector)) :filter-tag))
+          (let [trimmed-string (string/trim current-string)]
+            (recur (rest my-sequence) "" (conj vector {:type :filter-function :value (keyword trimmed-string)}) new-line-number))
+
+          (and (= current-char \ )
+               (not (string/blank? (string/trim current-string)))
+               (not (string/starts-with? current-string "\""))
+               (or (= (:type (last vector)) :filter-function)
+                   (= (:type (last vector)) :filter-arg)))
+          (let [trimmed-string (string/trim current-string)]
+            (recur (rest my-sequence) "" (conj vector {:type :filter-arg :value (keyword trimmed-string)}) new-line-number))
+
+          (and (= current-char \ ) (string/blank? (string/trim current-string)))
+          (recur (rest my-sequence) "" vector new-line-number)
+
+          (and (= current-char \ ) (string/starts-with? current-string "\""))
+          (recur (rest my-sequence) (str current-string current-char) vector new-line-number)
+
+          (and (not= current-char \") (not= current-char \|) (not= current-char \ ))
           (recur (rest my-sequence) (str current-string current-char) vector new-line-number)
 
           :else
-          (recur (rest my-sequence) (str current-string current-char) vector new-line-number))
+          (recur (rest my-sequence) current-string vector new-line-number))
 
         (= (:type (last vector)) :block-start)
         (cond
