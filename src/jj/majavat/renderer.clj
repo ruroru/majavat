@@ -4,10 +4,9 @@
             [jj.majavat.renderer.filters :as filters]
             [jj.majavat.renderer.sanitizer :refer [sanitize]])
   (:import (java.io ByteArrayInputStream PushbackReader SequenceInputStream)
-           (java.net URI URL)
            (java.nio.charset Charset StandardCharsets)
-           (java.time Instant LocalDate LocalDateTime LocalTime ZonedDateTime)
-           (java.util Collections UUID)))
+           (java.time Instant)
+           (java.util Collections)))
 
 (defn- read-edn-resource [resource-path]
   (when-let [resource (io/resource resource-path)]
@@ -33,102 +32,6 @@
     v
     (str v)))
 
-(defn- handle-nil [v filter-name filter-args]
-  (case filter-name
-    :default (filters/get-default v filter-args)
-    v))
-
-(defn- handle-string [v filter-name _]
-  (case filter-name
-    :upper-case (.toUpperCase ^String v)
-    :lower-case (.toLowerCase ^String v)
-    :capitalize (clojure.string/capitalize v)
-    :title-case (filters/title-case v)
-    :trim (.trim ^String v)
-    :upper-roman (filters/upper-roman v)
-    :int (filters/as-int v)
-    :long (filters/as-long v)
-    v))
-
-(defn- handle-keyword [v filter-name _]
-  (case filter-name
-    :name (name v)
-    v))
-
-(defn- handle-number [v filter-name _]
-  (case filter-name
-    :inc (inc v)
-    :dec (dec v)
-    :file-size-format (filters/file-size v)
-    v))
-
-(defn- handle-local-date [v filter-name filter-args]
-  (case filter-name
-    :date (filters/->formatted-local-date v filter-args)
-    v))
-
-(defn- handle-local-date-time [v filter-name filter-args]
-  (case filter-name
-    :date (filters/->formatted-local-date-time v filter-args)
-    v))
-
-(defn- handle-local-time [v filter-name filter-args]
-  (case filter-name
-    :date (filters/->formatted-local-time v filter-args)
-    v))
-
-
-
-(defn- handle-zoned-date-time [v filter-name filter-args]
-  (case filter-name
-    :date (filters/->formatted-zoned-date-time v filter-args)
-    v))
-
-
-(defn handle-instant [v filter-name filter-args]
-  (case filter-name
-    :date (filters/->formatted-instant v filter-args)
-    v))
-
-(defn- handle-uri [v]
-  (filters/->uri-to-string v))
-
-(defn- handle-url [v]
-  (filters/->url-to-string v))
-
-(defn- handle-uuid [v]
-  (filters/->uuid-as-string v))
-
-(defn- handle-sequential [v filter-name filter-args]
-
-  (case filter-name
-    :where (filters/->handle-where v filter-args)
-    :str (filters/seq->str v)
-    v))
-
-
-
-(defn- apply-filter [v filter-obj]
-  (let [filter-name (:filter-name filter-obj)
-        filter-args (:args filter-obj)]
-    (cond
-      (string? v) (handle-string v filter-name filter-args)
-      (keyword? v) (handle-keyword v filter-name filter-args)
-      (number? v) (handle-number v filter-name filter-args)
-      (instance? LocalDate v) (handle-local-date v filter-name filter-args)
-      (instance? LocalDateTime v) (handle-local-date-time v filter-name filter-args)
-      (instance? LocalTime v) (handle-local-time v filter-name filter-args)
-      (instance? ZonedDateTime v) (handle-zoned-date-time v filter-name filter-args)
-      (instance? Instant v) (handle-instant v filter-name filter-args)
-      (instance? URL v) (handle-url v)
-      (instance? URI v) (handle-uri v)
-      (instance? UUID v) (handle-uuid v)
-      (sequential? v) (handle-sequential v filter-name filter-args)
-      (nil? v) (handle-nil v filter-name filter-args)
-      :else
-      v)))
-
-(defn- apply-filters [v filter-obj] (apply-filter v filter-obj))
 
 (defn- remove-nil [[_ v]]
   (not (nil? v)))
@@ -167,9 +70,8 @@
 
       :value-node
       (let [val (resolve-path context (:value node))
-            filtered-val (if-let [filters (:filters node)]
-                           (reduce apply-filters val filters)
-                           val)]
+            filter-fn (get node :filter-fn identity)
+            filtered-val (filter-fn val)]
         (.append sb (-> filtered-val
                         ->str
                         (escape-if-needed (:sanitizer escape-conf)))))
@@ -238,9 +140,8 @@
 
           :value-node
           (let [val (resolve-path context (:value node))
-                filtered-val (if-let [filters (:filters node)]
-                               (reduce apply-filter val filters)
-                               val)
+                filter-fn (get node :filter-fn identity)
+                filtered-val (filter-fn val)
                 resolved-value (-> filtered-val
                                    ->str
                                    (escape-if-needed (:sanitizer escape-conf)))]

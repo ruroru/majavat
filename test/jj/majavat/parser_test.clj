@@ -282,28 +282,6 @@
      :line          "3"
      :type          "syntax-error"}))
 
-(deftest test-filters
-  (are [expected-ast file-path]
-    (= expected-ast
-       (parser/parse file-path (rcr/->ResourceResolver)))
-
-    [{:type  :text
-      :value "testing "}
-     {:filters [{:args        []
-                 :filter-name :upper-case}]
-      :type    :value-node
-      :value   [:value]}] "filter/uppercase"
-
-
-    [{:type  :text
-      :value "foo "}
-     {:filters [{:args        []
-                 :filter-name :trim}
-                {:args        []
-                 :filter-name :upper-case}]
-      :type    :value-node
-      :value   [:value]}]
-    "filter/multi-filter"))
 
 (deftest let-test
   (are [expected-ast input-file]
@@ -362,20 +340,6 @@
     "query-string/query-string"))
 
 
-(deftest filter-with-args
-  (are [expected-ast input-file]
-    (= expected-ast (parser/parse input-file (rcr/->ResourceResolver)))
-    [{:filters [{:args        ["arg1"
-                               "arg2"]
-                 :filter-name :function1}
-                {:args        []
-                 :filter-name :function2}
-                {:args        ["default-value"]
-                 :filter-name :default}]
-      :type    :value-node
-      :value   [:val]}]
-    "filter/pipe"))
-
 (deftest now
   (are [expected-ast input-file]
     (= expected-ast (parser/parse input-file (rcr/->ResourceResolver)))
@@ -420,16 +384,3 @@
     "filter/piped-empty-filter"
     ))
 
-(deftest filter-with-args
-  (are [expected-ast input-file]
-    (= expected-ast (parser/parse input-file (rcr/->ResourceResolver)))
-    [{:type  :text
-      :value "testing "}
-     {:filters [{:args        ["key1"
-                               "value1"]
-                 :filter-name :where}
-                {:args        []
-                 :filter-name :str}]
-      :type    :value-node
-      :value   [:value]}]
-    "filter/where"))

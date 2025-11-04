@@ -1,11 +1,10 @@
 (ns jj.majavat.renderer.filters
   (:require [clojure.string :as str]
-            [clojure.pprint :as pprint]
             [clojure.tools.logging :as logger])
-  (:import (java.time Instant LocalDate LocalDateTime LocalTime ZoneId ZonedDateTime)
-           (java.util UUID)
-           (java.net URL URI)
-           (java.time.format DateTimeFormatter)))
+  (:import (java.net URI URL)
+           (java.time Instant LocalDate LocalDateTime LocalTime ZoneId ZonedDateTime)
+           (java.time.format DateTimeFormatter)
+           (java.util UUID)))
 
 (def ^:private formatter-cache (atom {}))
 (def ^:const ^:private roman-regex #"(?i)\b(?=[mdclxvi])M{0,4}(?:CM|CD|D?C{0,3})(?:XC|XL|L?X{0,3})(?:IX|IV|V?I{0,3})\b")

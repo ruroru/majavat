@@ -1,9 +1,41 @@
 (ns jj.majavat.parser
   (:require [jj.majavat.lexer :as lexer]
-            [jj.majavat.resolver :as cr])
+            [jj.majavat.resolver :as cr]
+            [jj.majavat.renderer.filters :as filters])
   (:import (java.io FileNotFoundException PushbackReader StringWriter)
            (java.nio.file Paths)
-           (java.time ZoneId)))
+           (java.time Instant LocalDate LocalDateTime LocalTime ZoneId ZonedDateTime)))
+
+(defn- create-filter-fn [{:keys [filter-name args]}]
+  (case filter-name
+    :trim #(.trim ^String %)
+    :upper-case #(.toUpperCase ^String %)
+    :lower-case #(.toLowerCase ^String %)
+    :capitalize #(clojure.string/capitalize ^String %)
+    :title-case #(filters/title-case ^String %)
+    :upper-roman #(filters/upper-roman ^String %)
+    :int #(filters/as-int %)
+    :long #(filters/as-long %)
+    :name #(if (keyword? %) (name %) %)
+    :inc #(if (number? %) (inc %) %)
+    :dec #(if (number? %) (dec %) %)
+    :file-size-format #(if (number? %) (filters/file-size %) (str %))
+    :default #(if (nil? %) (first args) %)
+    :date #(cond
+             (instance? LocalDate %) (filters/->formatted-local-date % args)
+             (instance? LocalDateTime %) (filters/->formatted-local-date-time % args)
+             (instance? LocalTime %) (filters/->formatted-local-time % args)
+             (instance? ZonedDateTime %) (filters/->formatted-zoned-date-time % args)
+             (instance? Instant %) (filters/->formatted-instant % args)
+             :else (str %))
+    :where #(if (sequential? %) (filters/->handle-where % args) %)
+    :str #(if (sequential? %) (filters/seq->str %) (str %))
+    identity))
+
+(defn- build-filter-fn [filter-specs]
+  (if (empty? filter-specs)
+    identity
+    (apply comp (reverse (map create-filter-fn filter-specs)))))
 
 (defn- resolve-path [base-path relative-path]
   (let [base-path-obj (Paths/get base-path (make-array String 0))
@@ -58,7 +90,7 @@
                                                                  [filters remaining]))
                            value-node (if (empty? filters)
                                         (assoc current-item :type :value-node)
-                                        (assoc current-item :type :value-node :filters filters))]
+                                        (assoc current-item :type :value-node :filter-fn (build-filter-fn filters)))]
                        (recur remaining-after-filters (conj list value-node) current-block parsing-for-body current-file-path template-resolver))
 
          :opening-bracket (recur (rest lexed-list) list current-block parsing-for-body current-file-path template-resolver)
@@ -89,8 +121,8 @@
                                                      (recur (rest remaining) format (:now-timezone current-token))
 
                                                      :else
-                                                     [{:type :keyword-now
-                                                       :format format
+                                                     [{:type      :keyword-now
+                                                       :format    format
                                                        :time-zone timezone} remaining])))]
                 (recur final-remaining (conj list now-node) current-block parsing-for-body current-file-path template-resolver))
 
