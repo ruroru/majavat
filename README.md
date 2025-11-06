@@ -64,6 +64,7 @@ Hello {{ name | upper-case }}!
 
 ```clojure
 (def render-fn (build-renderer "file.txt"))
+
 (render-fn {:name "world"}) ;; => returns Hello WORLD!
 ```
 
@@ -295,9 +296,8 @@ Supported options:
 
 ### render
 
-Renders a template using the provided context data.
+Renders a template using the provided context.
 
-- renderer - Renderer instance
 - template - template AST
 - context - Map of variables for template interpolation
 
