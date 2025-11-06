@@ -364,6 +364,10 @@ Check if template exists at a path.
 - **Html** - implementation for html pages
 - **Json** - implementation for Json
 
+## Available Extensions
+- [File Renderer](https://github.com/ruroru/majavat-file-renderer) - Renders output directly to file.
+- [TTL Builder](https://github.com/ruroru/majavat-ttl-builder) - Reloads cache on a scheduled interval.
+
 ## License
 
 Copyright © 2025 [ruroru](https://github.com/ruroru)
