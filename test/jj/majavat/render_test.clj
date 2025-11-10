@@ -250,8 +250,10 @@ this is a  footer"
   (System/setProperty "user.timezone" "UTC")
 
   (are [expected-value template-path context]
-    (= expected-value
-       (String. (.readAllBytes ^InputStream (renderer/render (->InputStreamRenderer {:sanitizer (->Html)}) (parser/parse template-path contentResolver) context))))
+    (let []
+      (= expected-value
+         (renderer/render (->StringRenderer {:sanitizer (->Html)}) (parser/parse template-path contentResolver) context)
+         (String. (.readAllBytes ^InputStream (renderer/render (->InputStreamRenderer {:sanitizer (->Html)}) (parser/parse template-path contentResolver) context)))))
     "foo BAR" "filter/upper-case" {:value "bar"}
     "foo " "filter/upper-case" {}
     "foo bar" "filter/lower-case" {:value "BAR"}
