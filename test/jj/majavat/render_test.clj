@@ -250,22 +250,26 @@ this is a  footer"
   (System/setProperty "user.timezone" "UTC")
 
   (are [expected-value template-path context]
-    (let []
-      (= expected-value
-         (renderer/render (->StringRenderer {:sanitizer (->Html)}) (parser/parse template-path contentResolver) context)
-         (String. (.readAllBytes ^InputStream (renderer/render (->InputStreamRenderer {:sanitizer (->Html)}) (parser/parse template-path contentResolver) context)))))
-
+    (= expected-value
+       (String. (.readAllBytes ^InputStream (renderer/render (->InputStreamRenderer {:sanitizer (->Html)}) (parser/parse template-path contentResolver) context))))
     "foo BAR" "filter/upper-case" {:value "bar"}
+    "foo " "filter/upper-case" {}
     "foo bar" "filter/lower-case" {:value "BAR"}
+    "foo " "filter/lower-case" {}
     "Foo Bar" "filter/capitalize" {:value "BAR"}
+    "Foo " "filter/capitalize" {}
     "foo the strive LXXXIV ivy" "filter/upper-roman" {:value "lxxxIv"}
+    "foo the strive  ivy" "filter/upper-roman" {}
     "Foo  Bar Baz Qux  Quux Foo-Bar" "filter/title-case" {:value "bar baz qux  quux foo-bar"}
     "foo bar baz qux  quux" "filter/trim" {:value "  bar baz qux  quux  "}
     "foo BAR BAZ QUX  QUUX" "filter/multi-filter" {:value "  bar baz qux  quux  "}
     "foo keyword" "filter/keyword" {:value :keyword}
     "id is 3" "filter/inc" {:id 2}
+    "id is " "filter/inc" {}
     "id is 1" "filter/dec" {:id 2}
+    "id is " "filter/dec" {}
     "file sizes are: 120.2 KB, 67.8 KB and 5 PB" "filter/file-size" {:file1 123123 :file2 "69420" :file3 "5629499534213120"}
+    "file sizes are: ,  and " "filter/file-size" {}
     "foo baz" "filter/default" {}
     "foo bar" "filter/default" {:value "bar"}
     "yyyy is 2022 and yyyy/mm/dd is 2022/01/01" "filter/date" {:value (LocalDate/of 2022, 01, 01)}
