@@ -14,7 +14,7 @@
 
   :resource-paths ["src/resources"]
   :profiles {:test {:global-vars    {*warn-on-reflection* true}
-                    :dependencies   [[ch.qos.logback/logback-classic "1.5.20"]
+                    :dependencies   [[ch.qos.logback/logback-classic "1.5.21"]
                                      [mock-clj "0.2.1"]]
                     :resource-paths ["test/resources"]}}
 
