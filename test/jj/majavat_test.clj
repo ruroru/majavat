@@ -120,3 +120,29 @@
       (render-fn {})
       (render-fn {}))
     (is (= 1 (mock/call-count parser/parse)))))
+
+(deftest try-rendering-nil
+  (is (= (crlf->lf (slurp (io/resource "render-template-nil.html")))
+         (crlf->lf ((majavat/build-renderer nil {}) {}))) "verifying failure to render string"))
+
+(deftest renderer-set-to-nil-defaults-to-string-renderer
+  (let [file-path "html/index.html"]
+    (is (= (crlf->lf (slurp (io/resource "html/expected.html")))
+           (crlf->lf ((majavat/build-renderer file-path {:renderer nil}) context)))
+        "verifying wrong type returns string ")))
+
+(deftest template-resolver-set-to-nil-defaults-to-resource-resolver
+  (let [file-path "html/index.html"]
+    (is (= (crlf->lf (slurp (io/resource "html/expected.html")))
+           (crlf->lf ((majavat/build-renderer file-path {:template-resolver nil}) context)))
+        "verifying wrong type returns string ")))
+
+(deftest cache-set-to-nil-disables
+  (mock/with-mock
+    [parser/parse [{:type  :text
+                    :value "text"}]]
+    (let [render-fn (majavat/build-renderer "somefile" {:cache? nil})]
+      (render-fn {})
+      (render-fn {})
+      (render-fn {}))
+    (is (= 3 (mock/call-count parser/parse)))))

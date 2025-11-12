@@ -18,7 +18,8 @@
                :or   {template-resolver @default-resolver
                       cache?            true
                       renderer          @default-renderer}}]
-
-   (if cache?
-     (builder/build-renderer @cached-builder file-path template-resolver renderer)
-     (builder/build-renderer @one-shot-builder file-path template-resolver renderer))))
+   (let [resolved-file-path (or file-path "nil")
+         resolved-renderer (or renderer @default-renderer)
+         resolved-resolver (or template-resolver @default-resolver)
+         selected-builder (if cache? @cached-builder @one-shot-builder)]
+     (builder/build-renderer selected-builder resolved-file-path resolved-resolver resolved-renderer))))
