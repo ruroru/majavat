@@ -137,6 +137,11 @@
            (crlf->lf ((majavat/build-renderer file-path {:template-resolver nil}) context)))
         "verifying wrong type returns string ")))
 
+(deftest template-config-is-set-to-nil
+  (let [file-path "html/index.html"]
+    (is (= (crlf->lf (slurp (io/resource "html/expected.html")))
+           (crlf->lf ((majavat/build-renderer file-path nil) context))))))
+
 (deftest cache-set-to-nil-disables
   (mock/with-mock
     [parser/parse [{:type  :text

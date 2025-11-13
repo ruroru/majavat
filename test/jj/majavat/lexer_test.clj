@@ -331,3 +331,7 @@
                   {:line 1 :type :closing-bracket}]
         input "testing {{ value | function   \"foo bar\" baz}}"]
     (is (= expected (lexer/tokenize input)))))
+
+(deftest tokenize-nil
+  (let [expected []]
+    (is (= expected (lexer/tokenize nil)))))
