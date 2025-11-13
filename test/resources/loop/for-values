@@ -1,0 +1,2 @@
+{% for value in values %}{{value}} {{loop.first?}} {{loop.last?}} {{loop.total}} {{loop.index}}
+{% endfor %}

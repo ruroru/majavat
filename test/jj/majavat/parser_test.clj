@@ -4,7 +4,6 @@
             [jj.majavat.resolver.fs :as fcr]
             [jj.majavat.resolver.resource :as rcr])
   (:import (java.io File)
-           (java.nio.file Files)
            (java.time ZoneId)))
 
 (def contentResolver (rcr/->ResourceResolver))

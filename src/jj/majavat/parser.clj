@@ -8,7 +8,7 @@
 
 (defn- create-filter-fn [{:keys [filter-name args]}]
   (case filter-name
-    :trim #(.trim ^String %)
+    :trim #(when (some? %) (.trim ^String %))
     :upper-case #(when (some? %) (.toUpperCase ^String %))
     :lower-case #(when (some? %) (.toLowerCase ^String %))
     :capitalize #(when (some? %) (clojure.string/capitalize ^String %))
@@ -101,10 +101,7 @@
          :block-start (let [remaining (rest lexed-list)]
                         (if (and (seq remaining) (= :block-end (:type (first remaining))))
                           (let [remaining-after-block-end (rest remaining)]
-                            (if parsing-for-body
-                              (let [value-node {:type :value-node :value [:foo]}]
-                                (recur remaining-after-block-end (conj list value-node) current-block parsing-for-body current-file-path template-resolver))
-                              (recur remaining-after-block-end list current-block parsing-for-body current-file-path template-resolver)))
+                            (recur remaining-after-block-end list current-block parsing-for-body current-file-path template-resolver))
                           (recur remaining list current-block parsing-for-body current-file-path template-resolver)))
          :block-end (recur (rest lexed-list) list current-block parsing-for-body current-file-path template-resolver)
 

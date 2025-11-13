@@ -4,12 +4,12 @@
     [clojure.string :as str]
     [clojure.test :refer [are deftest is testing]]
     [jj.majavat.parser :as parser]
-    [jj.majavat.renderer :as renderer :refer [->StringRenderer ->InputStreamRenderer]]
+    [jj.majavat.renderer :as renderer :refer [->InputStreamRenderer ->StringRenderer]]
     [jj.majavat.renderer.sanitizer :refer [->Html]]
     [jj.majavat.resolver.fs :as fcr]
     [jj.majavat.resolver.resource :as rcr])
   (:import (java.io InputStream)
-           (java.net URI URL)
+           (java.net URI)
            (java.time LocalDate LocalDateTime LocalTime ZoneId ZonedDateTime)
            (java.util UUID)))
 
@@ -95,7 +95,7 @@
 
 (defn assert-render [template context expected-string]
   (is (= (crlf->lf expected-string)
-         (crlf->lf (renderer/render (->StringRenderer {}) template context)))  "string assertion")
+         (crlf->lf (renderer/render (->StringRenderer {}) template context))) "string assertion")
   (is (= (crlf->lf expected-string)
          (crlf->lf (String. (.readAllBytes ^InputStream (renderer/render (->InputStreamRenderer {}) template context)))))
       "input stream assertion"))
@@ -264,6 +264,7 @@ this is a  footer"
     "foo the strive  ivy" "filter/upper-roman" {}
     "Foo  Bar Baz Qux  Quux Foo-Bar" "filter/title-case" {:value "bar baz qux  quux foo-bar"}
     "foo bar baz qux  quux" "filter/trim" {:value "  bar baz qux  quux  "}
+    "foo " "filter/trim" {}
     "foo BAR BAZ QUX  QUUX" "filter/multi-filter" {:value "  bar baz qux  quux  "}
     "foo keyword" "filter/keyword" {:value :keyword}
     "id is 3" "filter/inc" {:id 2}
@@ -279,9 +280,9 @@ this is a  footer"
     "default: 01:01, format one is 01/01" "filter/date-local-time" {:value (LocalTime/of 01, 01)}
     "default: 2022-01-02T03:04Z[UTC], format one is 2022-01-02 03:04 and time in tokyo is 2022-01-02 12:04" "filter/date-zoned-date-time" {:value (ZonedDateTime/of (LocalDateTime/of 2022, 01, 02, 03, 04) (ZoneId/of "UTC"))}
     "value is 550e8400-e29b-41d4-a716-446655440000" "filter/value" {:value (UUID/fromString "550e8400-e29b-41d4-a716-446655440000")}
-    "value is http://www.example.com" "filter/value" {:value (.toURL (URI.   "http://www.example.com"))}
+    "value is http://www.example.com" "filter/value" {:value (.toURL (URI. "http://www.example.com"))}
     "value is /some/path" "filter/value" {:value (URI. "/some/path")}
-    "testing [{&quot;key1&quot; &quot;value1&quot;, &quot;value&quot; &quot;b&quot;}]" "filter/where" {:value [{"key1" "value1" "value" "b" } {"key1" "value2" "value" "b" }]}
+    "testing [{&quot;key1&quot; &quot;value1&quot;, &quot;value&quot; &quot;b&quot;}]" "filter/where" {:value [{"key1" "value1" "value" "b"} {"key1" "value2" "value" "b"}]}
     ))
 
 
@@ -319,13 +320,13 @@ this is a  footer"
   (testing "render to string"
     (are [expected-value template-path context]
       (= expected-value
-         (renderer/render (->StringRenderer  {:sanitizer (->Html)}) (parser/parse template-path contentResolver) context))
+         (renderer/render (->StringRenderer {:sanitizer (->Html)}) (parser/parse template-path contentResolver) context))
       "foo <input type=\"hidden\" name=\"csrf_token\" value=\"bar\"> " "csrf/csrf" {:csrf-token "bar"}
       "foo <input type=\"hidden\" name=\"csrf_token\" value=\"\"> " "csrf/csrf" {}))
   (testing "render to input stream"
     (are [expected-value template-path context]
       (= expected-value
-         (String. (.readAllBytes ^InputStream (renderer/render (->InputStreamRenderer  {:sanitizer (->Html)}) (parser/parse template-path contentResolver) context))))
+         (String. (.readAllBytes ^InputStream (renderer/render (->InputStreamRenderer {:sanitizer (->Html)}) (parser/parse template-path contentResolver) context))))
       "foo <input type=\"hidden\" name=\"csrf_token\" value=\"bar\"> " "csrf/csrf" {:csrf-token "bar"}
       "foo <input type=\"hidden\" name=\"csrf_token\" value=\"\"> " "csrf/csrf" {})))
 
@@ -333,15 +334,15 @@ this is a  footer"
   (testing "render to string"
     (are [expected-value template-path context]
       (= expected-value
-         (renderer/render (->StringRenderer  {:sanitizer (->Html)}) (parser/parse template-path contentResolver) context))
+         (renderer/render (->StringRenderer {:sanitizer (->Html)}) (parser/parse template-path contentResolver) context))
       "/some/route" "query-string/query-string" {}
-      "/some/route?key=value" "query-string/query-string" {:foo {:bar {:key "value"}}}
+      "/some/route?key=%23+%3F+%26" "query-string/query-string" {:foo {:bar {:key "# ? &"}}}
       "/some/route?key=value" "query-string/query-string" {:foo {:bar {"key" "value"}}}
       "/some/route?key=value&key1=value1" "query-string/query-string" {:foo {:bar {:key "value" :key1 "value1"}}}))
   (testing "render to input stream"
     (are [expected-value template-path context]
       (= expected-value
-         (String. (.readAllBytes ^InputStream (renderer/render (->InputStreamRenderer  {:sanitizer (->Html)}) (parser/parse template-path contentResolver) context))))
+         (String. (.readAllBytes ^InputStream (renderer/render (->InputStreamRenderer {:sanitizer (->Html)}) (parser/parse template-path contentResolver) context))))
       "/some/route" "query-string/query-string" {}
       "/some/route?key=value" "query-string/query-string" {:foo {:bar {:key "value"}}}
       "/some/route?key=value&key1=value1" "query-string/query-string" {:foo {:bar {:key "value" :key1 "value1"}}})))
@@ -362,3 +363,13 @@ this is a  footer"
       #"20\d{2}-\d{2}-\d{2}" "now/now-with-format" {}
       #"20\d{2}-\d{2}-\d{2}" "now/now-with-format-and-time-zone" {})))
 
+
+(deftest for-values
+  (are [expected input-context]
+    (= (crlf->lf expected)
+       (crlf->lf (String. (.readAllBytes ^InputStream (renderer/render (->InputStreamRenderer {}) (parser/parse "loop/for-values" contentResolver) input-context))))
+       (crlf->lf (renderer/render (->StringRenderer {}) (parser/parse "loop/for-values" contentResolver) input-context)))
+    "first true false 2 0\nsecond false true 2 1\n" {:values (list "first" "second")}
+    "first true true 1 0\n" {:values (list "first")}
+    "" {:values (list)}
+    ))

@@ -4,6 +4,7 @@
             [jj.majavat.renderer.filters :as filters]
             [jj.majavat.renderer.sanitizer :refer [sanitize]])
   (:import (java.io ByteArrayInputStream PushbackReader SequenceInputStream)
+           (java.net URLEncoder)
            (java.nio.charset Charset StandardCharsets)
            (java.time Instant)
            (java.util Collections)))
@@ -51,7 +52,7 @@
                   (.append sb "&"))
                 (.append sb (name k))
                 (.append sb "=")
-                (.append sb (->str v))
+                (.append sb (URLEncoder/encode ^String (->str v) "UTF-8"))
                 (recur (next params) false))))
           (.toString sb))))))
 
