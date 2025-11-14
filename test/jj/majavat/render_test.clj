@@ -336,7 +336,7 @@ this is a  footer"
       (= expected-value
          (renderer/render (->StringRenderer {:sanitizer (->Html)}) (parser/parse template-path contentResolver) context))
       "/some/route" "query-string/query-string" {}
-      "/some/route?key=%23+%3F+%26" "query-string/query-string" {:foo {:bar {:key "# ? &"}}}
+      "/some/route?key=%23%20%3F%20%26" "query-string/query-string" {:foo {:bar {:key "# ? &"}}}
       "/some/route?key=value" "query-string/query-string" {:foo {:bar {"key" "value"}}}
       "/some/route?key=value&key1=value1" "query-string/query-string" {:foo {:bar {:key "value" :key1 "value1"}}}))
   (testing "render to input stream"

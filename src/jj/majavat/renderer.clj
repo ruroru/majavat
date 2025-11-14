@@ -52,7 +52,7 @@
                   (.append sb "&"))
                 (.append sb (name k))
                 (.append sb "=")
-                (.append sb (URLEncoder/encode ^String (->str v) "UTF-8"))
+                (.append sb (.replace ^String (URLEncoder/encode ^String (->str v) "UTF-8") "+" "%20"))
                 (recur (next params) false))))
           (.toString sb))))))
 
