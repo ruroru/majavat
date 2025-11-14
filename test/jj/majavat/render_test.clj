@@ -369,7 +369,7 @@ this is a  footer"
     (= (crlf->lf expected)
        (crlf->lf (String. (.readAllBytes ^InputStream (renderer/render (->InputStreamRenderer {}) (parser/parse "loop/for-values" contentResolver) input-context))))
        (crlf->lf (renderer/render (->StringRenderer {}) (parser/parse "loop/for-values" contentResolver) input-context)))
-    "first true false 2 0\nsecond false true 2 1\n" {:values (list "first" "second")}
+    "first true false 3 0\nsecond false false 3 1\nthird false true 3 2\n" {:values (list "first" "second" "third")}
     "first true true 1 0\n" {:values (list "first")}
     "" {:values (list)}
     ))
