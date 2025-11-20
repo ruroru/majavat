@@ -27,8 +27,9 @@ Add majavat to dependency list
 Additional options can be passed with
 
 ```clojure
-(def render-fn (majavat/build-renderer "index.html" {:cache?   false
-                                                     :renderer (->StringRenderer {:sanitizer (->Html)})}))
+(def render-fn (majavat/build-renderer "index.html" {:cache?     false
+                                                     :pre-render {:key "value"}
+                                                     :renderer   (->StringRenderer {:sanitizer (->Html)})}))
 
 (render-fn {:user "jj"})
 ```
@@ -40,6 +41,7 @@ All supported options:
 | `renderer`          | [`StringRenderer`](#renderer-protocol)  | Any [`Renderer`](#renderer-protocol) implementation |
 | `cache?`            | `true`                                  | `true`, `false`                                     |
 | `template-resolver` | [`ResourceResolver`](#templateresolver) | [`TemplateResolver`](#templateresolver)             |
+| `pre-render`        | {}                                      | Map                                                 |
 
 ### Creating templates
 
@@ -322,6 +324,15 @@ Returns rendered output as an InputStream for streaming large content
 (->InputStreamRenderer {:sanitizer (->Json)})
 ```
 
+#### PartialRenderer
+
+Returns a partially rendered AST.
+
+```clojure
+(->PartialRenderer {})
+```
+
+
 ## TemplateResolver
 
 The `TemplateResolver` protocol provides a uniform interface for accessing template content from different sources.
@@ -365,6 +376,7 @@ Check if template exists at a path.
 - **Json** - implementation for Json
 
 ## Available Extensions
+
 - [File Renderer](https://github.com/ruroru/majavat-file-renderer) - Renders output directly to file.
 - [TTL Builder](https://github.com/ruroru/majavat-ttl-builder) - Reloads cache on a scheduled interval.
 

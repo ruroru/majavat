@@ -4,7 +4,7 @@
     [clojure.string :as str]
     [clojure.test :refer [are deftest is testing]]
     [jj.majavat.parser :as parser]
-    [jj.majavat.renderer :as renderer :refer [->InputStreamRenderer ->StringRenderer]]
+    [jj.majavat.renderer :as renderer :refer [->InputStreamRenderer ->StringRenderer ->PartialRenderer]]
     [jj.majavat.renderer.sanitizer :refer [->Html]]
     [jj.majavat.resolver.fs :as fcr]
     [jj.majavat.resolver.resource :as rcr])
@@ -18,80 +18,6 @@
   (str/replace s "\r\n" "\n"))
 
 (def contentResolver (rcr/->ResourceResolver))
-(deftest prerender-test
-  (are [expected instructions context]
-    (= expected (renderer/pre-render instructions context))
-
-    [{:type :text :value "hello world"}
-     {:type :value-node :value :not-existing}]
-    [{:type :text :value "hello "}
-     {:type :value-node :value :name}
-     {:type :value-node :value :not-existing}]
-    {:name "world"}
-
-    [{:type :text :value "hello "}
-     {:type :value-node :value :name}
-     {:type :value-node :value :age}]
-    [{:type :text :value "hello "}
-     {:type :value-node :value :name}
-     {:type :value-node :value :age}]
-    {}
-
-    [{:type :value-node :value :missing}
-     {:type :value-node :value :also-missing}]
-    [{:type :value-node :value :name}
-     {:type :value-node :value :missing}
-     {:type :value-node :value :age}
-     {:type :value-node :value :also-missing}]
-    {:name "Alice" :age 30}
-
-    [{:type :text :value "Hello Alice, You are 30"}]
-    [{:type :text :value "Hello "}
-     {:type :value-node :value :name}
-     {:type :text :value ", You are "}
-     {:type :value-node :value :age}]
-    {:name "Alice" :age 30}
-
-    [{:type :text :value "Department: Engineering"}
-     {:type :for :identifier :employee :source [:dept :employees]}
-     {:type :value-node :value :missing-budget}
-     {:type :if :condition [:dept :active]}]
-    [{:type :text :value "Department: "}
-     {:type :value-node :value :name}
-     {:type :for :identifier :employee :source [:dept :employees]}
-     {:type :value-node :value :missing-budget}
-     {:type :if :condition [:dept :active]}]
-    {:name "Engineering" :budget "$500K"}
-
-    [{:type :text :value "🎉 Hello 世界!"}
-     {:type :value-node :value :missing}]
-    [{:type :text :value "🎉 Hello "}
-     {:type :value-node :value :greeting}
-     {:type :text :value "!"}
-     {:type :value-node :value :missing}]
-    {:greeting "世界"}
-
-    [{:type :text :value "User: admin"}
-     {:type :value-node :value :role}
-     {:type :value-node :value :missing}]
-    [{:type :text :value "User: "}
-     {:type :value-node :value :username}
-     {:type :value-node :value :role}
-     {:type :value-node :value :missing}]
-    {:username "admin"
-     :profile  {:role "administrator"}}
-
-    []
-    []
-    {:name "test"}
-
-    [{:type :text :value "Hello "}
-     {:type :value-node :value :name}
-     {:type :value-node :value :missing}]
-    [{:type :text :value "Hello "}
-     {:type :value-node :value :name}
-     {:type :value-node :value :missing}]
-    {"name" "Alice"}))
 
 (defn assert-render [template context expected-string]
   (is (= (crlf->lf expected-string)
@@ -373,3 +299,44 @@ this is a  footer"
     "first true true 1 0\n" {:values (list "first")}
     "" {:values (list)}
     ))
+
+(deftest partial-render
+  (are [expected input-file input-context] (= expected (renderer/render (->PartialRenderer {})
+                                                                        (parser/parse input-file contentResolver)
+                                                                        input-context))
+                                           [{:type :text :value "hello world"}] "insert-value.html" {:name "world"}
+                                           [{:type :text :value "hello World from "} {:type :value-node :value [:location]}] "if-statement.txt" {:some {:condition "wolrd"}}
+                                           [{:type  :text
+                                             :value "hello "}
+                                            {:condition  [:some
+                                                          :condition]
+                                             :type       :if
+                                             :when-false [{:type  :text
+                                                           :value ""}]
+                                             :when-true  [{:type  :text
+                                                           :value "World from "}
+                                                          {:type  :value-node
+                                                           :value [:location]}]}] "if-statement.txt" {}
+                                           [{:type :text :value "hello World! from world"}] "if-else-statement.txt" {:some {:condition true} :location "world"}
+                                           [{:type  :text
+                                             :value "hello "}
+                                            {:condition  [:some
+                                                          :condition]
+                                             :type       :if
+                                             :when-false [{:type  :text
+                                                           :value "jj! "}
+                                                          {:type  :value-node
+                                                           :value [:location]}]
+                                             :when-true  [{:type  :text
+                                                           :value "World! from "}
+                                                          {:type  :value-node
+                                                           :value [:location]}]}] "if-else-statement.txt" {}
+
+                                           [{:type  :text
+                                             :value "The planets are:Planet Mercury index is 1,that makes it firstPlanet Venus index is 2Planet Earth index is 3Planet Mars index is 4Planet Jupiter index is 5Planet Saturn index is 6Planet Uranus index is 7Planet Neptune index is 8,that makes it last"}]
+                                           "loop/for-loop-no-new-line" {:planets ["Mercury" "Venus" "Earth" "Mars" "Jupiter" "Saturn" "Uranus" "Neptune"]}
+
+                                           [{:type  :text
+                                             :value "/some/route?key=value"}] "query-string/query-string" {:foo {:bar {"key" "value"}}}
+                                           ))
+

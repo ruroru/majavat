@@ -220,38 +220,6 @@
           (render-nodes-to-stream-seq (rest nodes) context charset escape-conf))))))
 
 
-(defn- process-instruction [context has-text-nodes? acc instruction]
-  (case (:type instruction)
-    :text
-    (let [last-instruction (peek acc)]
-      (if (and last-instruction (= :text (:type last-instruction)))
-        (conj (pop acc)
-              (assoc last-instruction
-                :value (str (:value last-instruction) (:value instruction))))
-        (conj acc instruction)))
-
-    :value-node
-    (let [value-key (:value instruction)]
-      (if (contains? context value-key)
-        (if has-text-nodes?
-          (let [resolved-value (get context value-key)
-                last-instruction (peek acc)]
-            (if (and last-instruction (= :text (:type last-instruction)))
-              (conj (pop acc)
-                    (assoc last-instruction
-                      :value (str (:value last-instruction) resolved-value)))
-              (conj acc {:type :text :value resolved-value})))
-          acc)
-        (conj acc instruction)))
-
-    (conj acc instruction)))
-
-(defn pre-render [render-instructions context]
-  (let [has-text-nodes? (some #(= :text (:type %)) render-instructions)]
-    (reduce (partial process-instruction context has-text-nodes?)
-            []
-            render-instructions)))
-
 (defprotocol Renderer
   (render [this template context]))
 
@@ -270,3 +238,122 @@
             enumeration (Collections/enumeration stream-seq)]
         (SequenceInputStream. enumeration))
       (render (->InputStreamRenderer {}) (read-edn-resource "error-template.edn") template))))
+
+
+(defn- partial-render-nodes [nodes context]
+  (reduce
+    (fn [acc node]
+      (case (:type node)
+        :text
+        (conj acc node)
+
+        :value-node
+        (let [val (resolve-path context (:value node))]
+          (if (some? val)
+            (let [filter-fn (get node :filter-fn identity)
+                  filtered-val (filter-fn val)
+                  resolved-str (->str filtered-val)]
+              (conj acc {:type :text :value resolved-str}))
+            (conj acc node)))
+
+        :query-string
+        (let [query-data (resolve-path context (:value node))]
+          (if (some? query-data)
+            (if-let [query-str (build-query-string (:value node) context)]
+              (conj acc {:type :text :value query-str})
+              acc)
+            (conj acc node)))
+
+
+        :variable-assignment
+        (let [variable-name (:variable-name node)
+              variable-value (:variable-value node)
+              body (:body node)
+              resolved-val (resolve-path context variable-value)]
+          (if (some? resolved-val)
+            (let [new-context (assoc context variable-name resolved-val)
+                  rendered-body (partial-render-nodes body new-context)]
+              (into acc rendered-body))
+            (conj acc (assoc node :body (partial-render-nodes body context)))))
+
+        :variable-declaration
+        (let [variable-name (:variable-name node)
+              variable-value (:variable-value node)
+              body (:body node)
+              new-context (assoc context variable-name variable-value)
+              rendered-body (partial-render-nodes body new-context)]
+          (if (= rendered-body body)
+            (conj acc node)
+            (conj acc (assoc node :body rendered-body))))
+
+        :for
+        (let [identifier (:identifier node)
+              source-path (:source node)
+              body (:body node)
+              items (resolve-path context source-path)]
+          (if (some? items)
+            ;; Collection exists, expand the loop
+            (let [expanded-nodes
+                  (mapcat
+                    (fn [index item]
+                      (let [loop-context (get-loop-context context index (count items))
+                            new-context (assoc loop-context identifier item)]
+                        (partial-render-nodes body new-context)))
+                    (range)
+                    items)]
+              (into acc expanded-nodes))
+            (conj acc (assoc node :body (partial-render-nodes body context)))))
+
+        :if
+        (let [condition (:condition node)
+              condition-val (resolve-path context condition)]
+          (if (some? condition-val)
+            (if (evaluate-condition condition context)
+              (into acc (partial-render-nodes (:when-true node) context))
+              (into acc (partial-render-nodes (:when-false node) context)))
+            (conj acc (assoc node
+                        :when-true (partial-render-nodes (:when-true node) context)
+                        :when-false (partial-render-nodes (:when-false node) context)))))
+
+        :if-not
+        (let [condition (:condition node)
+              condition-val (resolve-path context condition)]
+          (if (some? condition-val)
+            (if (not (evaluate-condition condition context))
+              (into acc (partial-render-nodes (:when-true node) context))
+              (into acc (partial-render-nodes (:when-false node) context)))
+            (conj acc (assoc node
+                        :when-true (partial-render-nodes (:when-true node) context)
+                        :when-false (partial-render-nodes (:when-false node) context)))))
+
+        (conj acc node)))
+    []
+    nodes))
+
+(defn- optimize-ast [nodes]
+  "Merge consecutive text nodes and remove empty text nodes"
+  (reduce
+    (fn [acc node]
+      (if (= :text (:type node))
+        (let [last-node (peek acc)]
+          (cond
+            (empty? (:value node))
+            acc
+
+            (and last-node (= :text (:type last-node)))
+            (conj (pop acc)
+                  (assoc last-node :value (str (:value last-node) (:value node))))
+
+            :else
+            (conj acc node)))
+        (conj acc node)))
+    []
+    nodes))
+
+(defrecord PartialRenderer [config]
+  Renderer
+  (render [this template context]
+    (if-not (map? template)
+      (-> (partial-render-nodes template context)
+          optimize-ast)
+      (render (->PartialRenderer {}) (read-edn-resource "error-template.edn") template))))

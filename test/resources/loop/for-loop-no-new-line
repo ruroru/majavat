@@ -1,0 +1,1 @@
+The planets are:{% for world in planets %}Planet {{ world }} index is {{ loop.index | inc }}{% if loop.first? %},that makes it first{% endif %}{% if loop.last? %},that makes it last{% endif %}{% endfor %}

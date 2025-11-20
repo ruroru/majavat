@@ -7,14 +7,15 @@
 
 (def ^:private default-resolver (delay (rcr/->ResourceResolver)))
 (def ^:private default-renderer (delay (->StringRenderer {})))
-(def ^:private cached-builder (delay (builder/->CachedBuilder)))
+(def ^:private cached-builder (delay (builder/->CachedBuilder {})))
 (def ^:private one-shot-builder (delay (builder/->OneShotBuilder)))
 
 (defn build-renderer
   ([file-path]
    (build-renderer file-path {}))
   ([file-path opts]
-   (let [template-resolver (get opts :template-resolver @default-resolver)
+   (let [pre-render? (not (empty? (get opts :pre-render {})))
+         template-resolver (get opts :template-resolver @default-resolver)
          cache? (get opts :cache? true)
          renderer (get opts :renderer @default-renderer)
          resolved-file-path (or file-path
@@ -29,5 +30,11 @@
                                (do
                                  (logger/error "Resolver is set to nil, defaulting to resource resolver")
                                  @default-resolver))
-         selected-builder (if cache? @cached-builder @one-shot-builder)]
+         selected-builder (if cache?
+                            (if pre-render?
+                              (let [pre-render-context (get opts :pre-render {})]
+                                (builder/->CachedBuilder pre-render-context))
+                              @cached-builder)
+                            @one-shot-builder)]
+
      (builder/build-renderer selected-builder resolved-file-path resolved-resolver resolved-renderer))))

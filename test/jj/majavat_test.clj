@@ -151,3 +151,28 @@
       (render-fn {})
       (render-fn {}))
     (is (= 3 (mock/call-count parser/parse)))))
+
+(deftest pre-render
+  (let [file-path "html/index.html"]
+    (testing "Not escaped html"
+      (is (= (crlf->lf (slurp (io/resource "html/expected.html")))
+             (crlf->lf ((majavat/build-renderer file-path {:pre-render {:page-title "Home - My Awesome Blog"}})
+                        (dissoc context :page-title))))
+          "verifying render to string")
+      (is (= (crlf->lf (slurp (io/resource "html/expected.html")))
+             (crlf->lf (String. (.readAllBytes ^InputStream
+                                               ((majavat/build-renderer file-path {:pre-render {:page-title "Home - My Awesome Blog"}
+                                                                                   :renderer   (->InputStreamRenderer {})})
+                                                (dissoc context :page-title)))))) "verifying render to input stream"))
+    (testing "Escaped html"
+      (is (= (crlf->lf (slurp (io/resource "html/expected-escaped.html")))
+             (crlf->lf ((majavat/build-renderer file-path {:pre-render {:page-title "Home - My Awesome Blog"}
+                                                           :renderer   (->StringRenderer {:sanitizer (->Html)})})
+                        (dissoc context :page-title))))
+          "verifying render to string")
+      (is (= (crlf->lf (slurp (io/resource "html/expected-escaped.html")))
+             (crlf->lf (String. (.readAllBytes ^InputStream
+                                               ((majavat/build-renderer file-path {:pre-render {:page-title "Home - My Awesome Blog"}
+                                                                                   :renderer   (->InputStreamRenderer {:sanitizer (->Html)})})
+                                                (dissoc context :page-title))))))
+          "verifying render to input stream"))))
