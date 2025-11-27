@@ -2,11 +2,11 @@
   (:require [clojure.java.io :as io]
             [clojure.string :as str]
             [clojure.test :refer [deftest is testing]]
-            [mock-clj.core :as mock]
             [jj.majavat :as majavat]
-            [jj.majavat.renderer :refer [->InputStreamRenderer ->StringRenderer]]
             [jj.majavat.parser :as parser]
-            [jj.majavat.renderer.sanitizer :refer [->Html]])
+            [jj.majavat.renderer :refer [->InputStreamRenderer ->StringRenderer]]
+            [jj.majavat.renderer.sanitizer :refer [->Html]]
+            [mock-clj.core :as mock])
   (:import (java.io InputStream)))
 
 (defn- crlf->lf [s]

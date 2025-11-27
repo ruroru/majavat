@@ -340,3 +340,17 @@ this is a  footer"
                                              :value "/some/route?key=value"}] "query-string/query-string" {:foo {:bar {"key" "value"}}}
                                            ))
 
+(deftest render-depth-test
+  (are [expected template-path context]
+    (= expected
+       (renderer/render (->StringRenderer {}) (parser/parse template-path contentResolver) context))
+    "hello world" "path-resolver/length-1" {:value "world"}
+    "hello world1" "path-resolver/length-2" {:value1 {:value "world1"}}
+    "hello world2" "path-resolver/length-3" {:value2 {:value1 {:value "world2"}}}
+    "hello world3" "path-resolver/length-4" {:value3 {:value2 {:value1 {:value "world3"}}}}
+    "hello world4" "path-resolver/length-5" {:value4 {:value3 {:value2 {:value1 {:value "world4"}}}}}
+    "hello world5" "path-resolver/length-6" {:value5 {:value4 {:value3 {:value2 {:value1 {:value "world5"}}}}}}
+    "hello world6" "path-resolver/length-7" {:value6 {:value5 {:value4 {:value3 {:value2 {:value1 {:value "world6"}}}}}}}
+
+    ))
+
