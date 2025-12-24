@@ -177,3 +177,56 @@
                               {:key "d" :value "b" :random "h"}
                               {:key "y" :value "r" :random "i"}]
                              [:key "y"]))
+(deftest round
+  (are [input expected] (= expected (filters/round input))
+                        1 1
+                        1.4 1
+                        1.5 2
+                        1.6 2
+                        2 2
+                        2.0 2))
+
+(deftest floor
+  (are [input expected] (= expected (filters/floor input))
+                        1 1.0
+                        1.4 1.0
+                        1.5 1.0
+                        1.6 1.0
+                        2 2.0
+                        2.0 2.0))
+
+(deftest ceil
+  (are [input expected] (= expected (filters/ceil input))
+                        1 1.0
+                        1.4 2.0
+                        1.5 2.0
+                        1.6 2.0
+                        2 2.0
+                        2.0 2.0))
+
+(deftest abs
+  (are [input expected] (= expected (filters/abs input))
+                        1 1.0
+                        0 0.0
+                        -1 1.0))
+(deftest append
+  (are [input arg expected] (= expected (filters/append input arg))
+                            "foo" ["bar"] "foobar"
+                            "foo" [] "foo"
+                            "foo" nil "foo"
+
+                            ))
+
+(deftest prepend
+  (are [input arg expected] (= expected (filters/prepend input arg))
+                            "foo" ["bar"] "barfoo"
+                            "foo" [] "foo"
+                            "foo" nil "foo"
+                            ))
+(deftest slugify
+  (are [input expected] (= expected (filters/slugify input))
+                       "foo" "foo"
+                        "Foo" "foo"
+                        "foo bar baz" "foo-bar-baz"
+                        "FooBar-Baz_123" "foobar-baz_123"
+                        ))

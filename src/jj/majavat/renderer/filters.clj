@@ -81,6 +81,27 @@
     (Integer/parseInt s)
     (catch Exception _ nil)))
 
+(defn round [n]
+  (Math/round (double n)))
+
+(defn floor [n]
+  (Math/floor (double n)))
+
+(defn ceil [n]
+  (Math/ceil (double n)))
+
+(defn abs [n]
+  (Math/abs (double n)))
+
+(defn append [v filter-args]
+  (let [arg (first filter-args)]
+    (str v arg)))
+
+(defn prepend [v filter-args]
+  (let [arg (first filter-args)]
+    (str arg v)))
+
+
 (defn get-default [v filter-args]
   (if (some? v)
     v
@@ -172,3 +193,11 @@
 (defn seq->str [v]
   (str v))
 
+(defn slugify [v]
+  (when v
+    (-> (str v)
+        clojure.string/lower-case
+        (clojure.string/replace #"[^\w\s-]" "")
+        (clojure.string/replace #"\s+" "-")
+        (clojure.string/replace #"-+" "-")
+        clojure.string/trim)))

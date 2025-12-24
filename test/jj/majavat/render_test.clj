@@ -216,6 +216,12 @@ this is a  footer"
     "value is http://www.example.com" "filter/value" {:value (.toURL (URI. "http://www.example.com"))}
     "value is /some/path" "filter/value" {:value (URI. "/some/path")}
     "testing [{&quot;key1&quot; &quot;value1&quot;, &quot;value&quot; &quot;b&quot;}]" "filter/where" {:value [{"key1" "value1" "value" "b"} {"key1" "value2" "value" "b"}]}
+    "foo 2.2" "filter/abs" {:value -2.2}
+    "foo 3.0" "filter/ceil" {:value 2.2}
+    "foo 2.0" "filter/floor" {:value 2.2}
+    "foo 2" "filter/round" {:value 2.2}
+    "foobarbaz" "filter/append" {:value "bar"}
+    "foobazbar" "filter/prepend" {:value "bar"}
     ))
 
 (deftest unsupported-filter

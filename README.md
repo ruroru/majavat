@@ -70,26 +70,33 @@ Hello {{ name | upper-case }}!
 (render-fn {:name "world"}) ;; => returns Hello WORLD!
 ```
 
-| filters                   | type          | example                               |
-|---------------------------|---------------|---------------------------------------|
-| capitalize                | String        | "hello world" → "Hello world"         |
-| lower-case                | String        | "HELLO WORLD" → "hello world"         |
-| title-case                | String        | "hello world" → "Hello World"         |
-| trim                      | String        | "  hello  " → "hello"                 |
-| upper-case                | String        | "hello world" → "HELLO WORLD"         |
-| upper-roman               | String        | "iv" → "IV"                           |
-| long                      | String        | "123" → 123L                          |
-| int                       | String        | "123" → 123                           |
-| name                      | keyword       | :name → "name"                        |
-| inc                       | Number        | 5 → 6                                 |
-| dec                       | Number        | 5 → 4                                 |
-| file-size                 | Number        | 2048 → "2 KB"                         |
-| default "foo"             | nil           | nil -> "foo"                          |
-| date  "yyyy"              | LocalDate     | Instance of LocalDate -> "2025"       | 
-| date  "yyyy"              | LocalDateTime | Instance of LocalDateTime -> "2025"   | 
-| date "hh/mm"              | LocalTime     | Instance of LocalTime ->  "11/11"     |
-| date "hh/mm" "Asia/Tokyo" | ZonedDateTime | Instance of ZonedDateTime ->  "11/11" |
-| date "hh/mm" "Asia/Tokyo" | Instant       | Instance of Instant ->  "11/11"       |
+| Filter                    | Type          | Example                                     |
+|---------------------------|---------------|---------------------------------------------|
+| append                    | String        | "hello" \| append " world" → "hello world"  |
+| capitalize                | String        | "hello world" → "Hello world"               |
+| int                       | String        | "123" → 123                                 |
+| long                      | String        | "123" → 123L                                |
+| lower-case                | String        | "HELLO WORLD" → "hello world"               |
+| prepend                   | String        | "hello" \| prepend " world" → "world hello" |                                      
+| slugify                   | String        | "Foo Bar" → "foo-bar"                      |
+| title-case                | String        | "hello world" → "Hello World"               |
+| trim                      | String        | "  hello  " → "hello"                       |
+| upper-case                | String        | "hello world" → "HELLO WORLD"               |
+| upper-roman               | String        | "iv" → "IV"                                 |
+| name                      | keyword       | :name → "name"                              |
+| abs                       | Number        | -1 → 1.0                                   |
+| ceil                      | Number        | 1.99 → 2                                   |
+| dec                       | Number        | 5 → 4                                       |
+| floor                     | Number        | 1.4 → 1.0                                  |
+| inc                       | Number        | 5 → 6                                       |
+| round                     | Number        | 1.99 → 2                                   |
+| file-size                 | Number        | 2048 → "2 KB"                               |
+| default "foo"             | nil           | nil → "foo"                                |
+| date  "yyyy"              | LocalDate     | Instance of LocalDate → "2025"             | 
+| date  "yyyy"              | LocalDateTime | Instance of LocalDateTime → "2025"         | 
+| date "hh/mm"              | LocalTime     | Instance of LocalTime →  "11/11"           |
+| date "hh/mm" "Asia/Tokyo" | ZonedDateTime | Instance of ZonedDateTime →  "11/11"       |
+| date "hh/mm" "Asia/Tokyo" | Instant       | Instance of Instant →  "11/11"             |
 
 #### Conditionals
 
@@ -331,7 +338,6 @@ Returns a partially rendered AST.
 ```clojure
 (->PartialRenderer {})
 ```
-
 
 ## TemplateResolver
 
