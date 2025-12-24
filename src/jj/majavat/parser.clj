@@ -31,7 +31,11 @@
              :else (str %))
     :where #(if (sequential? %) (filters/->handle-where % args) %)
     :str #(if (sequential? %) (filters/seq->str %) (str %))
-    identity))
+
+    (throw (ex-info (format "Unsupported filter: %s" (name filter-name))
+                    {:type        :syntax-error
+                     :filter-name filter-name
+                     :line        1}))))
 
 (defn- build-filter-fn [filter-specs]
   (if (empty? filter-specs)
@@ -166,7 +170,7 @@
                                         included-content (parse-ast included-lexed [] {} false resolved-filename template-resolver)]
                                     (recur remaining-after-filename (into list included-content) current-block parsing-for-body current-file-path template-resolver))
                                   (throw (ex-info (format "Template not found: %s" filename)
-                                                  {:type :template-not-found-error
+                                                  {:type     :template-not-found-error
                                                    :template filename}))))
                               (throw (ex-info (format "error on line %s" (:line file-name-token))
                                               {:type :syntax-error
@@ -188,7 +192,7 @@
 
                                     (recur remaining-after-block (into parent-content list) current-block parsing-for-body current-file-path template-resolver))
                                   (throw (ex-info (format "Template not found: %s" file-path)
-                                                  {:type :template-not-found-error
+                                                  {:type     :template-not-found-error
                                                    :template file-path}))))
                               (throw (ex-info (format "error on line %s" (:line file-path-token))
                                               {:type :syntax-error

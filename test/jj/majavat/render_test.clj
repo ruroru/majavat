@@ -218,6 +218,12 @@ this is a  footer"
     "testing [{&quot;key1&quot; &quot;value1&quot;, &quot;value&quot; &quot;b&quot;}]" "filter/where" {:value [{"key1" "value1" "value" "b"} {"key1" "value2" "value" "b"}]}
     ))
 
+(deftest unsupported-filter
+  (are [expected-file-path template-path context]
+    (= (crlf->lf (slurp (io/resource expected-file-path)))
+       (crlf->lf (renderer/render (->StringRenderer {:sanitizer (->Html)}) (parser/parse template-path contentResolver) context))
+       (crlf->lf (String. (.readAllBytes ^InputStream (renderer/render (->InputStreamRenderer {:sanitizer (->Html)}) (parser/parse template-path contentResolver) context)))))
+    "filter/not-supported-filter-expected" "filter/not-supported-filter" {:value "bar"}))
 
 (deftest render-let-value
   (testing "parsing as a string"
