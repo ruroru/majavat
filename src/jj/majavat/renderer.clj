@@ -16,61 +16,56 @@
                 pushback-reader (PushbackReader. reader)]
       (edn/read pushback-reader))))
 
+(defmacro ^:private reverse-call [a m]
+  `(when-let [m# ~m]
+     (m# ~a)))
 
 (defn- local-get-in
   ([m a]
-   (m a))
+   (reverse-call a m))
   ([m a b]
-   (let [temp (m a)]
-     (when temp
-       (temp b))))
+   (-> m
+       (reverse-call a)
+       (reverse-call b)))
   ([m a b c]
-   (let [temp (m a)]
-     (when temp
-       (let [temp (temp b)]
-         (when temp
-           (temp c))))))
+   (-> m
+       (reverse-call a)
+       (reverse-call b)
+       (reverse-call c)))
   ([m a b c d]
-   (let [temp (m a)]
-     (when temp
-       (let [temp (temp b)]
-         (when temp
-           (let [temp (temp c)]
-             (when temp
-               (temp d))))))))
+   (-> m
+       (reverse-call a)
+       (reverse-call b)
+       (reverse-call c)
+       (reverse-call d)))
   ([m a b c d e]
-   (let [temp (m a)]
-     (when temp
-       (let [temp (temp b)]
-         (when temp
-           (let [temp (temp c)]
-             (when temp
-               (let [temp (temp d)]
-                 (when temp
-                   (temp e))))))))))
-  ([m a b c d e & rest]
-   (let [temp (m a)]
-     (when temp
-       (let [temp (temp b)]
-         (when temp
-           (let [temp (temp c)]
-             (when temp
-               (let [temp (temp d)]
-                 (when temp
-                   (let [temp (temp e)]
-                     (apply temp rest))))))))))))
+   (-> m
+       (reverse-call a)
+       (reverse-call b)
+       (reverse-call c)
+       (reverse-call d)
+       (reverse-call e)))
+  ([m a b c d e f]
+   (-> m
+       (reverse-call a)
+       (reverse-call b)
+       (reverse-call c)
+       (reverse-call d)
+       (reverse-call e)
+       (reverse-call f))))
 
 (defn- resolve-path [context path]
-  (if (vector? path)
-    (case (count path)
-      1 (let [[a] path] (local-get-in context a))
-      2 (let [[a b] path] (local-get-in context a b))
-      3 (let [[a b c] path] (local-get-in context a b c ))
-      4 (let [[a b c d] path] (local-get-in context a b c d ))
-      5 (let [[a b c d e] path] (local-get-in context a b c d e))
-      6 (let [[a b c d e f] path] (local-get-in context a b c d e f))
-      (get-in context path))
-    (context path)))
+  (cond
+    (not (vector? path)) (context path)
+    (record? context) (get-in context path)
+    :else (case (count path)
+            1 (let [[a] path] (local-get-in context a))
+            2 (let [[a b] path] (local-get-in context a b))
+            3 (let [[a b c] path] (local-get-in context a b c))
+            4 (let [[a b c d] path] (local-get-in context a b c d))
+            5 (let [[a b c d e] path] (local-get-in context a b c d e))
+            6 (let [[a b c d e f] path] (local-get-in context a b c d e f))
+            (get-in context path))))
 
 
 (defn- evaluate-condition [condition context]
