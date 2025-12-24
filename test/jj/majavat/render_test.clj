@@ -355,6 +355,8 @@ this is a  footer"
     "hello world" "path-resolver/length-1" (Container. "world")
     "hello world1" "path-resolver/length-2" {:value1 {:value "world1"}}
     "hello world1" "path-resolver/length-2" (Container1. (Container. "world1"))
+    "hello world1" "path-resolver/length-2" (Container1. {:value "world1"})
+    "hello world1" "path-resolver/length-2" {:value1 (Container. "world1")}
     "hello world2" "path-resolver/length-3" {:value2 {:value1 {:value "world2"}}}
     "hello world2" "path-resolver/length-3" (Container2. (Container1. (Container. "world2")))
     "hello world3" "path-resolver/length-4" {:value3 {:value2 {:value1 {:value "world3"}}}}

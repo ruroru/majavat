@@ -1,8 +1,9 @@
 (ns jj.majavat.parser
   (:require [jj.majavat.lexer :as lexer]
-            [jj.majavat.resolver :as cr]
-            [jj.majavat.renderer.filters :as filters])
-  (:import (java.io FileNotFoundException PushbackReader StringWriter)
+            [jj.majavat.renderer.filters :as filters]
+            [jj.majavat.resolver :as cr])
+  (:import (clojure.lang ExceptionInfo)
+           (java.io PushbackReader StringWriter)
            (java.nio.file Paths)
            (java.time Instant LocalDate LocalDateTime LocalTime ZoneId ZonedDateTime)))
 
@@ -86,7 +87,9 @@
                                                                                                            [args remaining]))
                                                                            parsed-filter {:filter-name (:value filter-function) :args args}]
                                                                        (recur remaining-after-args (conj filters parsed-filter)))
-                                                                     (throw (Exception. (str (:line (first remaining-after-tag)))))))
+                                                                     (throw (ex-info (format "error on line %s" (:line (first remaining-after-tag)))
+                                                                                     {:type :syntax-error
+                                                                                      :line (:line (first remaining-after-tag))}))))
                                                                  [filters remaining]))
                            value-node (if (empty? filters)
                                         (assoc current-item :type :value-node)
@@ -96,7 +99,9 @@
          :opening-bracket (recur (rest lexed-list) list current-block parsing-for-body current-file-path template-resolver)
          :closing-bracket (if (not (nil? (:value (last list))))
                             (recur (rest lexed-list) list current-block parsing-for-body current-file-path template-resolver)
-                            (throw (Exception. (str (:line current-item)))))
+                            (throw (ex-info (format "error on line %s" (:line current-item))
+                                            {:type :syntax-error
+                                             :line (:line current-item)})))
 
          :block-start (let [remaining (rest lexed-list)]
                         (if (and (seq remaining) (= :block-end (:type (first remaining))))
@@ -140,8 +145,12 @@
                                              query-string-node {:type  :query-string
                                                                 :value (:variable-value query-string-decl-token)}]
                                          (recur remaining-after-block-end (conj list query-string-node) current-block parsing-for-body current-file-path template-resolver))
-                                       (throw (Exception. (str (:line (or block-end-token query-string-decl-token)))))))
-                                   (throw (Exception. (str (:line (or query-string-decl-token current-item)))))))
+                                       (throw (ex-info (format "error on line %s" (:line (or block-end-token query-string-decl-token)))
+                                                       {:type :syntax-error
+                                                        :line (:line (or block-end-token query-string-decl-token))}))))
+                                   (throw (ex-info (format "error on line %s" (:line (or query-string-decl-token current-item)))
+                                                   {:type :syntax-error
+                                                    :line (:line (or query-string-decl-token current-item))}))))
 
          :keyword-include (let [remaining (rest lexed-list)
                                 file-name-token (first remaining)
@@ -156,8 +165,12 @@
                                         included-lexed (lexer/tokenize file-content)
                                         included-content (parse-ast included-lexed [] {} false resolved-filename template-resolver)]
                                     (recur remaining-after-filename (into list included-content) current-block parsing-for-body current-file-path template-resolver))
-                                  (throw (FileNotFoundException. filename))))
-                              (throw (Exception. (str (:line file-name-token))))))
+                                  (throw (ex-info (format "Template not found: %s" filename)
+                                                  {:type :template-not-found-error
+                                                   :template filename}))))
+                              (throw (ex-info (format "error on line %s" (:line file-name-token))
+                                              {:type :syntax-error
+                                               :line (:line file-name-token)}))))
 
          :keyword-extends (let [remaining (rest lexed-list)
                                 file-path-token (first remaining)
@@ -174,8 +187,12 @@
                                         parent-content (parse-ast parent-lexed [] {:content block-content} false resolved-file-path template-resolver)]
 
                                     (recur remaining-after-block (into parent-content list) current-block parsing-for-body current-file-path template-resolver))
-                                  (throw (FileNotFoundException. file-path))))
-                              (throw (Exception. (str (:line file-path-token))))))
+                                  (throw (ex-info (format "Template not found: %s" file-path)
+                                                  {:type :template-not-found-error
+                                                   :template file-path}))))
+                              (throw (ex-info (format "error on line %s" (:line file-path-token))
+                                              {:type :syntax-error
+                                               :line (:line file-path-token)}))))
 
          :keyword-block (let [remaining (rest lexed-list)
                               block-name-token (first remaining)
@@ -203,8 +220,12 @@
                                               :variable-value (:variable-value var-decl-token)
                                               :body           body}]
                                 (recur remaining-after-body (conj list let-node) current-block parsing-for-body current-file-path template-resolver))
-                              (throw (Exception. (str (:line (or block-end-token var-decl-token)))))))
-                          (throw (Exception. (str (:line (or var-decl-token current-item)))))))
+                              (throw (ex-info (format "error on line %s" (:line (or block-end-token var-decl-token)))
+                                              {:type :syntax-error
+                                               :line (:line (or block-end-token var-decl-token))}))))
+                          (throw (ex-info (format "error on line %s" (:line (or var-decl-token current-item)))
+                                          {:type :syntax-error
+                                           :line (:line (or var-decl-token current-item))}))))
 
          :keyword-for (let [remaining (rest lexed-list)
                             identifier-token (first remaining)]
@@ -225,9 +246,15 @@
                                                   :body       body}]
 
                                     (recur remaining-after-body (conj list for-node) current-block parsing-for-body current-file-path template-resolver))
-                                  (throw (Exception. (str (:line block-end-token))))))
-                              (throw (Exception. (str (:line (first remaining-after-id)))))))
-                          (throw (Exception. (str (:line identifier-token))))))
+                                  (throw (ex-info (format "error on line %s" (:line block-end-token))
+                                                  {:type :syntax-error
+                                                   :line (:line block-end-token)}))))
+                              (throw (ex-info (format "error on line %s" (:line (first remaining-after-id)))
+                                              {:type :syntax-error
+                                               :line (:line (first remaining-after-id))}))))
+                          (throw (ex-info (format "error on line %s" (:line identifier-token))
+                                          {:type :syntax-error
+                                           :line (:line identifier-token)}))))
 
          :keyword-if (let [remaining (rest lexed-list)
                            condition-token (first remaining)
@@ -246,7 +273,9 @@
                                     :when-false when-false}]
                        (if (some? (:value condition-token))
                          (recur remaining-final (conj list if-node) current-block parsing-for-body current-file-path template-resolver)
-                         (throw (Exception. (str (:line condition-token))))))
+                         (throw (ex-info (format "error on line %s" (:line condition-token))
+                                         {:type :syntax-error
+                                          :line (:line condition-token)}))))
 
          :keyword-if-not (let [remaining (rest lexed-list)
                                condition-token (first remaining)
@@ -265,7 +294,9 @@
                                             :when-false when-false}]
                            (if (some? (:value condition-token))
                              (recur remaining-final (conj list if-not-node) current-block parsing-for-body current-file-path template-resolver)
-                             (throw (Exception. (str (:line condition-token))))))
+                             (throw (ex-info (format "error on line %s" (:line condition-token))
+                                             {:type :syntax-error
+                                              :line (:line condition-token)}))))
 
          :end-for (if parsing-for-body
                     [list (rest lexed-list)]
@@ -302,13 +333,22 @@
           lexed-value (lexer/tokenize file-content)]
       (try
         (parse-ast lexed-value [] {} false resource-path template-resolver)
-        (catch FileNotFoundException e
-          {:type          "template-not-found-error"
-           :error-message (format "%s template can not be found" (.getMessage ^Exception e))
-           })
+        (catch ExceptionInfo e
+          (let [data (ex-data e)]
+            (case (:type data)
+              :template-not-found-error
+              {:type          "template-not-found-error"
+               :error-message (format "%s template can not be found" (:template data))}
+
+              :syntax-error
+              {:type          "syntax-error"
+               :error-message (.getMessage e)
+               :line          (str (:line data))}
+
+              {:type          "error"
+               :error-message (.getMessage e)})))
         (catch Exception e
-          {:type          "syntax-error"
-           :error-message (format "error on line %s" (.getMessage ^Exception e))
-           :line          (.getMessage ^Exception e)})))
+          {:type          "error"
+           :error-message (.getMessage e)})))
     {:type          "template-not-found-error"
      :error-message (format "%s can not be found." resource-path)}))
