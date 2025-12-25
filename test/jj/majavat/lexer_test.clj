@@ -335,3 +335,27 @@
 (deftest tokenize-nil
   (let [expected []]
     (is (= expected (lexer/tokenize nil)))))
+
+
+(deftest each-test
+  (is (= [{:type :block-start}
+          {:type :each-token}
+          {:type  :identifier
+           :value :world}
+          {:type :each-in-token}
+          {:type  :each-identifier-token
+           :value [:planets]}
+          {:line 1
+           :type :block-end}
+          {:type  :text
+           :value " hello "}
+          {:type :opening-bracket}
+          {:type  :expression
+           :value [:world]}
+          {:line 1
+           :type :closing-bracket}
+          {:type :block-start}
+          {:type :end-each-token}
+          {:line 1
+           :type :block-end}]
+         (lexer/tokenize "{% each world in planets %} hello {{ world }}{% endeach %}"))))

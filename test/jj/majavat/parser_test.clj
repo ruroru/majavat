@@ -383,3 +383,12 @@
     "filter/piped-empty-filter"
     ))
 
+(deftest test-parse-for-loop
+  (is (= [{:body       [{:type  :text
+                         :value "hello "}
+                        {:type  :value-node
+                         :value [:world]}]
+           :identifier :world
+           :source     [:planets]
+           :type       :each}]
+         (parser/parse "each/each" contentResolver))))

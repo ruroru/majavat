@@ -78,25 +78,25 @@ Hello {{ name | upper-case }}!
 | long                      | String        | "123" → 123L                                |
 | lower-case                | String        | "HELLO WORLD" → "hello world"               |
 | prepend                   | String        | "hello" \| prepend " world" → "world hello" |                                      
-| slugify                   | String        | "Foo Bar" → "foo-bar"                      |
+| slugify                   | String        | "Foo Bar" → "foo-bar"                       |
 | title-case                | String        | "hello world" → "Hello World"               |
 | trim                      | String        | "  hello  " → "hello"                       |
 | upper-case                | String        | "hello world" → "HELLO WORLD"               |
 | upper-roman               | String        | "iv" → "IV"                                 |
-| name                      | keyword       | :name → "name"                              |
-| abs                       | Number        | -1 → 1.0                                   |
-| ceil                      | Number        | 1.99 → 2                                   |
+| name                      | Keyword       | :name → "name"                              |
+| abs                       | Number        | -1 → 1.0                                    |
+| ceil                      | Number        | 1.99 → 2                                    |
 | dec                       | Number        | 5 → 4                                       |
-| floor                     | Number        | 1.4 → 1.0                                  |
-| inc                       | Number        | 5 → 6                                       |
-| round                     | Number        | 1.99 → 2                                   |
 | file-size                 | Number        | 2048 → "2 KB"                               |
-| default "foo"             | nil           | nil → "foo"                                |
-| date  "yyyy"              | LocalDate     | Instance of LocalDate → "2025"             | 
-| date  "yyyy"              | LocalDateTime | Instance of LocalDateTime → "2025"         | 
-| date "hh/mm"              | LocalTime     | Instance of LocalTime →  "11/11"           |
-| date "hh/mm" "Asia/Tokyo" | ZonedDateTime | Instance of ZonedDateTime →  "11/11"       |
-| date "hh/mm" "Asia/Tokyo" | Instant       | Instance of Instant →  "11/11"             |
+| floor                     | Number        | 1.4 → 1.0                                   |
+| inc                       | Number        | 5 → 6                                       |
+| round                     | Number        | 1.99 → 2                                    |
+| default "foo"             | nil           | nil → "foo"                                 |
+| date "yyyy"               | LocalDate     | Instance of LocalDate → "2025"              | 
+| date "yyyy"               | LocalDateTime | Instance of LocalDateTime → "2025"          | 
+| date "hh/mm"              | LocalTime     | Instance of LocalTime →  "11/11"            |
+| date "hh/mm" "Asia/Tokyo" | Instant       | Instance of Instant →  "11/11"              |
+| date "hh/mm" "Asia/Tokyo" | ZonedDateTime | Instance of ZonedDateTime →  "11/11"        |
 
 #### Conditionals
 
@@ -128,6 +128,8 @@ or
 
 #### Looping
 
+##### for
+
 Rendering input file with content:
 
 ```
@@ -151,6 +153,22 @@ The loop context provides access to:
 `loop.first?` - true only for the first item
 
 `loop.last?` - true only for the last item
+
+##### each
+
+In situations where loop context is not needed, `each` can be used
+
+```
+{% each item in items %}
+- {{ item }}
+{% endeach %}
+```
+
+```clojure
+(def render-fn (build-renderer "input-file"))
+
+(render-fn {:items ["Apple" "Banana" "Orange"]}) ;; returns "- Apple\n- Banana\n- Orange"
+```
 
 #### Including template
 

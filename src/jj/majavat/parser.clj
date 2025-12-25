@@ -14,6 +14,7 @@
     :lower-case #(when (some? %) (.toLowerCase ^String %))
     :capitalize #(when (some? %) (clojure.string/capitalize ^String %))
     :title-case #(when (some? %) (filters/title-case ^String %))
+    :slugify #(when (some? %) (filters/slugify ^String %))
     :upper-roman #(when (some? %) (filters/upper-roman ^String %))
     :append #(when (some? %) (filters/append ^String % args))
     :prepend #(when (some? %) (filters/prepend ^String % args))
@@ -266,6 +267,33 @@
                                           {:type :syntax-error
                                            :line (:line identifier-token)}))))
 
+         :each-token (let [remaining (rest lexed-list)
+                           identifier-token (first remaining)]
+                       (if (not (= :block-end (:type identifier-token)))
+                         (let [remaining-after-id (rest remaining)]
+                           (if (= :each-in-token (:type (first remaining-after-id)))
+                             (let [remaining-after-in (rest remaining-after-id)
+                                   source-token (first remaining-after-in)
+                                   remaining-after-source (rest remaining-after-in)
+                                   block-end-token (first remaining-after-source)]
+                               (if (some? (:value source-token))
+                                 (let [remaining-after-block-end (rest remaining-after-source)
+                                       [body remaining-after-body] (parse-ast remaining-after-block-end [] current-block true current-file-path template-resolver)
+                                       each-node {:type       :each
+                                                  :identifier (:value identifier-token)
+                                                  :source     (:value source-token)
+                                                  :body       body}]
+                                   (recur remaining-after-body (conj list each-node) current-block parsing-for-body current-file-path template-resolver))
+                                 (throw (ex-info (format "error on line %s" (:line block-end-token))
+                                                 {:type :syntax-error
+                                                  :line (:line block-end-token)}))))
+                             (throw (ex-info (format "error on line %s" (:line (first remaining-after-id)))
+                                             {:type :syntax-error
+                                              :line (:line (first remaining-after-id))}))))
+                         (throw (ex-info (format "error on line %s" (:line identifier-token))
+                                         {:type :syntax-error
+                                          :line (:line identifier-token)}))))
+
          :keyword-if (let [remaining (rest lexed-list)
                            condition-token (first remaining)
                            remaining-after-condition (rest remaining)
@@ -312,6 +340,10 @@
                     [list (rest lexed-list)]
                     (recur (rest lexed-list) list current-block parsing-for-body current-file-path template-resolver))
 
+         :end-each-token (if parsing-for-body
+                           [list (rest lexed-list)]
+                           (recur (rest lexed-list) list current-block parsing-for-body current-file-path template-resolver))
+
          :keyword-else (if parsing-for-body
                          [list lexed-list]
                          (recur (rest lexed-list) list current-block parsing-for-body current-file-path template-resolver))
@@ -325,6 +357,8 @@
                             (recur (rest lexed-list) list current-block parsing-for-body current-file-path template-resolver))
 
          :keyword-in (recur (rest lexed-list) list current-block parsing-for-body current-file-path template-resolver)
+         :each-in-token (recur (rest lexed-list) list current-block parsing-for-body current-file-path template-resolver)
+         :each-identifier-token (recur (rest lexed-list) list current-block parsing-for-body current-file-path template-resolver)
          :variable-declaration (recur (rest lexed-list) list current-block parsing-for-body current-file-path template-resolver)
          :identifier (recur (rest lexed-list) list current-block parsing-for-body current-file-path template-resolver)
          :file-path (recur (rest lexed-list) list current-block parsing-for-body current-file-path template-resolver)

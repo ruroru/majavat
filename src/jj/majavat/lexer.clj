@@ -103,6 +103,9 @@
             (= "endfor" trimmed-string)
             (recur (rrest my-sequence) "" (conj vector {:type :end-for} {:type :block-end :line line-number}) new-line-number)
 
+            (= "endeach" trimmed-string)
+            (recur (rrest my-sequence) "" (conj vector {:type :end-each-token} {:type :block-end :line line-number}) new-line-number)
+
             (= "endverbatim" trimmed-string)
             (recur (rrest my-sequence) "" (conj vector {:type :end-verbatim} {:type :block-end :line line-number}) new-line-number)
 
@@ -151,6 +154,9 @@
         (every? identity [(= "in" (string/trim current-string)) (= (:type (last vector)) :identifier)])
         (recur (rest my-sequence) (str "" current-char) (conj vector {:type :keyword-in}) new-line-number)
 
+        (every? identity [(= "in" (string/trim current-string)) (and (map? (last vector)) (= :each-token (:type (last vector))) (:value (last vector)))])
+        (recur (rest my-sequence) (str "" current-char) (conj (pop vector) {:type :identifier :value (:value (last vector))} {:type :each-in-token}) new-line-number)
+
         (every? identity [(= (:type (last vector)) :keyword-in) (= next-char \%)])
         (let [current-trimmed (string/trim current-string)]
           (if (not (.isBlank ^String current-trimmed))
@@ -158,7 +164,17 @@
                                                                                                   (string/split #"\.")))}) new-line-number)
             (recur (rest my-sequence) "" (conj vector {:type :identifier}) new-line-number)))
 
+        (every? identity [(= (:type (last vector)) :each-in-token) (= next-char \%)])
+        (let [current-trimmed (string/trim current-string)]
+          (if (not (.isBlank ^String current-trimmed))
+            (recur (rest my-sequence) "" (conj vector {:type :each-identifier-token :value (mapv keyword (-> current-trimmed
+                                                                                                             (string/split #"\.")))}) new-line-number)
+            (recur (rest my-sequence) "" (conj vector {:type :each-identifier-token}) new-line-number)))
+
         (every? identity [(= (:type (last vector)) :keyword-in)])
+        (recur (rest my-sequence) (str current-string current-char) vector new-line-number)
+
+        (every? identity [(= (:type (last vector)) :each-in-token)])
         (recur (rest my-sequence) (str current-string current-char) vector new-line-number)
 
         (and (= current-char \}) (= next-char \}))
@@ -251,6 +267,9 @@
         (cond
           (= (string/trim current-string) "for")
           (recur (rest my-sequence) "" (conj vector {:type :keyword-for}) new-line-number)
+
+          (= (string/trim current-string) "each")
+          (recur (rest my-sequence) "" (conj vector {:type :each-token}) new-line-number)
 
           (= (string/trim current-string) "let")
           (recur (rest my-sequence) "" (conj vector {:type :keyword-let}) new-line-number)
@@ -345,6 +364,14 @@
           (and (not (string/blank? current-string))
                (or (= current-char \ ) (= next-char \%)))
           (recur (rest my-sequence) (str "" current-char) (conj vector {:type :identifier :value (keyword (string/trim current-string))}) new-line-number)
+          :else
+          (recur (rest my-sequence) (str current-string current-char) vector new-line-number))
+
+        (= (:type (last vector)) :each-token)
+        (cond
+          (and (not (string/blank? current-string))
+               (or (= current-char \ ) (= next-char \%)))
+          (recur (rest my-sequence) (str "" current-char) (conj vector {:type :each-token :value (keyword (string/trim current-string))}) new-line-number)
           :else
           (recur (rest my-sequence) (str current-string current-char) vector new-line-number))
 

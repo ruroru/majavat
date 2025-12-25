@@ -4,7 +4,7 @@
     [clojure.string :as str]
     [clojure.test :refer [are deftest is testing]]
     [jj.majavat.parser :as parser]
-    [jj.majavat.renderer :as renderer :refer [->InputStreamRenderer ->StringRenderer ->PartialRenderer]]
+    [jj.majavat.renderer :as renderer :refer [->InputStreamRenderer ->PartialRenderer ->StringRenderer]]
     [jj.majavat.renderer.sanitizer :refer [->Html]]
     [jj.majavat.resolver.fs :as fcr]
     [jj.majavat.resolver.resource :as rcr])
@@ -222,6 +222,7 @@ this is a  footer"
     "foo 2" "filter/round" {:value 2.2}
     "foobarbaz" "filter/append" {:value "bar"}
     "foobazbar" "filter/prepend" {:value "bar"}
+    "foobar-baz-quaz" "filter/slugify" {:value "bar baz-Quaz"}
     ))
 
 (deftest unsupported-filter
@@ -260,6 +261,18 @@ this is a  footer"
            (= render-result render-is-result)))
 
     (slurp (io/resource "loop/expected-for-loop")) "loop/for-loop"))
+
+(deftest each
+  (let [context {:planets ["Mercury" "Venus" "Earth" "Mars" "Jupiter" "Saturn" "Uranus" "Neptune"]}
+        string-renderer (renderer/render (->StringRenderer {:sanitizer (->Html)}) (parser/parse "each/each-planet" contentResolver) context)
+        is-renderer (renderer/render
+                      (->InputStreamRenderer {:sanitizer (->Html)}) (parser/parse "each/each-planet" contentResolver) context)]
+
+    (are [expected input]
+      (= expected input)
+
+      (slurp (io/resource "each/each-planet-expected")) string-renderer
+      (slurp (io/resource "each/each-planet-expected")) (String. (.readAllBytes ^InputStream is-renderer)))))
 
 (deftest csrf-token
   (testing "render to string"
@@ -357,6 +370,10 @@ this is a  footer"
 
                                            [{:type  :text
                                              :value "/some/route?key=value"}] "query-string/query-string" {:foo {:bar {"key" "value"}}}
+
+                                           [{:type  :text
+                                             :value "The planets are:Planet Mercury. Planet Venus. Planet Earth. Planet Mars. Planet Jupiter. Planet Saturn. Planet Uranus. Planet Neptune. "}]
+                                           "loop/each-loop-no-new-line" {:planets ["Mercury" "Venus" "Earth" "Mars" "Jupiter" "Saturn" "Uranus" "Neptune"]}
                                            ))
 
 (deftest render-depth-test
