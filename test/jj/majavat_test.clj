@@ -2,6 +2,7 @@
   (:require [clojure.java.io :as io]
             [clojure.string :as str]
             [clojure.test :refer [deftest is testing]]
+            [criterium.core :as criterium]
             [jj.majavat :as majavat]
             [jj.majavat.parser :as parser]
             [jj.majavat.renderer :refer [->InputStreamRenderer ->StringRenderer]]
@@ -176,3 +177,9 @@
                                                                                    :renderer   (->InputStreamRenderer {:sanitizer (->Html)})})
                                                 (dissoc context :page-title))))))
           "verifying render to input stream"))))
+
+(deftest performance-test
+  (if false
+    (let [file-path "html/index.html"
+          render-fn (majavat/build-renderer file-path)]
+      (criterium/bench (render-fn context)))))

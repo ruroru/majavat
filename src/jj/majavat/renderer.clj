@@ -68,9 +68,6 @@
             (get-in context path))))
 
 
-(defn- evaluate-condition [condition context]
-  (boolean (resolve-path context condition)))
-
 (defn- escape-if-needed [val s]
   (if (nil? s) val (sanitize s val)))
 
@@ -149,22 +146,32 @@
                  body (:body node)
                  items (resolve-path context source-path)
                  item-count (count items)]
-             (doseq [[index item] (map-indexed vector items)]
-               (let [loop-context (get-loop-context context index item-count)
-                     new-context (assoc loop-context identifier item)]
-                 (render-nodes body new-context sb escape-conf))))
+             (loop [i 0
+                    remaining (seq items)]
+               (when remaining
+                 (let [item (first remaining)
+                       loop-context (get-loop-context context i item-count)
+                       new-context (assoc loop-context identifier item)]
+                   (render-nodes body new-context sb escape-conf)
+                   (recur (inc i) (next remaining))))))
 
       :each
-      (let [{:keys [identifier body] source-path :source} node
+      (let [identifier (:identifier node)
+            source-path (:source node)
+            body (:body node)
             items (resolve-path context source-path)]
-        (doseq [item items]
-          (render-nodes body (assoc context identifier item) sb escape-conf)))
+        (loop [i 0
+               remaining (seq items)]
+          (when remaining
+            (let [item (first remaining)]
+              (render-nodes body (assoc context identifier item) sb escape-conf)
+              (recur (inc i) (next remaining))))))
 
       :if
       (let [condition (:condition node)
             when-true (:when-true node)
             when-false (:when-false node)]
-        (if (evaluate-condition condition context)
+        (if (boolean (resolve-path context condition))
           (when (seq when-true) (render-nodes when-true context sb escape-conf))
           (when (seq when-false) (render-nodes when-false context sb escape-conf))))
 
@@ -172,7 +179,7 @@
       (let [condition (:condition node)
             when-true (:when-true node)
             when-false (:when-false node)]
-        (if (not (evaluate-condition condition context))
+        (if (not (boolean (resolve-path context condition)))
           (when (seq when-true) (render-nodes when-true context sb escape-conf))
           (when (seq when-false) (render-nodes when-false context sb escape-conf))))
       nil))
@@ -229,22 +236,33 @@
                 source-path (:source node)
                 body (:body node)
                 items (resolve-path context source-path)
-                item-count (count items)
-                for-streams (mapcat (fn [index item]
-                                      (let [loop-context (get-loop-context context index item-count)]
-                                        (render-nodes-to-stream-seq body (assoc loop-context identifier item) charset escape-conf)))
-                                    (range)
-                                    items)]
-            (concat for-streams
-                    (render-nodes-to-stream-seq (rest nodes) context charset escape-conf)))
+                item-count (count items)]
+            (letfn [(process-items [i xs]
+                      (lazy-seq
+                        (when (seq xs)
+                          (let [item (first xs)
+                                loop-context (get-loop-context context i item-count)
+                                new-context (assoc loop-context identifier item)]
+                            (concat (render-nodes-to-stream-seq body new-context charset escape-conf)
+                                    (process-items (inc i) (rest xs)))))))]
+              (concat (process-items 0 items)
+                      (render-nodes-to-stream-seq (rest nodes) context charset escape-conf))))
 
           :each
-          (let [{:keys [identifier body] source-path :source} node
+          (let [identifier (:identifier node)
+                source-path (:source node)
+                body (:body node)
                 items (resolve-path context source-path)
-                for-streams (mapcat #(render-nodes-to-stream-seq body (assoc context identifier %) charset escape-conf)
-                                    items)]
-            (concat for-streams
-                    (render-nodes-to-stream-seq (rest nodes) context charset escape-conf)))
+                ]
+            (letfn [(process-items [i xs]
+                      (lazy-seq
+                        (when (seq xs)
+                          (let [item (first xs)
+                                new-context (assoc context identifier item)]
+                            (concat (render-nodes-to-stream-seq body new-context charset escape-conf)
+                                    (process-items (inc i) (rest xs)))))))]
+              (concat (process-items 0 items)
+                      (render-nodes-to-stream-seq (rest nodes) context charset escape-conf))))
 
           :keyword-now
           (let [now-str (filters/->formatted-instant (Instant/now) [(get node :format)])]
@@ -255,7 +273,7 @@
           (let [condition (:condition node)
                 when-true (:when-true node)
                 when-false (:when-false node)]
-            (if (evaluate-condition condition context)
+            (if (boolean (resolve-path context condition))
               (if when-true
                 (concat (render-nodes-to-stream-seq when-true context charset escape-conf)
                         (render-nodes-to-stream-seq (rest nodes) context charset escape-conf))
@@ -269,7 +287,7 @@
           (let [condition (:condition node)
                 when-true (:when-true node)
                 when-false (:when-false node)]
-            (if (not (evaluate-condition condition context))
+            (if (not (boolean (resolve-path context condition)))
               (if when-true
                 (concat (render-nodes-to-stream-seq when-true context charset escape-conf)
                         (render-nodes-to-stream-seq (rest nodes) context charset escape-conf))
@@ -352,34 +370,44 @@
         (let [identifier (:identifier node)
               source-path (:source node)
               body (:body node)
-              items (resolve-path context source-path)
-              item-count (count items)]
+              items (resolve-path context source-path)]
           (if (some? items)
-            (let [expanded-nodes
-                  (mapcat
-                    (fn [index item]
-                      (let [loop-context (get-loop-context context index item-count )
-                            new-context (assoc loop-context identifier item)]
-                        (partial-render-nodes body new-context)))
-                    (range)
-                    items)]
-              (into acc expanded-nodes))
+            (let [item-count (count items)]
+              (loop [i 0
+                     remaining (seq items)
+                     result acc]
+                (if remaining
+                  (let [item (first remaining)
+                        loop-context (get-loop-context context i item-count)
+                        new-context (assoc loop-context identifier item)
+                        rendered (partial-render-nodes body new-context)]
+                    (recur (inc i) (next remaining) (into result rendered)))
+                  result)))
             (conj acc (assoc node :body (partial-render-nodes body context)))))
 
-        :each (let [{:keys [identifier body] source-path :source} node
+        :each (let [identifier (:identifier node)
+                    source-path (:source node)
+                    body (:body node)
                     items (resolve-path context source-path)]
                 (if (some? items)
-                  (let [expanded-nodes (mapcat (fn [item]
-                                                 (partial-render-nodes body (assoc context identifier item)))
-                                               items)]
-                    (into acc expanded-nodes))
+                  (let [item-count (count items)]
+                    (loop [i 0
+                           remaining (seq items)
+                           result acc]
+                      (if remaining
+                        (let [item (first remaining)
+                              loop-context (get-loop-context context i item-count)
+                              new-context (assoc loop-context identifier item)
+                              rendered (partial-render-nodes body new-context)]
+                          (recur (inc i) (next remaining) (into result rendered)))
+                        result)))
                   (conj acc (assoc node :body (partial-render-nodes body context)))))
 
         :if
         (let [condition (:condition node)
               condition-val (resolve-path context condition)]
           (if (some? condition-val)
-            (if (evaluate-condition condition context)
+            (if (boolean condition-val)
               (into acc (partial-render-nodes (:when-true node) context))
               (into acc (partial-render-nodes (:when-false node) context)))
             (conj acc (assoc node
@@ -390,7 +418,7 @@
         (let [condition (:condition node)
               condition-val (resolve-path context condition)]
           (if (some? condition-val)
-            (if (not (evaluate-condition condition context))
+            (if (not (boolean condition-val))
               (into acc (partial-render-nodes (:when-true node) context))
               (into acc (partial-render-nodes (:when-false node) context)))
             (conj acc (assoc node
@@ -423,7 +451,7 @@
 
 (defrecord PartialRenderer [config]
   Renderer
-  (render [this template context]
+  (render [_ template context]
     (if-not (map? template)
       (-> (partial-render-nodes template context)
           optimize-ast)
