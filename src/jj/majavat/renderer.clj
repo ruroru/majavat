@@ -108,42 +108,42 @@
 
 (defn- render-nodes [nodes context ^StringBuilder sb escape-conf]
   (doseq [node nodes]
-    (case (:type node)
+    (case (node :type)
       :text
-      (.append sb (:value node ""))
+      (.append sb (node :value ""))
 
       :value-node
-      (let [val (resolve-path context (:value node))
-            filter-fn (get node :filter-fn identity)
+      (let [val (resolve-path context (node :value))
+            filter-fn (node :filter-fn identity)
             filtered-val (filter-fn val)]
         (.append sb (-> filtered-val
                         ->str
-                        (escape-if-needed (:sanitizer escape-conf)))))
+                        (escape-if-needed (escape-conf :sanitizer)))))
 
       :query-string
-      (when-let [query-str (build-query-string (:value node) context)]
+      (when-let [query-str (build-query-string (node :value) context)]
         (.append sb query-str))
 
       :keyword-now
-      (.append sb (filters/->formatted-instant (Instant/now) [(get node :format)]))
+      (.append sb (filters/->formatted-instant (Instant/now) [(node :format)]))
 
       :variable-assignment
-      (let [variable-name (:variable-name node)
-            variable-value (:variable-value node)
-            body (:body node)
+      (let [variable-name (node :variable-name)
+            variable-value (node :variable-value)
+            body (node :body)
             new-context (assoc context variable-name (resolve-path context variable-value))]
         (render-nodes body new-context sb escape-conf))
 
       :variable-declaration
-      (let [variable-name (:variable-name node)
-            variable-value (:variable-value node)
-            body (:body node)
+      (let [variable-name (node :variable-name)
+            variable-value (node :variable-value)
+            body (node :body)
             new-context (assoc context variable-name variable-value)]
         (render-nodes body new-context sb escape-conf))
 
-      :for (let [identifier (:identifier node)
-                 source-path (:source node)
-                 body (:body node)
+      :for (let [identifier (node :identifier)
+                 source-path (node :source)
+                 body (node :body)
                  items (resolve-path context source-path)
                  item-count (count items)]
              (loop [i 0
@@ -156,9 +156,9 @@
                    (recur (inc i) (next remaining))))))
 
       :each
-      (let [identifier (:identifier node)
-            source-path (:source node)
-            body (:body node)
+      (let [identifier (node :identifier)
+            source-path (node :source)
+            body (node :body)
             items (resolve-path context source-path)]
         (loop [i 0
                remaining (seq items)]
@@ -168,17 +168,17 @@
               (recur (inc i) (next remaining))))))
 
       :if
-      (let [condition (:condition node)
-            when-true (:when-true node)
-            when-false (:when-false node)]
+      (let [condition (node :condition)
+            when-true (node :when-true)
+            when-false (node :when-false)]
         (if (boolean (resolve-path context condition))
           (when (seq when-true) (render-nodes when-true context sb escape-conf))
           (when (seq when-false) (render-nodes when-false context sb escape-conf))))
 
       :if-not
-      (let [condition (:condition node)
-            when-true (:when-true node)
-            when-false (:when-false node)]
+      (let [condition (node :condition)
+            when-true (node :when-true)
+            when-false (node :when-false)]
         (if (not (boolean (resolve-path context condition)))
           (when (seq when-true) (render-nodes when-true context sb escape-conf))
           (when (seq when-false) (render-nodes when-false context sb escape-conf))))
@@ -191,50 +191,50 @@
   (lazy-seq
     (when (seq nodes)
       (let [node (first nodes)]
-        (case (:type node)
+        (case (node :type)
           :text
-          (let [text (:value node "")]
+          (let [text (node :value "")]
             (if (empty? text)
               (render-nodes-to-stream-seq (rest nodes) context charset escape-conf)
               (cons (ByteArrayInputStream. (.getBytes ^String text ^Charset charset))
                     (render-nodes-to-stream-seq (rest nodes) context charset escape-conf))))
 
           :value-node
-          (let [val (resolve-path context (:value node))
-                filter-fn (get node :filter-fn identity)
+          (let [val (resolve-path context (node :value))
+                filter-fn (node :filter-fn identity)
                 filtered-val (filter-fn val)
                 resolved-value (-> filtered-val
                                    ->str
-                                   (escape-if-needed (:sanitizer escape-conf)))]
+                                   (escape-if-needed (escape-conf :sanitizer)))]
             (cons (ByteArrayInputStream. (.getBytes ^String resolved-value ^Charset charset))
                   (render-nodes-to-stream-seq (rest nodes) context charset escape-conf)))
 
           :query-string
-          (let [query-str (build-query-string (:value node) context)]
+          (let [query-str (build-query-string (node :value) context)]
             (if query-str
               (cons (ByteArrayInputStream. (.getBytes ^String query-str ^Charset charset))
                     (render-nodes-to-stream-seq (rest nodes) context charset escape-conf))
               (render-nodes-to-stream-seq (rest nodes) context charset escape-conf)))
 
           :variable-declaration
-          (let [variable-name (:variable-name node)
-                variable-value (:variable-value node)
-                body (:body node)
+          (let [variable-name (node :variable-name)
+                variable-value (node :variable-value)
+                body (node :body)
                 new-context (assoc context variable-name variable-value)]
             (concat (render-nodes-to-stream-seq body new-context charset escape-conf)
                     (render-nodes-to-stream-seq (rest nodes) context charset escape-conf)))
           :variable-assignment
-          (let [variable-name (:variable-name node)
-                variable-value (:variable-value node)
-                body (:body node)
+          (let [variable-name (node :variable-name)
+                variable-value (node :variable-value)
+                body (node :body)
                 new-context (assoc context variable-name (resolve-path context variable-value))]
             (concat (render-nodes-to-stream-seq body new-context charset escape-conf)
                     (render-nodes-to-stream-seq (rest nodes) context charset escape-conf)))
 
           :for
-          (let [identifier (:identifier node)
-                source-path (:source node)
-                body (:body node)
+          (let [identifier (node :identifier)
+                source-path (node :source)
+                body (node :body)
                 items (resolve-path context source-path)
                 item-count (count items)]
             (letfn [(process-items [i xs]
@@ -249,9 +249,9 @@
                       (render-nodes-to-stream-seq (rest nodes) context charset escape-conf))))
 
           :each
-          (let [identifier (:identifier node)
-                source-path (:source node)
-                body (:body node)
+          (let [identifier (node :identifier)
+                source-path (node :source)
+                body (node :body)
                 items (resolve-path context source-path)
                 ]
             (letfn [(process-items [i xs]
@@ -265,14 +265,14 @@
                       (render-nodes-to-stream-seq (rest nodes) context charset escape-conf))))
 
           :keyword-now
-          (let [now-str (filters/->formatted-instant (Instant/now) [(get node :format)])]
+          (let [now-str (filters/->formatted-instant (Instant/now) [(node :format)])]
             (cons (ByteArrayInputStream. (.getBytes ^String now-str ^Charset charset))
                   (render-nodes-to-stream-seq (rest nodes) context charset escape-conf)))
 
           :if
-          (let [condition (:condition node)
-                when-true (:when-true node)
-                when-false (:when-false node)]
+          (let [condition (node :condition)
+                when-true (node :when-true)
+                when-false (node :when-false)]
             (if (boolean (resolve-path context condition))
               (if when-true
                 (concat (render-nodes-to-stream-seq when-true context charset escape-conf)
@@ -284,9 +284,9 @@
                 (render-nodes-to-stream-seq (rest nodes) context charset escape-conf))))
 
           :if-not
-          (let [condition (:condition node)
-                when-true (:when-true node)
-                when-false (:when-false node)]
+          (let [condition (node :condition)
+                when-true (node :when-true)
+                when-false (node :when-false)]
             (if (not (boolean (resolve-path context condition)))
               (if when-true
                 (concat (render-nodes-to-stream-seq when-true context charset escape-conf)
@@ -323,32 +323,32 @@
 (defn- partial-render-nodes [nodes context]
   (reduce
     (fn [acc node]
-      (case (:type node)
+      (case (node :type)
         :text
         (conj acc node)
 
         :value-node
-        (let [val (resolve-path context (:value node))]
+        (let [val (resolve-path context (node :value))]
           (if (some? val)
-            (let [filter-fn (get node :filter-fn identity)
+            (let [filter-fn (node :filter-fn identity)
                   filtered-val (filter-fn val)
                   resolved-str (->str filtered-val)]
               (conj acc {:type :text :value resolved-str}))
             (conj acc node)))
 
         :query-string
-        (let [query-data (resolve-path context (:value node))]
+        (let [query-data (resolve-path context (node :value))]
           (if (some? query-data)
-            (if-let [query-str (build-query-string (:value node) context)]
+            (if-let [query-str (build-query-string (node :value) context)]
               (conj acc {:type :text :value query-str})
               acc)
             (conj acc node)))
 
 
         :variable-assignment
-        (let [variable-name (:variable-name node)
-              variable-value (:variable-value node)
-              body (:body node)
+        (let [variable-name (node :variable-name)
+              variable-value (node :variable-value)
+              body (node :body)
               resolved-val (resolve-path context variable-value)]
           (if (some? resolved-val)
             (let [new-context (assoc context variable-name resolved-val)
@@ -357,9 +357,9 @@
             (conj acc (assoc node :body (partial-render-nodes body context)))))
 
         :variable-declaration
-        (let [variable-name (:variable-name node)
-              variable-value (:variable-value node)
-              body (:body node)
+        (let [variable-name (node :variable-name)
+              variable-value (node :variable-value)
+              body (node :body)
               new-context (assoc context variable-name variable-value)
               rendered-body (partial-render-nodes body new-context)]
           (if (= rendered-body body)
@@ -367,9 +367,9 @@
             (conj acc (assoc node :body rendered-body))))
 
         :for
-        (let [identifier (:identifier node)
-              source-path (:source node)
-              body (:body node)
+        (let [identifier (node :identifier)
+              source-path (node :source)
+              body (node :body)
               items (resolve-path context source-path)]
           (if (some? items)
             (let [item-count (count items)]
@@ -385,9 +385,9 @@
                   result)))
             (conj acc (assoc node :body (partial-render-nodes body context)))))
 
-        :each (let [identifier (:identifier node)
-                    source-path (:source node)
-                    body (:body node)
+        :each (let [identifier (node :identifier)
+                    source-path (node :source)
+                    body (node :body)
                     items (resolve-path context source-path)]
                 (if (some? items)
                   (let [item-count (count items)]
@@ -404,26 +404,26 @@
                   (conj acc (assoc node :body (partial-render-nodes body context)))))
 
         :if
-        (let [condition (:condition node)
+        (let [condition (node :condition)
               condition-val (resolve-path context condition)]
           (if (some? condition-val)
             (if (boolean condition-val)
-              (into acc (partial-render-nodes (:when-true node) context))
-              (into acc (partial-render-nodes (:when-false node) context)))
+              (into acc (partial-render-nodes (node :when-true) context))
+              (into acc (partial-render-nodes (node :when-false) context)))
             (conj acc (assoc node
-                        :when-true (partial-render-nodes (:when-true node) context)
-                        :when-false (partial-render-nodes (:when-false node) context)))))
+                        :when-true (partial-render-nodes (node :when-true) context)
+                        :when-false (partial-render-nodes (node :when-false) context)))))
 
         :if-not
-        (let [condition (:condition node)
+        (let [condition (node :condition)
               condition-val (resolve-path context condition)]
           (if (some? condition-val)
             (if (not (boolean condition-val))
-              (into acc (partial-render-nodes (:when-true node) context))
-              (into acc (partial-render-nodes (:when-false node) context)))
+              (into acc (partial-render-nodes (node :when-true) context))
+              (into acc (partial-render-nodes (node :when-false) context)))
             (conj acc (assoc node
-                        :when-true (partial-render-nodes (:when-true node) context)
-                        :when-false (partial-render-nodes (:when-false node) context)))))
+                        :when-true (partial-render-nodes (node :when-true) context)
+                        :when-false (partial-render-nodes (node :when-false) context)))))
 
         (conj acc node)))
     []
@@ -433,15 +433,15 @@
   "Merge consecutive text nodes and remove empty text nodes"
   (reduce
     (fn [acc node]
-      (if (= :text (:type node))
+      (if (= :text (node :type))
         (let [last-node (peek acc)]
           (cond
-            (empty? (:value node))
+            (empty? (node :value))
             acc
 
-            (and last-node (= :text (:type last-node)))
+            (and last-node (= :text (last-node :type)))
             (conj (pop acc)
-                  (assoc last-node :value (str (:value last-node) (:value node))))
+                  (assoc last-node :value (str (last-node :value) (node :value))))
 
             :else
             (conj acc node)))
