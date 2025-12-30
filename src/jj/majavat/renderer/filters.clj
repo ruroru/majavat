@@ -81,16 +81,16 @@
     (Integer/parseInt s)
     (catch Exception _ nil)))
 
-(defn round [n]
+(defn round-number [n]
   (Math/round (double n)))
 
-(defn floor [n]
+(defn get-floor [n]
   (Math/floor (double n)))
 
-(defn ceil [n]
+(defn get-ceiling [n]
   (Math/ceil (double n)))
 
-(defn abs [n]
+(defn get-absolute-value [n]
   (Math/abs (double n)))
 
 (defn append [v filter-args]

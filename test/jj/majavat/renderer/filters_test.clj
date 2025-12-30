@@ -178,7 +178,7 @@
                               {:key "y" :value "r" :random "i"}]
                              [:key "y"]))
 (deftest round
-  (are [input expected] (= expected (filters/round input))
+  (are [input expected] (= expected (filters/round-number input))
                         1 1
                         1.4 1
                         1.5 2
@@ -186,8 +186,8 @@
                         2 2
                         2.0 2))
 
-(deftest floor
-  (are [input expected] (= expected (filters/floor input))
+(deftest floor-test
+  (are [input expected] (= expected (filters/get-floor input))
                         1 1.0
                         1.4 1.0
                         1.5 1.0
@@ -195,8 +195,8 @@
                         2 2.0
                         2.0 2.0))
 
-(deftest ceil
-  (are [input expected] (= expected (filters/ceil input))
+(deftest ceil-test
+  (are [input expected] (= expected (filters/get-ceiling input))
                         1 1.0
                         1.4 2.0
                         1.5 2.0
@@ -204,8 +204,8 @@
                         2 2.0
                         2.0 2.0))
 
-(deftest abs
-  (are [input expected] (= expected (filters/abs input))
+(deftest abs-test
+  (are [input expected] (= expected (filters/get-absolute-value input))
                         1 1.0
                         0 0.0
                         -1 1.0))
