@@ -14,6 +14,9 @@
   (str/replace s "\r\n" "\n"))
 
 
+(def filters {:italic (fn [value args]
+                        (format "<i>%s</i>" value))})
+
 (def context {
               :page-title      "Home - My Awesome Blog"
               :site-name       "My Awesome Blog"
@@ -59,7 +62,8 @@
         "verifying render to string")
     (is (= (crlf->lf (slurp (io/resource "html/expected-error.html")))
            (crlf->lf (String. (.readAllBytes ^InputStream
-                                             ((majavat/build-renderer file-path {:renderer (->InputStreamRenderer {})}) context))))) "verifying render to input stream")))
+                                             ((majavat/build-renderer file-path {
+                                                                                 :renderer (->InputStreamRenderer {})}) context))))) "verifying render to input stream")))
 
 (deftest render-test
   (let [file-path "html/index.html"]
@@ -69,14 +73,39 @@
           "verifying render to string")
       (is (= (crlf->lf (slurp (io/resource "html/expected.html")))
              (crlf->lf (String. (.readAllBytes ^InputStream
-                                               ((majavat/build-renderer file-path {:renderer (->InputStreamRenderer {})}) context))))) "verifying render to input stream"))
+                                               ((majavat/build-renderer file-path {
+                                                                                   :renderer (->InputStreamRenderer {})}) context))))) "verifying render to input stream"))
     (testing "Escaped html"
       (is (= (crlf->lf (slurp (io/resource "html/expected-escaped.html")))
-             (crlf->lf ((majavat/build-renderer file-path {:renderer (->StringRenderer {:sanitizer (->Html)})}) context)))
+             (crlf->lf ((majavat/build-renderer file-path {
+                                                           :renderer (->StringRenderer {:sanitizer (->Html)})}) context)))
           "verifying render to string")
       (is (= (crlf->lf (slurp (io/resource "html/expected-escaped.html")))
              (crlf->lf (String. (.readAllBytes ^InputStream
-                                               ((majavat/build-renderer file-path {:renderer (->InputStreamRenderer {:sanitizer (->Html)})}) context)))))
+                                               ((majavat/build-renderer file-path {
+                                                                                   :renderer (->InputStreamRenderer {:sanitizer (->Html)})}) context)))))
+          "verifying render to input stream"))))
+
+
+(deftest render-custom-filter-test
+  (let [file-path "html/index-with-custom-filter.html"]
+    (testing "Not escaped html"
+      (is (= (crlf->lf (slurp (io/resource "html/expected-custom-filter.html")))
+             (crlf->lf ((majavat/build-renderer file-path {:filters filters}) context)))
+          "verifying render to string")
+      (is (= (crlf->lf (slurp (io/resource "html/expected-custom-filter.html")))
+             (crlf->lf (String. (.readAllBytes ^InputStream
+                                               ((majavat/build-renderer file-path {:filters  filters
+                                                                                   :renderer (->InputStreamRenderer {})}) context))))) "verifying render to input stream"))
+    (testing "Escaped html"
+      (is (= (crlf->lf (slurp (io/resource "html/expected-escaped-custom-filter.html")))
+             (crlf->lf ((majavat/build-renderer file-path {:filters  filters
+                                                           :renderer (->StringRenderer {:sanitizer (->Html)})}) context)))
+          "verifying render to string")
+      (is (= (crlf->lf (slurp (io/resource "html/expected-escaped-custom-filter.html")))
+             (crlf->lf (String. (.readAllBytes ^InputStream
+                                               ((majavat/build-renderer file-path {:filters  filters
+                                                                                   :renderer (->InputStreamRenderer {:sanitizer (->Html)})}) context)))))
           "verifying render to input stream"))))
 
 (deftest render-wrong-return-type-returns-string

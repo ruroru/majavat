@@ -29,6 +29,8 @@ Additional options can be passed with
 ```clojure
 (def render-fn (majavat/build-renderer "index.html" {:cache?     false
                                                      :pre-render {:key "value"}
+                                                     :filters    {:reverse (fn [value args]
+                                                                             (string/reverse value))}
                                                      :renderer   (->StringRenderer {:sanitizer (->Html)})}))
 
 (render-fn {:user "jj"})
@@ -42,6 +44,7 @@ All supported options:
 | `cache?`            | `true`                                  | `true`, `false`                                     |
 | `template-resolver` | [`ResourceResolver`](#templateresolver) | [`TemplateResolver`](#templateresolver)             |
 | `pre-render`        | {}                                      | Map                                                 |
+| `filters`           | {}                                      | Map                                                 |
 
 ### Creating templates
 
@@ -70,6 +73,8 @@ Hello {{ name | upper-case }}!
 (render-fn {:name "world"}) ;; => returns Hello WORLD!
 ```
 
+##### Built In Filters
+
 | Filter                    | Type          | Example                                     |
 |---------------------------|---------------|---------------------------------------------|
 | append                    | String        | "hello" \| append " world" → "hello world"  |
@@ -97,6 +102,15 @@ Hello {{ name | upper-case }}!
 | date "hh/mm"              | LocalTime     | Instance of LocalTime →  "11/11"            |
 | date "hh/mm" "Asia/Tokyo" | Instant       | Instance of Instant →  "11/11"              |
 | date "hh/mm" "Asia/Tokyo" | ZonedDateTime | Instance of ZonedDateTime →  "11/11"        |
+
+##### User Provided filters Filters
+
+Assoc :filter to option map, when building renderer, with this value
+
+```clojure
+{:quote (fn [value args]
+          (format "\"%s\" - %s" value (first args)))}
+```
 
 #### Conditionals
 

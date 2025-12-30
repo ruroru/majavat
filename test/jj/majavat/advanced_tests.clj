@@ -5,6 +5,7 @@
             [jj.majavat.resolver.resource :as rcr]))
 
 (def contentResolver (rcr/->ResourceResolver))
+(def empty-fn-map {})
 
 (deftest test-deeply-nested-conditionals
   (is (= [{:condition  [:user
@@ -33,7 +34,7 @@
                                        :value [:user
                                                :name]}]}]}]
 
-         (parser/parse "deeply-nested-conditionals.txt" contentResolver))))
+         (parser/parse "deeply-nested-conditionals.txt" contentResolver empty-fn-map))))
 
 (deftest test-for-loop-with-nested-everything
   (is (= [{:body       [{:type  :text
@@ -94,7 +95,7 @@
                         :departments]
            :type       :for}]
 
-         (parser/parse "nested-for-loops.txt" contentResolver))))
+         (parser/parse "nested-for-loops.txt" contentResolver empty-fn-map))))
 
 
 (deftest test-simple-text

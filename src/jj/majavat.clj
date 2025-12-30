@@ -6,35 +6,29 @@
     [jj.majavat.resolver.resource :as rcr]))
 
 (def ^:private default-resolver (delay (rcr/->ResourceResolver)))
-(def ^:private default-renderer (delay (->StringRenderer {})))
-(def ^:private cached-builder (delay (builder/->CachedBuilder {})))
-(def ^:private one-shot-builder (delay (builder/->OneShotBuilder)))
 
 (defn build-renderer
   ([file-path]
    (build-renderer file-path {}))
   ([file-path opts]
-   (let [pre-render? (not (empty? (get opts :pre-render {})))
-         template-resolver (get opts :template-resolver @default-resolver)
-         cache? (get opts :cache? true)
-         renderer (get opts :renderer @default-renderer)
-         resolved-file-path (or file-path
-                                (do
-                                  (logger/error "File is set to nil")
-                                  "nil"))
-         resolved-renderer (or renderer
-                               (do
-                                 (logger/error "Renderer is set to nil, defaulting to string renderer")
-                                 @default-renderer))
-         resolved-resolver (or template-resolver
-                               (do
-                                 (logger/error "Resolver is set to nil, defaulting to resource resolver")
-                                 @default-resolver))
-         selected-builder (if cache?
-                            (if pre-render?
-                              (let [pre-render-context (get opts :pre-render {})]
-                                (builder/->CachedBuilder pre-render-context))
-                              @cached-builder)
-                            @one-shot-builder)]
+   (let [file-path (or file-path
+                       (do
+                         (logger/error "File is set to nil")
+                         "nil"))
 
-     (builder/build-renderer selected-builder resolved-file-path resolved-resolver resolved-renderer))))
+         resolver (or (:template-resolver opts)
+                      @default-resolver)
+
+         filters (get opts :filters {})
+
+         renderer (or (:renderer opts)
+                      (->StringRenderer filters))
+
+         cache? (get opts :cache? true)
+         pre-render-context (get opts :pre-render {})
+
+         builder (if cache?
+                   (builder/->CachedBuilder pre-render-context filters)
+                   (builder/->OneShotBuilder filters))]
+
+     (builder/build-renderer builder file-path resolver renderer))))
