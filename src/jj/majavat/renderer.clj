@@ -3,11 +3,12 @@
             [clojure.java.io :as io]
             [jj.majavat.renderer.filters :as filters]
             [jj.majavat.renderer.sanitizer :refer [sanitize]])
-  (:import (java.io ByteArrayInputStream PushbackReader SequenceInputStream)
+  (:import (java.io PushbackReader)
            (java.net URLEncoder)
            (java.nio.charset Charset StandardCharsets)
            (java.time Instant)
-           (java.util Collections)))
+           (java.util ArrayList)
+           (jj.majavat.stream ByteArrayListInputStream)))
 
 (defn- read-edn-resource [resource-path]
   (when-let [resource (io/resource resource-path)]
@@ -185,119 +186,92 @@
       nil))
   sb)
 
+(defn- render-nodes-to-bytes-vec
+  ([nodes context charset escape-conf]
+   (render-nodes-to-bytes-vec nodes context charset escape-conf (ArrayList. (count nodes))))
+  ([nodes context ^Charset charset escape-conf ^ArrayList result]
+   (loop [remaining nodes]
+     (when (seq remaining)
+       (let [node (first remaining)
+             rest-nodes (rest remaining)]
+         (case (node :type)
+           :text
+           (do
+             (let [text (node :value "")]
+               (when-not (empty? text)
+                 (.add result (.getBytes ^String text charset))))
+             (recur rest-nodes))
 
+           :value-node
+           (do
+             (let [val (resolve-path context (node :value))
+                   filter-fn (node :filter-fn identity)
+                   resolved (-> val filter-fn ->str (escape-if-needed (escape-conf :sanitizer)))]
+               (.add result (.getBytes ^String resolved charset)))
+             (recur rest-nodes))
 
-(defn- render-nodes-to-stream-seq [nodes context charset escape-conf]
-  (lazy-seq
-    (when (seq nodes)
-      (let [node (first nodes)]
-        (case (node :type)
-          :text
-          (let [text (node :value "")]
-            (if (empty? text)
-              (render-nodes-to-stream-seq (rest nodes) context charset escape-conf)
-              (cons (ByteArrayInputStream. (.getBytes ^String text ^Charset charset))
-                    (render-nodes-to-stream-seq (rest nodes) context charset escape-conf))))
+           :query-string
+           (do
+             (when-let [qs (build-query-string (node :value) context)]
+               (.add result (.getBytes ^String qs charset)))
+             (recur rest-nodes))
 
-          :value-node
-          (let [val (resolve-path context (node :value))
-                filter-fn (node :filter-fn identity)
-                filtered-val (filter-fn val)
-                resolved-value (-> filtered-val
-                                   ->str
-                                   (escape-if-needed (escape-conf :sanitizer)))]
-            (cons (ByteArrayInputStream. (.getBytes ^String resolved-value ^Charset charset))
-                  (render-nodes-to-stream-seq (rest nodes) context charset escape-conf)))
+           :keyword-now
+           (do
+             (let [now-str (filters/->formatted-instant (Instant/now) [(node :format)])]
+               (.add result (.getBytes ^String now-str charset)))
+             (recur rest-nodes))
 
-          :query-string
-          (let [query-str (build-query-string (node :value) context)]
-            (if query-str
-              (cons (ByteArrayInputStream. (.getBytes ^String query-str ^Charset charset))
-                    (render-nodes-to-stream-seq (rest nodes) context charset escape-conf))
-              (render-nodes-to-stream-seq (rest nodes) context charset escape-conf)))
+           :variable-declaration
+           (do
+             (let [new-ctx (assoc context (node :variable-name) (node :variable-value))]
+               (render-nodes-to-bytes-vec (node :body) new-ctx charset escape-conf result))
+             (recur rest-nodes))
 
-          :variable-declaration
-          (let [variable-name (node :variable-name)
-                variable-value (node :variable-value)
-                body (node :body)
-                new-context (assoc context variable-name variable-value)]
-            (concat (render-nodes-to-stream-seq body new-context charset escape-conf)
-                    (render-nodes-to-stream-seq (rest nodes) context charset escape-conf)))
-          :variable-assignment
-          (let [variable-name (node :variable-name)
-                variable-value (node :variable-value)
-                body (node :body)
-                new-context (assoc context variable-name (resolve-path context variable-value))]
-            (concat (render-nodes-to-stream-seq body new-context charset escape-conf)
-                    (render-nodes-to-stream-seq (rest nodes) context charset escape-conf)))
+           :variable-assignment
+           (do
+             (let [new-ctx (assoc context (node :variable-name) (resolve-path context (node :variable-value)))]
+               (render-nodes-to-bytes-vec (node :body) new-ctx charset escape-conf result))
+             (recur rest-nodes))
 
-          :for
-          (let [identifier (node :identifier)
-                source-path (node :source)
-                body (node :body)
-                items (resolve-path context source-path)
-                item-count (count items)]
-            (letfn [(process-items [i xs]
-                      (lazy-seq
-                        (when (seq xs)
-                          (let [item (first xs)
-                                loop-context (get-loop-context context i item-count)
-                                new-context (assoc loop-context identifier item)]
-                            (concat (render-nodes-to-stream-seq body new-context charset escape-conf)
-                                    (process-items (inc i) (rest xs)))))))]
-              (concat (process-items 0 items)
-                      (render-nodes-to-stream-seq (rest nodes) context charset escape-conf))))
+           :for
+           (do
+             (let [items (resolve-path context (node :source))
+                   total (count items)]
+               (loop [i 0
+                      item-remaining (seq items)]
+                 (when item-remaining
+                   (let [item (first item-remaining)
+                         loop-ctx (get-loop-context context i total)
+                         new-ctx (assoc loop-ctx (node :identifier) item)]
+                     (render-nodes-to-bytes-vec (node :body) new-ctx charset escape-conf result)
+                     (recur (inc i) (next item-remaining))))))
+             (recur rest-nodes))
 
-          :each
-          (let [identifier (node :identifier)
-                source-path (node :source)
-                body (node :body)
-                items (resolve-path context source-path)
-                ]
-            (letfn [(process-items [i xs]
-                      (lazy-seq
-                        (when (seq xs)
-                          (let [item (first xs)
-                                new-context (assoc context identifier item)]
-                            (concat (render-nodes-to-stream-seq body new-context charset escape-conf)
-                                    (process-items (inc i) (rest xs)))))))]
-              (concat (process-items 0 items)
-                      (render-nodes-to-stream-seq (rest nodes) context charset escape-conf))))
+           :each
+           (do
+             (let [items (resolve-path context (node :source))]
+               (loop [item-remaining (seq items)]
+                 (when item-remaining
+                   (let [item (first item-remaining)]
+                     (render-nodes-to-bytes-vec (node :body) (assoc context (node :identifier) item) charset escape-conf result)
+                     (recur (next item-remaining))))))
+             (recur rest-nodes))
 
-          :keyword-now
-          (let [now-str (filters/->formatted-instant (Instant/now) [(node :format)])]
-            (cons (ByteArrayInputStream. (.getBytes ^String now-str ^Charset charset))
-                  (render-nodes-to-stream-seq (rest nodes) context charset escape-conf)))
+           :if
+           (do
+             (let [branch (if (resolve-path context (node :condition)) :when-true :when-false)]
+               (render-nodes-to-bytes-vec (node branch) context charset escape-conf result))
+             (recur rest-nodes))
 
-          :if
-          (let [condition (node :condition)
-                when-true (node :when-true)
-                when-false (node :when-false)]
-            (if (boolean (resolve-path context condition))
-              (if when-true
-                (concat (render-nodes-to-stream-seq when-true context charset escape-conf)
-                        (render-nodes-to-stream-seq (rest nodes) context charset escape-conf))
-                (render-nodes-to-stream-seq (rest nodes) context charset escape-conf))
-              (if when-false
-                (concat (render-nodes-to-stream-seq when-false context charset escape-conf)
-                        (render-nodes-to-stream-seq (rest nodes) context charset escape-conf))
-                (render-nodes-to-stream-seq (rest nodes) context charset escape-conf))))
+           :if-not
+           (do
+             (let [branch (if-not (resolve-path context (node :condition)) :when-true :when-false)]
+               (render-nodes-to-bytes-vec (node branch) context charset escape-conf result))
+             (recur rest-nodes))
 
-          :if-not
-          (let [condition (node :condition)
-                when-true (node :when-true)
-                when-false (node :when-false)]
-            (if (not (boolean (resolve-path context condition)))
-              (if when-true
-                (concat (render-nodes-to-stream-seq when-true context charset escape-conf)
-                        (render-nodes-to-stream-seq (rest nodes) context charset escape-conf))
-                (render-nodes-to-stream-seq (rest nodes) context charset escape-conf))
-              (if when-false
-                (concat (render-nodes-to-stream-seq when-false context charset escape-conf)
-                        (render-nodes-to-stream-seq (rest nodes) context charset escape-conf))
-                (render-nodes-to-stream-seq (rest nodes) context charset escape-conf))))
-
-          (render-nodes-to-stream-seq (rest nodes) context charset escape-conf))))))
+           (recur rest-nodes)))))
+   result))
 
 
 (defprotocol Renderer
@@ -314,9 +288,8 @@
   Renderer
   (render [this template context]
     (if-not (map? template)
-      (let [stream-seq (render-nodes-to-stream-seq template context StandardCharsets/UTF_8 (:config this))
-            enumeration (Collections/enumeration stream-seq)]
-        (SequenceInputStream. enumeration))
+      (let [byte-arrays (render-nodes-to-bytes-vec template context StandardCharsets/UTF_8 (:config this))]
+        (ByteArrayListInputStream. byte-arrays))
       (render (->InputStreamRenderer {}) (read-edn-resource "error-template.edn") template))))
 
 

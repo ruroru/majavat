@@ -10,7 +10,8 @@
   :deploy-repositories [["clojars" {:url      "https://repo.clojars.org"
                                     :username :env/clojars_user
                                     :password :env/clojars_pass}]]
-
+  :java-source-paths ["java-src"]
+  :javac-options ["-target" "17" "-source" "17"]
 
   :resource-paths ["src/resources"]
   :profiles {:test {:global-vars    {*warn-on-reflection* true}
