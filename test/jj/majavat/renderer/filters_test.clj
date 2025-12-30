@@ -9,7 +9,7 @@
 
 
 (deftest upper-roman-test
-  (are [expected input] (= expected (filters/upper-roman input))
+  (are [expected input] (= expected (filters/upper-roman input []))
                         "I" "i"
                         "V" "v"
                         "X" "x"
@@ -33,7 +33,7 @@
                         "123iv" "123iv"))
 
 (deftest file-size
-  (are [expected input] (= expected (filters/file-size input))
+  (are [expected input] (= expected (filters/file-size input []))
                         nil nil
                         nil "not-a-number"
                         nil "1024"
@@ -92,20 +92,20 @@
                         "1000 PB" 1125899906842624000))
 
 (deftest as-int
-  (are [expected input] (= expected (filters/as-int input))
+  (are [expected input] (= expected (filters/as-int input []))
                         nil nil
                         1 "1"
                         1025 "1025"))
 
 
 (deftest as-long
-  (are [expected input] (= expected (filters/as-long input))
+  (are [expected input] (= expected (filters/as-long input []))
                         nil nil
                         1 "1"
                         1025 "1025"))
 
 (deftest title-case
-  (are [expected input] (= expected (filters/title-case input))
+  (are [expected input] (= expected (filters/title-case input []))
                         "Foo Bar-Baz Qux. Quux" "foo bar-baz qux. quux"))
 
 (deftest get-default
@@ -178,7 +178,7 @@
                               {:key "y" :value "r" :random "i"}]
                              [:key "y"]))
 (deftest round
-  (are [input expected] (= expected (filters/round-number input))
+  (are [input expected] (= expected (filters/round-number input []))
                         1 1
                         1.4 1
                         1.5 2
@@ -187,7 +187,7 @@
                         2.0 2))
 
 (deftest floor-test
-  (are [input expected] (= expected (filters/get-floor input))
+  (are [input expected] (= expected (filters/get-floor input []))
                         1 1.0
                         1.4 1.0
                         1.5 1.0
@@ -196,7 +196,7 @@
                         2.0 2.0))
 
 (deftest ceil-test
-  (are [input expected] (= expected (filters/get-ceiling input))
+  (are [input expected] (= expected (filters/get-ceiling input []))
                         1 1.0
                         1.4 2.0
                         1.5 2.0
@@ -205,7 +205,7 @@
                         2.0 2.0))
 
 (deftest abs-test
-  (are [input expected] (= expected (filters/get-absolute-value input))
+  (are [input expected] (= expected (filters/get-absolute-value input []))
                         1 1.0
                         0 0.0
                         -1 1.0))
@@ -224,7 +224,7 @@
                             "foo" nil "foo"
                             ))
 (deftest slugify
-  (are [input expected] (= expected (filters/slugify input))
+  (are [input expected] (= expected (filters/slugify input []))
                        "foo" "foo"
                         "Foo" "foo"
                         "foo bar baz" "foo-bar-baz"

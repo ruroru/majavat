@@ -5,44 +5,41 @@
   (:import (clojure.lang ExceptionInfo)
            (java.io PushbackReader StringWriter)
            (java.nio.file Paths)
-           (java.time Instant LocalDate LocalDateTime LocalTime ZoneId ZonedDateTime)))
+           (java.time ZoneId)))
+
+(def ^:private filter-map
+  {:trim              filters/trim-string
+   :upper-case        filters/upper-case-string
+   :lower-case        filters/lower-case-string
+   :capitalize        filters/capitalize-string
+   :title-case        filters/title-case
+   :slugify           filters/slugify
+   :upper-roman       filters/upper-roman
+   :append            filters/append
+   :prepend           filters/prepend
+   :int               filters/as-int
+   :long              filters/as-long
+   :name              filters/get-name
+   :inc               filters/inc-number
+   :dec               filters/dec-number
+   :round             filters/round-number
+   :floor             filters/get-floor
+   :ceil              filters/get-ceiling
+   :abs               filters/get-absolute-value
+   :file-size-format  filters/file-size
+   :default           filters/get-default
+   :date              filters/handle-date
+   :where             filters/->handle-where
+   :str               filters/handle-str})
 
 (defn- create-filter-fn [{:keys [filter-name args]}]
-  (case filter-name
-    :trim #(when (some? %) (.trim ^String %))
-    :upper-case #(when (some? %) (.toUpperCase ^String %))
-    :lower-case #(when (some? %) (.toLowerCase ^String %))
-    :capitalize #(when (some? %) (clojure.string/capitalize ^String %))
-    :title-case #(when (some? %) (filters/title-case ^String %))
-    :slugify #(when (some? %) (filters/slugify ^String %))
-    :upper-roman #(when (some? %) (filters/upper-roman ^String %))
-    :append #(when (some? %) (filters/append ^String % args))
-    :prepend #(when (some? %) (filters/prepend ^String % args))
-    :int #(when (some? %) (filters/as-int %))
-    :long #(when (some? %) (filters/as-long %))
-    :name #(if (keyword? %) (name %) %)
-    :inc #(if (number? %) (inc %) %)
-    :dec #(if (number? %) (dec %) %)
-    :round #(if (number? %) (filters/round-number %) %)
-    :floor #(if (number? %) (filters/get-floor %) %)
-    :ceil #(if (number? %) (filters/get-ceiling %) %)
-    :abs #(if (number? %) (filters/get-absolute-value %) %)
-    :file-size-format #(if (number? %) (filters/file-size %) (str %))
-    :default #(if (nil? %) (first args) %)
-    :date #(cond
-             (instance? LocalDate %) (filters/->formatted-local-date % args)
-             (instance? LocalDateTime %) (filters/->formatted-local-date-time % args)
-             (instance? LocalTime %) (filters/->formatted-local-time % args)
-             (instance? ZonedDateTime %) (filters/->formatted-zoned-date-time % args)
-             (instance? Instant %) (filters/->formatted-instant % args)
-             :else (str %))
-    :where #(if (sequential? %) (filters/->handle-where % args) %)
-    :str #(if (sequential? %) (filters/seq->str %) (str %))
-
+  (if-let [f (get filter-map filter-name)]
+    (fn [input] (f input args))
     (throw (ex-info (format "Unsupported filter: %s" (name filter-name))
                     {:type        :syntax-error
                      :filter-name filter-name
                      :line        1}))))
+
 
 (defn- build-filter-fn [filter-specs]
   (if (empty? filter-specs)
