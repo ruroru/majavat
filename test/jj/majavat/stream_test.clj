@@ -2,10 +2,10 @@
   (:require [clojure.test :refer :all])
   (:import
     (java.io ByteArrayOutputStream)
-    (jj.majavat.stream ByteArrayListInputStream)))
+    (jj.majavat.stream SequentialByteArrayInputStream)))
 
 (deftest read-all-bytes-test
-  (are [expected input] (= expected (String. (.readAllBytes (ByteArrayListInputStream. input))))
+  (are [expected input] (= expected (String. (.readAllBytes (SequentialByteArrayInputStream. input))))
                         "" []
                         "a" [(.getBytes "a")]
                         "一二三" [
@@ -16,7 +16,7 @@
 
 
 (deftest available-test
-  (are [expected input] (= expected (.available ^ByteArrayListInputStream (ByteArrayListInputStream. input)))
+  (are [expected input] (= expected (.available ^SequentialByteArrayInputStream (SequentialByteArrayInputStream. input)))
                         0 []
                         1 [(.getBytes "a")]
                         3 [
@@ -26,25 +26,34 @@
                            ]))
 
 (deftest read-single-byte-test
-  (are [expected input] (= expected (.read (ByteArrayListInputStream. input)))
+  (are [expected input] (= expected (.read (SequentialByteArrayInputStream. input)))
                         -1 []
                         97 [(.getBytes "a")]
                         228 [(.getBytes "一")]))
 
 (deftest read-byte-array-test
   (let [buf (byte-array 10)]
-    (are [expected input] (let [stream (ByteArrayListInputStream. input)
+    (are [expected input] (let [stream (SequentialByteArrayInputStream. input)
                                 n (.read stream buf)]
                             (= expected n))
                           -1 []
                           1 [(.getBytes "a")]
                           9 [(.getBytes "一")
                              (.getBytes "二")
-                             (.getBytes "三")])))
+                             (.getBytes "三")]
+                          10 [(.getBytes "abcdefghij")]
+                          10 [(.getBytes "abcdefghijklmno")]
+                          10 [(.getBytes "hello")
+                              (.getBytes "world")]
+                          7 [(.getBytes "test")
+                             (.getBytes "一")]  ;
+                          10 [(byte-array [1 2 3 4 5])
+                              (byte-array [6 7 8 9 10])]
+                          5 [(byte-array [0 0 0 0 0])])))
 
 (deftest read-with-offset-test
   (let [buf (byte-array 10)]
-    (are [expected input] (let [stream (ByteArrayListInputStream. input)
+    (are [expected input] (let [stream (SequentialByteArrayInputStream. input)
                                 n (.read stream buf 2 5)]
                             (= expected n))
                           -1 []
@@ -55,7 +64,7 @@
 
 
 (deftest read-after-close-test
-  (are [input] (let [stream (ByteArrayListInputStream. input)]
+  (are [input] (let [stream (SequentialByteArrayInputStream. input)]
                  (.close stream)
                  (= -1 (.read stream)))
                []
@@ -63,7 +72,7 @@
                [(.getBytes "一")]))
 
 (deftest multiple-reads-test
-  (are [expected input] (let [stream (ByteArrayListInputStream. input)
+  (are [expected input] (let [stream (SequentialByteArrayInputStream. input)
                               first (.read stream)
                               second (.read stream)
                               third (.read stream)]
@@ -73,7 +82,7 @@
                         [228 184 128] [(.getBytes "一")]))
 
 (deftest transfer-to-test
-  (are [expected input] (let [stream (ByteArrayListInputStream. input)
+  (are [expected input] (let [stream (SequentialByteArrayInputStream. input)
                               out (ByteArrayOutputStream.)]
                           (.transferTo stream out)
                           (= expected (String. (.toByteArray out))))

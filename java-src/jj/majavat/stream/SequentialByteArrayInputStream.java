@@ -5,13 +5,13 @@ import java.io.InputStream;
 import java.io.OutputStream;
 import java.util.List;
 
-public class ByteArrayListInputStream extends InputStream {
+final public class SequentialByteArrayInputStream extends InputStream {
     private final List<byte[]> arrays;
     private int arrayIndex;
     private byte[] currentArray;
     private int position;
 
-    public ByteArrayListInputStream(List<byte[]> arrays) {
+    public SequentialByteArrayInputStream(List<byte[]> arrays) {
         this.arrays = arrays;
         this.arrayIndex = 0;
         this.position = 0;

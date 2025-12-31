@@ -8,7 +8,7 @@
            (java.nio.charset Charset StandardCharsets)
            (java.time Instant)
            (java.util ArrayList)
-           (jj.majavat.stream ByteArrayListInputStream)))
+           (jj.majavat.stream SequentialByteArrayInputStream)))
 
 (defn- read-edn-resource [resource-path]
   (when-let [resource (io/resource resource-path)]
@@ -289,7 +289,7 @@
   (render [this template context]
     (if-not (map? template)
       (let [byte-arrays (render-nodes-to-bytes-vec template context StandardCharsets/UTF_8 (:config this))]
-        (ByteArrayListInputStream. byte-arrays))
+        (SequentialByteArrayInputStream. byte-arrays))
       (render (->InputStreamRenderer {}) (read-edn-resource "error-template.edn") template))))
 
 
