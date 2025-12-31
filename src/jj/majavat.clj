@@ -2,8 +2,10 @@
   (:require
     [clojure.tools.logging :as logger]
     [jj.majavat.builder :as builder]
-    [jj.majavat.renderer :refer [->StringRenderer]]
-    [jj.majavat.resolver.resource :as rcr]))
+    [jj.majavat.renderer.sanitizer :refer [->Html]]
+    [jj.majavat.renderer :refer [->StringRenderer ->InputStreamRenderer]]
+    [jj.majavat.resolver.resource :as rcr])
+  (:import (jj.majavat.renderer InputStreamRenderer)))
 
 (def ^:private default-resolver (delay (rcr/->ResourceResolver)))
 
@@ -32,3 +34,13 @@
                    (builder/->OneShotBuilder filters))]
 
      (builder/build-renderer builder file-path resolver renderer))))
+
+(defn build-html-renderer
+  ([file-path]
+   (build-html-renderer file-path {}))
+  ([file-path opts]
+   (let [renderer (if (instance? InputStreamRenderer (:renderer opts))
+                    (->InputStreamRenderer {:sanitizer (->Html)})
+                    (->StringRenderer {:sanitizer (->Html)}))
+         opts (assoc opts :renderer renderer)]
+     (build-renderer file-path opts))))

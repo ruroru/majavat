@@ -212,3 +212,15 @@
     (let [file-path "html/index.html"
           render-fn (majavat/build-renderer file-path)]
       (criterium/bench (render-fn context)))))
+
+(deftest build-html-renderer
+  (let [file-path "html/index.html"]
+    (testing "Escaped html"
+      (is (= (crlf->lf (slurp (io/resource "html/expected-escaped.html")))
+             (crlf->lf ((majavat/build-html-renderer file-path) context)))
+          "verifying render to string")
+      (is (= (crlf->lf (slurp (io/resource "html/expected-escaped.html")))
+             (crlf->lf (String. (.readAllBytes ^InputStream
+                                               ((majavat/build-html-renderer file-path {:renderer (->InputStreamRenderer {})}) context)))))
+          "verifying render to input stream"))))
+
