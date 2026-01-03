@@ -293,7 +293,7 @@
       (render (->InputStreamRenderer {}) (read-edn-resource "error-template.edn") template))))
 
 
-(defn- partial-render-nodes [nodes context]
+(defn- partial-render-nodes [nodes context escape-conf]
   (reduce
     (fn [acc node]
       (case (node :type)
@@ -305,7 +305,9 @@
           (if (some? val)
             (let [filter-fn (node :filter-fn identity)
                   filtered-val (filter-fn val)
-                  resolved-str (->str filtered-val)]
+                  resolved-str (-> filtered-val
+                                   ->str
+                                   (escape-if-needed (escape-conf :sanitizer)))]
               (conj acc {:type :text :value resolved-str}))
             (conj acc node)))
 
@@ -317,7 +319,6 @@
               acc)
             (conj acc node)))
 
-
         :variable-assignment
         (let [variable-name (node :variable-name)
               variable-value (node :variable-value)
@@ -325,16 +326,16 @@
               resolved-val (resolve-path context variable-value)]
           (if (some? resolved-val)
             (let [new-context (assoc context variable-name resolved-val)
-                  rendered-body (partial-render-nodes body new-context)]
+                  rendered-body (partial-render-nodes body new-context escape-conf)]
               (into acc rendered-body))
-            (conj acc (assoc node :body (partial-render-nodes body context)))))
+            (conj acc (assoc node :body (partial-render-nodes body context escape-conf)))))
 
         :variable-declaration
         (let [variable-name (node :variable-name)
               variable-value (node :variable-value)
               body (node :body)
               new-context (assoc context variable-name variable-value)
-              rendered-body (partial-render-nodes body new-context)]
+              rendered-body (partial-render-nodes body new-context escape-conf)]
           (if (= rendered-body body)
             (conj acc node)
             (conj acc (assoc node :body rendered-body))))
@@ -353,50 +354,51 @@
                   (let [item (first remaining)
                         loop-context (get-loop-context context i item-count)
                         new-context (assoc loop-context identifier item)
-                        rendered (partial-render-nodes body new-context)]
+                        rendered (partial-render-nodes body new-context escape-conf)]
                     (recur (inc i) (next remaining) (into result rendered)))
                   result)))
-            (conj acc (assoc node :body (partial-render-nodes body context)))))
+            (conj acc (assoc node :body (partial-render-nodes body context escape-conf)))))
 
-        :each (let [identifier (node :identifier)
-                    source-path (node :source)
-                    body (node :body)
-                    items (resolve-path context source-path)]
-                (if (some? items)
-                  (let [item-count (count items)]
-                    (loop [i 0
-                           remaining (seq items)
-                           result acc]
-                      (if remaining
-                        (let [item (first remaining)
-                              loop-context (get-loop-context context i item-count)
-                              new-context (assoc loop-context identifier item)
-                              rendered (partial-render-nodes body new-context)]
-                          (recur (inc i) (next remaining) (into result rendered)))
-                        result)))
-                  (conj acc (assoc node :body (partial-render-nodes body context)))))
+        :each
+        (let [identifier (node :identifier)
+              source-path (node :source)
+              body (node :body)
+              items (resolve-path context source-path)]
+          (if (some? items)
+            (let [item-count (count items)]
+              (loop [i 0
+                     remaining (seq items)
+                     result acc]
+                (if remaining
+                  (let [item (first remaining)
+                        loop-context (get-loop-context context i item-count)
+                        new-context (assoc loop-context identifier item)
+                        rendered (partial-render-nodes body new-context escape-conf)]
+                    (recur (inc i) (next remaining) (into result rendered)))
+                  result)))
+            (conj acc (assoc node :body (partial-render-nodes body context escape-conf)))))
 
         :if
         (let [condition (node :condition)
               condition-val (resolve-path context condition)]
           (if (some? condition-val)
             (if (boolean condition-val)
-              (into acc (partial-render-nodes (node :when-true) context))
-              (into acc (partial-render-nodes (node :when-false) context)))
+              (into acc (partial-render-nodes (node :when-true) context escape-conf))
+              (into acc (partial-render-nodes (node :when-false) context escape-conf)))
             (conj acc (assoc node
-                        :when-true (partial-render-nodes (node :when-true) context)
-                        :when-false (partial-render-nodes (node :when-false) context)))))
+                        :when-true (partial-render-nodes (node :when-true) context escape-conf)
+                        :when-false (partial-render-nodes (node :when-false) context escape-conf)))))
 
         :if-not
         (let [condition (node :condition)
               condition-val (resolve-path context condition)]
           (if (some? condition-val)
             (if (not (boolean condition-val))
-              (into acc (partial-render-nodes (node :when-true) context))
-              (into acc (partial-render-nodes (node :when-false) context)))
+              (into acc (partial-render-nodes (node :when-true) context escape-conf))
+              (into acc (partial-render-nodes (node :when-false) context escape-conf)))
             (conj acc (assoc node
-                        :when-true (partial-render-nodes (node :when-true) context)
-                        :when-false (partial-render-nodes (node :when-false) context)))))
+                        :when-true (partial-render-nodes (node :when-true) context escape-conf)
+                        :when-false (partial-render-nodes (node :when-false) context escape-conf)))))
 
         (conj acc node)))
     []
@@ -424,8 +426,8 @@
 
 (defrecord PartialRenderer [config]
   Renderer
-  (render [_ template context]
+  (render [this template context]
     (if-not (map? template)
-      (-> (partial-render-nodes template context)
+      (-> (partial-render-nodes template context (:config this))
           optimize-ast)
       (render (->PartialRenderer {}) (read-edn-resource "error-template.edn") template))))

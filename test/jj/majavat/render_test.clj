@@ -346,10 +346,11 @@ this is a  footer"
     ))
 
 (deftest partial-render
-  (are [expected input-file input-context] (= expected (renderer/render (->PartialRenderer {})
+  (are [expected input-file input-context] (= expected (renderer/render (->PartialRenderer {:sanitizer (->Html)})
                                                                         (parser/parse input-file contentResolver empty-fn-map)
                                                                         input-context))
                                            [{:type :text :value "hello world"}] "insert-value.html" {:name "world"}
+                                           [{:type :text :value "hello &lt;i&gt;world&lt;i&gt;"}] "insert-value.html" {:name "<i>world<i>"}
                                            [{:type :text :value "hello World from "} {:type :value-node :value [:location]}] "if-statement.txt" {:some {:condition "wolrd"}}
                                            [{:type  :text
                                              :value "hello "}
