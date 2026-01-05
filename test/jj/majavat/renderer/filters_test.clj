@@ -225,8 +225,20 @@
                             ))
 (deftest slugify
   (are [input expected] (= expected (filters/slugify input []))
-                       "foo" "foo"
+                        "foo" "foo"
                         "Foo" "foo"
                         "foo bar baz" "foo-bar-baz"
                         "FooBar-Baz_123" "foobar-baz_123"
+                        ))
+
+(deftest first-test
+  (are [input expected] (= expected (filters/get-first input []))
+                        (list :a :b) :a
+                        {:a :b :c :d} [:a :b]
+                        ))
+
+(deftest rest-test
+  (are [input expected] (= expected (filters/get-rest input []))
+                        (list :a :b) (list :b)
+                        {:a :b :c :d} {:c :d}
                         ))

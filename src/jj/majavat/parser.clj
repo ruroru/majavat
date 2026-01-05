@@ -30,6 +30,8 @@
    :default          filters/get-default
    :date             filters/handle-date
    :where            filters/->handle-where
+   :first            filters/get-first
+   :rest             filters/get-rest
    :str              filters/handle-str})
 
 (defn- create-filter-fn [{:keys [filter-name args]} user-filter-map]

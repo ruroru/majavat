@@ -78,33 +78,37 @@ Hello {{ name | upper-case }}!
 
 ##### Built In Filters
 
-| Filter                    | Type          | Example                                     |
-|---------------------------|---------------|---------------------------------------------|
-| append                    | String        | "hello" \| append " world" → "hello world"  |
-| capitalize                | String        | "hello world" → "Hello world"               |
-| int                       | String        | "123" → 123                                 |
-| long                      | String        | "123" → 123L                                |
-| lower-case                | String        | "HELLO WORLD" → "hello world"               |
-| prepend                   | String        | "hello" \| prepend " world" → "world hello" |                                      
-| slugify                   | String        | "Foo Bar" → "foo-bar"                       |
-| title-case                | String        | "hello world" → "Hello World"               |
-| trim                      | String        | "  hello  " → "hello"                       |
-| upper-case                | String        | "hello world" → "HELLO WORLD"               |
-| upper-roman               | String        | "iv" → "IV"                                 |
-| name                      | Keyword       | :name → "name"                              |
-| abs                       | Number        | -1 → 1.0                                    |
-| ceil                      | Number        | 1.99 → 2                                    |
-| dec                       | Number        | 5 → 4                                       |
-| file-size                 | Number        | 2048 → "2 KB"                               |
-| floor                     | Number        | 1.4 → 1.0                                   |
-| inc                       | Number        | 5 → 6                                       |
-| round                     | Number        | 1.99 → 2                                    |
-| default "foo"             | nil           | nil → "foo"                                 |
-| date "yyyy"               | LocalDate     | Instance of LocalDate → "2025"              | 
-| date "yyyy"               | LocalDateTime | Instance of LocalDateTime → "2025"          | 
-| date "hh/mm"              | LocalTime     | Instance of LocalTime →  "11/11"            |
-| date "hh/mm" "Asia/Tokyo" | Instant       | Instance of Instant →  "11/11"              |
-| date "hh/mm" "Asia/Tokyo" | ZonedDateTime | Instance of ZonedDateTime →  "11/11"        |
+| Filter                    | Type          | Example                                        |
+|---------------------------|---------------|------------------------------------------------|
+| append                    | String        | "hello" \| append " world" → "hello world"     |
+| capitalize                | String        | "hello world" → "Hello world"                  |
+| int                       | String        | "123" → 123                                    |
+| long                      | String        | "123" → 123L                                   |
+| lower-case                | String        | "HELLO WORLD" → "hello world"                  |
+| prepend                   | String        | "hello" \| prepend " world" → "world hello"    |                                      
+| slugify                   | String        | "Foo Bar" → "foo-bar"                          |
+| title-case                | String        | "hello world" → "Hello World"                  |
+| trim                      | String        | "  hello  " → "hello"                          |
+| upper-case                | String        | "hello world" → "HELLO WORLD"                  |
+| upper-roman               | String        | "iv" → "IV"                                    |
+| name                      | Keyword       | :name → "name"                                 |
+| abs                       | Number        | -1 → 1.0                                       |
+| ceil                      | Number        | 1.99 → 2                                       |
+| dec                       | Number        | 5 → 4                                          |
+| file-size                 | Number        | 2048 → "2 KB"                                  |
+| floor                     | Number        | 1.4 → 1.0                                      |
+| inc                       | Number        | 5 → 6                                          |
+| round                     | Number        | 1.99 → 2                                       |
+| first                     | Sequential    | (list :foo :bar :baz) -> :foo                  |
+| rest                      | Sequential    | (list :foo :bar :baz) -> (list :bar :baz)      |
+| first                     | Map           | {:foo :a :bar :b :baz :c} -> [:foo :a]         |
+| rest                      | Map           | {:foo :a :bar :b :baz :c} -> {:bar :b :baz :c} |
+| default "foo"             | nil           | nil → "foo"                                    |
+| date "yyyy"               | LocalDate     | Instance of LocalDate → "2025"                 | 
+| date "yyyy"               | LocalDateTime | Instance of LocalDateTime → "2025"             | 
+| date "hh/mm"              | LocalTime     | Instance of LocalTime →  "11/11"               |
+| date "hh/mm" "Asia/Tokyo" | Instant       | Instance of Instant →  "11/11"                 |
+| date "hh/mm" "Asia/Tokyo" | ZonedDateTime | Instance of ZonedDateTime →  "11/11"           |
 
 ##### User Provided filters Filters
 

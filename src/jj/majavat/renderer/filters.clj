@@ -250,3 +250,18 @@
 
 (defn handle-str [v args]
   (if (sequential? v) (seq->str v) (str v)))
+
+(defn get-first [v ars]
+  (when (or
+          (sequential? v)
+          (map? v))
+    (first v)))
+
+(defn get-rest [v ars]
+
+  (cond
+    (sequential? v) (rest v)
+    (map? v) (into {} (rest v))
+    :else nil
+    )
+  )
