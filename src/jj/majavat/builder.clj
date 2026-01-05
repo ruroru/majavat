@@ -20,10 +20,16 @@
             (renderer/render renderer template context sanitizer)))))))
 
 
-(defrecord OneShotBuilder [filters]
+(defrecord OneShotBuilder [pre-render-context filters]
   Builder
   (build-renderer [this file-path template-resolver renderer sanitizer]
-    (fn [context]
-      (let [template (parser/parse file-path template-resolver filters)]
-        (renderer/render renderer template context sanitizer)))))
+    (let [pre-render? (not (empty? pre-render-context))]
+      (if pre-render?
+        (fn [context]
+          (let [template (parser/parse file-path template-resolver filters)
+                ast-renderer (renderer/->PartialRenderer)]
+            (renderer/render renderer (renderer/render ast-renderer template pre-render-context sanitizer) context sanitizer)))
+        (fn [context]
+          (let [template (parser/parse file-path template-resolver filters)]
+            (renderer/render renderer template context sanitizer)))))))
 

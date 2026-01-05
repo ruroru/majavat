@@ -30,7 +30,7 @@
          sanitizer (get opts :sanitizer nil)
          builder (if cache?
                    (builder/->CachedBuilder pre-render-context filters)
-                   (builder/->OneShotBuilder filters))]
+                   (builder/->OneShotBuilder pre-render-context filters))]
 
      (builder/build-renderer builder file-path resolver renderer sanitizer))))
 
