@@ -6,7 +6,7 @@
             [jj.majavat :as majavat]
             [jj.majavat.parser :as parser]
             [jj.majavat.renderer :refer [->InputStreamRenderer ->StringRenderer]]
-            [jj.majavat.renderer.sanitizer :refer [->Html]]
+            [jj.majavat.renderer.sanitizer :refer [->Html ->Json]]
             [mock-clj.core :as mock])
   (:import (java.io InputStream)))
 
@@ -16,6 +16,46 @@
 
 (def filters {:italic (fn [value args]
                         (format "<i>%s</i>" value))})
+
+(def pre-render-context-with-html-chars {
+                                         :page-title      "</b>Home</b> - My Awesome Blog"
+                                         :welcome-heading "</>Welcome to Our Blog!</i>"
+                                         :current-year    2025})
+
+(def pre-render-context {
+                         :site-name       "My Awesome Blog"
+                         :nav-items       [
+                                           {
+                                            :url   "/"
+                                            :label "Home"
+                                            }
+                                           {
+                                            :url   "/about"
+                                            :label "About"
+                                            }
+                                           {
+                                            :url   "/contact"
+                                            :label "Contact"
+                                            }
+                                           ]
+                         :is-home-page    true
+                         :welcome-message "Stay up-to-date with our latest articles and insights."
+                         :posts           [
+                                           {
+                                            :url     "/posts/first-post"
+                                            :title   "Getting Started with Web Development"
+                                            :excerpt "A beginner's guide to the fundamentals of HTML, CSS, and JavaScript."
+                                            :date    "August 12, 2025"
+                                            }
+                                           {
+                                            :url     "/posts/second-post"
+                                            :title   "The Power of Templating Engines"
+                                            :excerpt "Learn how templating engines can streamline your web development workflow."
+                                            :date    "August 10, 2025"
+                                            }
+                                           ]
+                         :about-content   "We are a team of passionate developers dedicated to sharing knowledge about modern web technologies."
+                         })
 
 (def context {
               :page-title      "Home - My Awesome Blog"
@@ -63,7 +103,7 @@
     (is (= (crlf->lf (slurp (io/resource "html/expected-error.html")))
            (crlf->lf (String. (.readAllBytes ^InputStream
                                              ((majavat/build-renderer file-path {
-                                                                                 :renderer (->InputStreamRenderer {})}) context))))) "verifying render to input stream")))
+                                                                                 :renderer (->InputStreamRenderer)}) context))))) "verifying render to input stream")))
 
 (deftest render-test
   (let [file-path "html/index.html"]
@@ -74,16 +114,16 @@
       (is (= (crlf->lf (slurp (io/resource "html/expected.html")))
              (crlf->lf (String. (.readAllBytes ^InputStream
                                                ((majavat/build-renderer file-path {
-                                                                                   :renderer (->InputStreamRenderer {})}) context))))) "verifying render to input stream"))
+                                                                                   :renderer (->InputStreamRenderer)}) context))))) "verifying render to input stream"))
     (testing "Escaped html"
       (is (= (crlf->lf (slurp (io/resource "html/expected-escaped.html")))
-             (crlf->lf ((majavat/build-renderer file-path {
-                                                           :renderer (->StringRenderer {:sanitizer (->Html)})}) context)))
+             (crlf->lf ((majavat/build-renderer file-path {:sanitizer (->Html)
+                                                           :renderer  (->StringRenderer)}) context)))
           "verifying render to string")
       (is (= (crlf->lf (slurp (io/resource "html/expected-escaped.html")))
              (crlf->lf (String. (.readAllBytes ^InputStream
-                                               ((majavat/build-renderer file-path {
-                                                                                   :renderer (->InputStreamRenderer {:sanitizer (->Html)})}) context)))))
+                                               ((majavat/build-renderer file-path {:sanitizer (->Html)
+                                                                                   :renderer  (->InputStreamRenderer)}) context)))))
           "verifying render to input stream"))))
 
 
@@ -96,16 +136,18 @@
       (is (= (crlf->lf (slurp (io/resource "html/expected-custom-filter.html")))
              (crlf->lf (String. (.readAllBytes ^InputStream
                                                ((majavat/build-renderer file-path {:filters  filters
-                                                                                   :renderer (->InputStreamRenderer {})}) context))))) "verifying render to input stream"))
+                                                                                   :renderer (->InputStreamRenderer)}) context))))) "verifying render to input stream"))
     (testing "Escaped html"
       (is (= (crlf->lf (slurp (io/resource "html/expected-escaped-custom-filter.html")))
-             (crlf->lf ((majavat/build-renderer file-path {:filters  filters
-                                                           :renderer (->StringRenderer {:sanitizer (->Html)})}) context)))
+             (crlf->lf ((majavat/build-renderer file-path {:filters   filters
+                                                           :sanitizer (->Html)
+                                                           :renderer  (->StringRenderer)}) context)))
           "verifying render to string")
       (is (= (crlf->lf (slurp (io/resource "html/expected-escaped-custom-filter.html")))
              (crlf->lf (String. (.readAllBytes ^InputStream
-                                               ((majavat/build-renderer file-path {:filters  filters
-                                                                                   :renderer (->InputStreamRenderer {:sanitizer (->Html)})}) context)))))
+                                               ((majavat/build-renderer file-path {:filters   filters
+                                                                                   :sanitizer (->Html)
+                                                                                   :renderer  (->InputStreamRenderer)}) context)))))
           "verifying render to input stream"))))
 
 (deftest render-wrong-return-type-returns-string
@@ -117,7 +159,7 @@
   (let [file-path "html/index.html"]
     (is (= (crlf->lf (slurp (io/resource "html/expected.html")))
            (crlf->lf (String. (.readAllBytes ^InputStream
-                                             ((majavat/build-renderer file-path {:renderer (->InputStreamRenderer {:sanitizer nil})}) context)))))
+                                             ((majavat/build-renderer file-path {:renderer (->InputStreamRenderer)}) context)))))
         "verifying wrong type returns string ")))
 
 
@@ -128,7 +170,7 @@
          (crlf->lf ((majavat/build-renderer "not-existing-file" {}) {}))) "verifying failure to render string")
   (is (= (crlf->lf (slurp (io/resource "render-template-not-found.html")))
          (crlf->lf (String. (.readAllBytes ^InputStream
-                                           ((majavat/build-renderer "not-existing-file" {:renderer (->InputStreamRenderer {})}) {}))))) "verifying failure to render input stream"))
+                                           ((majavat/build-renderer "not-existing-file" {:renderer (->InputStreamRenderer)}) {}))))) "verifying failure to render input stream"))
 
 
 (deftest cache-disabled-test
@@ -192,18 +234,20 @@
       (is (= (crlf->lf (slurp (io/resource "html/expected.html")))
              (crlf->lf (String. (.readAllBytes ^InputStream
                                                ((majavat/build-renderer file-path {:pre-render {:page-title "Home - My Awesome Blog"}
-                                                                                   :renderer   (->InputStreamRenderer {})})
+                                                                                   :renderer   (->InputStreamRenderer)})
                                                 (dissoc context :page-title)))))) "verifying render to input stream"))
     (testing "Escaped html"
       (is (= (crlf->lf (slurp (io/resource "html/expected-escaped.html")))
-             (crlf->lf ((majavat/build-renderer file-path {:pre-render {:page-title "Home - My Awesome Blog"}
-                                                           :renderer   (->StringRenderer {:sanitizer (->Html)})})
+             (crlf->lf ((majavat/build-renderer file-path {:sanitizer  (->Html)
+                                                           :pre-render {:page-title "Home - My Awesome Blog"}
+                                                           :renderer   (->StringRenderer)})
                         (dissoc context :page-title))))
           "verifying render to string")
       (is (= (crlf->lf (slurp (io/resource "html/expected-escaped.html")))
              (crlf->lf (String. (.readAllBytes ^InputStream
-                                               ((majavat/build-renderer file-path {:pre-render {:page-title "Home - My Awesome Blog"}
-                                                                                   :renderer   (->InputStreamRenderer {:sanitizer (->Html)})})
+                                               ((majavat/build-renderer file-path {:sanitizer  (->Html)
+                                                                                   :pre-render {:page-title "Home - My Awesome Blog"}
+                                                                                   :renderer   (->InputStreamRenderer)})
                                                 (dissoc context :page-title))))))
           "verifying render to input stream"))))
 
@@ -213,14 +257,34 @@
           render-fn (majavat/build-renderer file-path)]
       (criterium/bench (render-fn context)))))
 
-(deftest build-html-renderer
+(deftest render-html-test
   (let [file-path "html/index.html"]
     (testing "Escaped html"
-      (is (= (crlf->lf (slurp (io/resource "html/expected-escaped.html")))
-             (crlf->lf ((majavat/build-html-renderer file-path) context)))
+      (is (= (crlf->lf (slurp (io/resource "html/expected-escaped-html.html")))
+             (crlf->lf ((majavat/build-html-renderer file-path {:pre-render pre-render-context-with-html-chars
+                                                                :renderer   (->StringRenderer)})
+                        pre-render-context)))
           "verifying render to string")
-      (is (= (crlf->lf (slurp (io/resource "html/expected-escaped.html")))
+      (is (= (crlf->lf (slurp (io/resource "html/expected-escaped-html.html")))
              (crlf->lf (String. (.readAllBytes ^InputStream
-                                               ((majavat/build-html-renderer file-path {:renderer (->InputStreamRenderer {})}) context)))))
+                                               ((majavat/build-html-renderer
+                                                  file-path
+                                                  {:pre-render pre-render-context-with-html-chars
+                                                   :renderer   (->InputStreamRenderer)})
+                                                pre-render-context)))))
+          "verifying render to input stream"))
+    (testing "Overwrites existing sanitizer"
+      (is (= (crlf->lf (slurp (io/resource "html/expected-escaped-html.html")))
+             (crlf->lf ((majavat/build-html-renderer file-path {:pre-render pre-render-context-with-html-chars
+                                                                :renderer   (->StringRenderer)})
+                        pre-render-context)))
+          "verifying render to string")
+      (is (= (crlf->lf (slurp (io/resource "html/expected-escaped-html.html")))
+             (crlf->lf (String. (.readAllBytes ^InputStream
+                                               ((majavat/build-html-renderer
+                                                  file-path
+                                                  {:sanitizer  (->Json)
+                                                   :pre-render pre-render-context-with-html-chars
+                                                   :renderer   (->InputStreamRenderer)})
+                                                pre-render-context)))))
           "verifying render to input stream"))))
-

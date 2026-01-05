@@ -4,8 +4,8 @@
 
 (deftest escape
   (are [expected sanitizer input] (= expected (sanitize sanitizer input))
-                        "foo&gt;&lt;&quot;&apos;&amp;bar" (->Html) "foo><\"'&bar"
-                        "safe" (->Html) "safe"
-                        "safe" (->Json) "safe"
-                        "\\\"\\\\ \\\\\\/ \\b \\f \\n \\r \\t" (->Json) "\"\\ \\/ \b \f \n \r \t"
-                        ))
+                                  "foo&gt;&lt;&quot;&apos;&amp;bar" (->Html) "foo><\"'&bar"
+                                  "safe" (->Html) "safe"
+                                  "safe" (->Json) "safe"
+                                  "\\\"\\\\ \\\\\\/ \\b \\f \\n \\r \\t" (->Json) "\"\\ \\/ \b \f \n \r \t"
+                                  ))

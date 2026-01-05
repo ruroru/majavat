@@ -46,7 +46,7 @@
                           10 [(.getBytes "hello")
                               (.getBytes "world")]
                           7 [(.getBytes "test")
-                             (.getBytes "一")]  ;
+                             (.getBytes "一")]               ;
                           10 [(byte-array [1 2 3 4 5])
                               (byte-array [6 7 8 9 10])]
                           5 [(byte-array [0 0 0 0 0])])))

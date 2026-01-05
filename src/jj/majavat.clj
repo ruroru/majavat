@@ -2,10 +2,9 @@
   (:require
     [clojure.tools.logging :as logger]
     [jj.majavat.builder :as builder]
+    [jj.majavat.renderer :refer [->StringRenderer]]
     [jj.majavat.renderer.sanitizer :refer [->Html]]
-    [jj.majavat.renderer :refer [->StringRenderer ->InputStreamRenderer]]
-    [jj.majavat.resolver.resource :as rcr])
-  (:import (jj.majavat.renderer InputStreamRenderer)))
+    [jj.majavat.resolver.resource :as rcr]))
 
 (def ^:private default-resolver (delay (rcr/->ResourceResolver)))
 
@@ -24,23 +23,19 @@
          filters (get opts :filters {})
 
          renderer (or (:renderer opts)
-                      (->StringRenderer filters))
+                      (->StringRenderer))
 
          cache? (get opts :cache? true)
          pre-render-context (get opts :pre-render {})
-
+         sanitizer (get opts :sanitizer nil)
          builder (if cache?
                    (builder/->CachedBuilder pre-render-context filters)
                    (builder/->OneShotBuilder filters))]
 
-     (builder/build-renderer builder file-path resolver renderer))))
+     (builder/build-renderer builder file-path resolver renderer sanitizer))))
 
 (defn build-html-renderer
   ([file-path]
-   (build-html-renderer file-path {}))
+   (build-renderer file-path {:sanitizer (->Html)}))
   ([file-path opts]
-   (let [renderer (if (instance? InputStreamRenderer (:renderer opts))
-                    (->InputStreamRenderer {:sanitizer (->Html)})
-                    (->StringRenderer {:sanitizer (->Html)}))
-         opts (assoc opts :renderer renderer)]
-     (build-renderer file-path opts))))
+   (build-renderer file-path (assoc opts :sanitizer (->Html)))))

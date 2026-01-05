@@ -34,9 +34,9 @@ Additional options can be passed with
                                                      :pre-render {:key "value"}
                                                      :filters    {:reverse (fn [value args]
                                                                              (string/reverse value))}
-                                                     :renderer   (->StringRenderer {:sanitizer (->Html)})}))
+                                                     :renderer   (->StringRenderer))
 
-(render-fn {:user "jj"})
+  (render-fn {:user "jj"})
 ```
 
 All supported options:
@@ -348,6 +348,7 @@ Renders a template using the provided context.
 
 - template - template AST
 - context - Map of variables for template interpolation
+- sanitizer - A record that implements `Sanitizer` protocol
 
 **Returns** - Rendered output
 
@@ -359,7 +360,7 @@ Returns rendered output as a String
 clojure
 
 ```clojure
-(->StringRenderer {:sanitizer (->Html)})
+(->StringRenderer)
 ```
 
 #### InputStreamRenderer
@@ -367,7 +368,7 @@ clojure
 Returns rendered output as an InputStream for streaming large content
 
 ```clojure
-(->InputStreamRenderer {:sanitizer (->Json)})
+(->InputStreamRenderer)
 ```
 
 #### PartialRenderer
@@ -375,7 +376,7 @@ Returns rendered output as an InputStream for streaming large content
 Returns a partially rendered AST.
 
 ```clojure
-(->PartialRenderer {})
+(->PartialRenderer)
 ```
 
 ## TemplateResolver

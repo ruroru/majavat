@@ -107,7 +107,7 @@
            :first? (zero? index)
            :last?  (= index (dec count))}))
 
-(defn- render-nodes [nodes context ^StringBuilder sb escape-conf]
+(defn- render-nodes [nodes context ^StringBuilder sb sanitizer]
   (doseq [node nodes]
     (case (node :type)
       :text
@@ -119,7 +119,7 @@
             filtered-val (filter-fn val)]
         (.append sb (-> filtered-val
                         ->str
-                        (escape-if-needed (escape-conf :sanitizer)))))
+                        (escape-if-needed sanitizer))))
 
       :query-string
       (when-let [query-str (build-query-string (node :value) context)]
@@ -133,14 +133,14 @@
             variable-value (node :variable-value)
             body (node :body)
             new-context (assoc context variable-name (resolve-path context variable-value))]
-        (render-nodes body new-context sb escape-conf))
+        (render-nodes body new-context sb sanitizer))
 
       :variable-declaration
       (let [variable-name (node :variable-name)
             variable-value (node :variable-value)
             body (node :body)
             new-context (assoc context variable-name variable-value)]
-        (render-nodes body new-context sb escape-conf))
+        (render-nodes body new-context sb sanitizer))
 
       :for (let [identifier (node :identifier)
                  source-path (node :source)
@@ -153,7 +153,7 @@
                  (let [item (first remaining)
                        loop-context (get-loop-context context i item-count)
                        new-context (assoc loop-context identifier item)]
-                   (render-nodes body new-context sb escape-conf)
+                   (render-nodes body new-context sb sanitizer)
                    (recur (inc i) (next remaining))))))
 
       :each
@@ -165,7 +165,7 @@
                remaining (seq items)]
           (when remaining
             (let [item (first remaining)]
-              (render-nodes body (assoc context identifier item) sb escape-conf)
+              (render-nodes body (assoc context identifier item) sb sanitizer)
               (recur (inc i) (next remaining))))))
 
       :if
@@ -173,23 +173,23 @@
             when-true (node :when-true)
             when-false (node :when-false)]
         (if (boolean (resolve-path context condition))
-          (when (seq when-true) (render-nodes when-true context sb escape-conf))
-          (when (seq when-false) (render-nodes when-false context sb escape-conf))))
+          (when (seq when-true) (render-nodes when-true context sb sanitizer))
+          (when (seq when-false) (render-nodes when-false context sb sanitizer))))
 
       :if-not
       (let [condition (node :condition)
             when-true (node :when-true)
             when-false (node :when-false)]
         (if (not (boolean (resolve-path context condition)))
-          (when (seq when-true) (render-nodes when-true context sb escape-conf))
-          (when (seq when-false) (render-nodes when-false context sb escape-conf))))
+          (when (seq when-true) (render-nodes when-true context sb sanitizer))
+          (when (seq when-false) (render-nodes when-false context sb sanitizer))))
       nil))
   sb)
 
 (defn- render-nodes-to-bytes-vec
-  ([nodes context charset escape-conf]
-   (render-nodes-to-bytes-vec nodes context charset escape-conf (ArrayList. (count nodes))))
-  ([nodes context ^Charset charset escape-conf ^ArrayList result]
+  ([nodes context charset sanitizer]
+   (render-nodes-to-bytes-vec nodes context charset sanitizer (ArrayList. (count nodes))))
+  ([nodes context ^Charset charset sanitizer ^ArrayList result]
    (loop [remaining nodes]
      (when (seq remaining)
        (let [node (first remaining)
@@ -206,7 +206,7 @@
            (do
              (let [val (resolve-path context (node :value))
                    filter-fn (node :filter-fn identity)
-                   resolved (-> val filter-fn ->str (escape-if-needed (escape-conf :sanitizer)))]
+                   resolved (-> val filter-fn ->str (escape-if-needed sanitizer))]
                (.add result (.getBytes ^String resolved charset)))
              (recur rest-nodes))
 
@@ -225,13 +225,13 @@
            :variable-declaration
            (do
              (let [new-ctx (assoc context (node :variable-name) (node :variable-value))]
-               (render-nodes-to-bytes-vec (node :body) new-ctx charset escape-conf result))
+               (render-nodes-to-bytes-vec (node :body) new-ctx charset sanitizer result))
              (recur rest-nodes))
 
            :variable-assignment
            (do
              (let [new-ctx (assoc context (node :variable-name) (resolve-path context (node :variable-value)))]
-               (render-nodes-to-bytes-vec (node :body) new-ctx charset escape-conf result))
+               (render-nodes-to-bytes-vec (node :body) new-ctx charset sanitizer result))
              (recur rest-nodes))
 
            :for
@@ -244,7 +244,7 @@
                    (let [item (first item-remaining)
                          loop-ctx (get-loop-context context i total)
                          new-ctx (assoc loop-ctx (node :identifier) item)]
-                     (render-nodes-to-bytes-vec (node :body) new-ctx charset escape-conf result)
+                     (render-nodes-to-bytes-vec (node :body) new-ctx charset sanitizer result)
                      (recur (inc i) (next item-remaining))))))
              (recur rest-nodes))
 
@@ -254,46 +254,29 @@
                (loop [item-remaining (seq items)]
                  (when item-remaining
                    (let [item (first item-remaining)]
-                     (render-nodes-to-bytes-vec (node :body) (assoc context (node :identifier) item) charset escape-conf result)
+                     (render-nodes-to-bytes-vec (node :body) (assoc context (node :identifier) item) charset sanitizer result)
                      (recur (next item-remaining))))))
              (recur rest-nodes))
 
            :if
            (do
              (let [branch (if (resolve-path context (node :condition)) :when-true :when-false)]
-               (render-nodes-to-bytes-vec (node branch) context charset escape-conf result))
+               (render-nodes-to-bytes-vec (node branch) context charset sanitizer result))
              (recur rest-nodes))
 
            :if-not
            (do
              (let [branch (if-not (resolve-path context (node :condition)) :when-true :when-false)]
-               (render-nodes-to-bytes-vec (node branch) context charset escape-conf result))
+               (render-nodes-to-bytes-vec (node branch) context charset sanitizer result))
              (recur rest-nodes))
 
            (recur rest-nodes)))))
    result))
 
 
-(defprotocol Renderer
-  (render [this template context]))
-
-(defrecord StringRenderer [config]
-  Renderer
-  (render [this template context]
-    (if-not (map? template)
-      (.toString ^StringBuilder (render-nodes template context (StringBuilder.) (:config this)))
-      (render (->StringRenderer {}) (read-edn-resource "error-template.edn") template))))
-
-(defrecord InputStreamRenderer [config]
-  Renderer
-  (render [this template context]
-    (if-not (map? template)
-      (let [byte-arrays (render-nodes-to-bytes-vec template context StandardCharsets/UTF_8 (:config this))]
-        (SequentialByteArrayInputStream. byte-arrays))
-      (render (->InputStreamRenderer {}) (read-edn-resource "error-template.edn") template))))
 
 
-(defn- partial-render-nodes [nodes context escape-conf]
+(defn- partial-render-nodes [nodes context sanitizer]
   (reduce
     (fn [acc node]
       (case (node :type)
@@ -307,7 +290,7 @@
                   filtered-val (filter-fn val)
                   resolved-str (-> filtered-val
                                    ->str
-                                   (escape-if-needed (escape-conf :sanitizer)))]
+                                   (escape-if-needed sanitizer))]
               (conj acc {:type :text :value resolved-str}))
             (conj acc node)))
 
@@ -326,16 +309,16 @@
               resolved-val (resolve-path context variable-value)]
           (if (some? resolved-val)
             (let [new-context (assoc context variable-name resolved-val)
-                  rendered-body (partial-render-nodes body new-context escape-conf)]
+                  rendered-body (partial-render-nodes body new-context sanitizer)]
               (into acc rendered-body))
-            (conj acc (assoc node :body (partial-render-nodes body context escape-conf)))))
+            (conj acc (assoc node :body (partial-render-nodes body context sanitizer)))))
 
         :variable-declaration
         (let [variable-name (node :variable-name)
               variable-value (node :variable-value)
               body (node :body)
               new-context (assoc context variable-name variable-value)
-              rendered-body (partial-render-nodes body new-context escape-conf)]
+              rendered-body (partial-render-nodes body new-context sanitizer)]
           (if (= rendered-body body)
             (conj acc node)
             (conj acc (assoc node :body rendered-body))))
@@ -354,10 +337,10 @@
                   (let [item (first remaining)
                         loop-context (get-loop-context context i item-count)
                         new-context (assoc loop-context identifier item)
-                        rendered (partial-render-nodes body new-context escape-conf)]
+                        rendered (partial-render-nodes body new-context sanitizer)]
                     (recur (inc i) (next remaining) (into result rendered)))
                   result)))
-            (conj acc (assoc node :body (partial-render-nodes body context escape-conf)))))
+            (conj acc (assoc node :body (partial-render-nodes body context sanitizer)))))
 
         :each
         (let [identifier (node :identifier)
@@ -373,32 +356,32 @@
                   (let [item (first remaining)
                         loop-context (get-loop-context context i item-count)
                         new-context (assoc loop-context identifier item)
-                        rendered (partial-render-nodes body new-context escape-conf)]
+                        rendered (partial-render-nodes body new-context sanitizer)]
                     (recur (inc i) (next remaining) (into result rendered)))
                   result)))
-            (conj acc (assoc node :body (partial-render-nodes body context escape-conf)))))
+            (conj acc (assoc node :body (partial-render-nodes body context sanitizer)))))
 
         :if
         (let [condition (node :condition)
               condition-val (resolve-path context condition)]
           (if (some? condition-val)
             (if (boolean condition-val)
-              (into acc (partial-render-nodes (node :when-true) context escape-conf))
-              (into acc (partial-render-nodes (node :when-false) context escape-conf)))
+              (into acc (partial-render-nodes (node :when-true) context sanitizer))
+              (into acc (partial-render-nodes (node :when-false) context sanitizer)))
             (conj acc (assoc node
-                        :when-true (partial-render-nodes (node :when-true) context escape-conf)
-                        :when-false (partial-render-nodes (node :when-false) context escape-conf)))))
+                        :when-true (partial-render-nodes (node :when-true) context sanitizer)
+                        :when-false (partial-render-nodes (node :when-false) context sanitizer)))))
 
         :if-not
         (let [condition (node :condition)
               condition-val (resolve-path context condition)]
           (if (some? condition-val)
             (if (not (boolean condition-val))
-              (into acc (partial-render-nodes (node :when-true) context escape-conf))
-              (into acc (partial-render-nodes (node :when-false) context escape-conf)))
+              (into acc (partial-render-nodes (node :when-true) context sanitizer))
+              (into acc (partial-render-nodes (node :when-false) context sanitizer)))
             (conj acc (assoc node
-                        :when-true (partial-render-nodes (node :when-true) context escape-conf)
-                        :when-false (partial-render-nodes (node :when-false) context escape-conf)))))
+                        :when-true (partial-render-nodes (node :when-true) context sanitizer)
+                        :when-false (partial-render-nodes (node :when-false) context sanitizer)))))
 
         (conj acc node)))
     []
@@ -424,10 +407,28 @@
     []
     nodes))
 
-(defrecord PartialRenderer [config]
+(defprotocol Renderer
+  (render [this template context sanitizer]))
+
+(defrecord StringRenderer []
   Renderer
-  (render [this template context]
+  (render [this template context sanitizer]
     (if-not (map? template)
-      (-> (partial-render-nodes template context (:config this))
+      (.toString ^StringBuilder (render-nodes template context (StringBuilder.) sanitizer))
+      (render (->StringRenderer) (read-edn-resource "error-template.edn") template sanitizer))))
+
+(defrecord InputStreamRenderer []
+  Renderer
+  (render [this template context sanitizer]
+    (if-not (map? template)
+      (let [byte-arrays (render-nodes-to-bytes-vec template context StandardCharsets/UTF_8 sanitizer)]
+        (SequentialByteArrayInputStream. byte-arrays))
+      (render (->InputStreamRenderer) (read-edn-resource "error-template.edn") template sanitizer))))
+
+(defrecord PartialRenderer []
+  Renderer
+  (render [this template context sanitizer]
+    (if-not (map? template)
+      (-> (partial-render-nodes template context sanitizer)
           optimize-ast)
-      (render (->PartialRenderer {}) (read-edn-resource "error-template.edn") template))))
+      (render (->PartialRenderer) (read-edn-resource "error-template.edn") template sanitizer))))
