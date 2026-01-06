@@ -415,7 +415,7 @@
   (render [this template context sanitizer]
     (if-not (map? template)
       (.toString ^StringBuilder (render-nodes template context (StringBuilder.) sanitizer))
-      (render (->StringRenderer) (read-edn-resource "error-template.edn") template sanitizer))))
+      (render (->StringRenderer) (read-edn-resource "jj/majavat/error-template.edn") template sanitizer))))
 
 (defrecord InputStreamRenderer []
   Renderer
@@ -423,7 +423,7 @@
     (if-not (map? template)
       (let [byte-arrays (render-nodes-to-bytes-vec template context StandardCharsets/UTF_8 sanitizer)]
         (SequentialByteArrayInputStream. byte-arrays))
-      (render (->InputStreamRenderer) (read-edn-resource "error-template.edn") template sanitizer))))
+      (render (->InputStreamRenderer) (read-edn-resource "jj/majavat/error-template.edn") template sanitizer))))
 
 (defrecord PartialRenderer []
   Renderer
@@ -431,4 +431,4 @@
     (if-not (map? template)
       (-> (partial-render-nodes template context sanitizer)
           optimize-ast)
-      (render (->PartialRenderer) (read-edn-resource "error-template.edn") template sanitizer))))
+      (render (->PartialRenderer) (read-edn-resource "jj/majavat/error-template.edn") template sanitizer))))
