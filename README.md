@@ -334,13 +334,7 @@ input-file with content
 (render-fn {}) ;; returns "foo{{bar}}{%baz%}{#qux#}quux"
 ```
 
-## Renderer Protocol
-
-### Configuration
-
-Supported options:
-
-**:sanitizer** - Input sanitization strategy
+## RendererTarget Protocol
 
 ### render
 

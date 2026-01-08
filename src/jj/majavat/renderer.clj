@@ -407,18 +407,18 @@
     []
     nodes))
 
-(defprotocol Renderer
+(defprotocol RenderTarget
   (render [this template context sanitizer]))
 
 (defrecord StringRenderer []
-  Renderer
+  RenderTarget
   (render [this template context sanitizer]
     (if-not (map? template)
       (.toString ^StringBuilder (render-nodes template context (StringBuilder.) sanitizer))
       (render (->StringRenderer) (read-edn-resource "jj/majavat/error-template.edn") template sanitizer))))
 
 (defrecord InputStreamRenderer []
-  Renderer
+  RenderTarget
   (render [this template context sanitizer]
     (if-not (map? template)
       (let [byte-arrays (render-nodes-to-bytes-vec template context StandardCharsets/UTF_8 sanitizer)]
@@ -426,7 +426,7 @@
       (render (->InputStreamRenderer) (read-edn-resource "jj/majavat/error-template.edn") template sanitizer))))
 
 (defrecord PartialRenderer []
-  Renderer
+  RenderTarget
   (render [this template context sanitizer]
     (if-not (map? template)
       (-> (partial-render-nodes template context sanitizer)
