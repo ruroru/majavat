@@ -214,17 +214,50 @@
   (when (some? value)
     (.trim ^String value)))
 
-(defn upper-case-string [value args]
-  (when (some? value)
-    (.toUpperCase ^String value)))
+(defn- should-upper-case-case? [^String k len]
+  (loop [i 0]
+    (if (< i len)
+      (if (Character/isUpperCase (.charAt k i))
+        (recur (inc i))
+        false)
+      true)))
 
-(defn lower-case-string [k args]
+(defn upper-case-string [^String value _]
+  (when (some? value)
+    (if-not (should-upper-case-case? value (.length value))
+      (.toUpperCase ^String value)
+      value)))
+
+(defn- should-lower-case? [^String k len]
+  (loop [i 0]
+    (if (< i len)
+      (if (Character/isLowerCase (.charAt k i))
+        (recur (inc i))
+        false)
+      true)))
+
+(defn lower-case-string [^String k _]
   (when (some? k)
-    (.toLowerCase ^String k)))
+    (if-not (should-lower-case? k (.length k))
+      (.toLowerCase ^String k)
+      k)))
 
-(defn capitalize-string [value args]
+(defn- should-capitalize? [^String value len]
+  (loop [i 0]
+    (cond
+      (= i len) true
+      (= i 0) (if (Character/isUpperCase (.charAt value i))
+                (recur (inc i))
+                false)
+      :else (if (Character/isLowerCase (.charAt value i))
+              (recur (inc i))
+              false))))
+
+(defn capitalize-string [^String value _]
   (when (some? value)
-    (clojure.string/capitalize ^String value)))
+    (if-not (should-capitalize? value (.length value))
+      (clojure.string/capitalize ^String value)
+      value)))
 
 (defn get-name [value args]
   (if (keyword? value)
@@ -263,5 +296,4 @@
     (sequential? v) (rest v)
     (map? v) (into {} (rest v))
     :else nil
-    )
-  )
+    ))

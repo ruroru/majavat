@@ -201,21 +201,29 @@ this is a  footer"
   (System/setProperty "user.timezone" "UTC")
 
   (are [expected-value template-path context]
-    (let []
-      (= expected-value
-         (renderer/render (->StringRenderer)
-                          (parser/parse template-path contentResolver empty-fn-map)
-                          context
-                          (->Html))
-         (String. (.readAllBytes ^InputStream (renderer/render (->InputStreamRenderer)
-                                                               (parser/parse template-path contentResolver empty-fn-map)
-                                                               context
-                                                               (->Html))))))
-    "foo BAR" "filter/upper-case" {:value "bar"}
+    (= expected-value
+       (renderer/render (->StringRenderer)
+                        (parser/parse template-path contentResolver empty-fn-map)
+                        context
+                        (->Html))
+       (String. (.readAllBytes ^InputStream (renderer/render (->InputStreamRenderer)
+                                                             (parser/parse template-path contentResolver empty-fn-map)
+                                                             context
+                                                             (->Html)))))
+    "foo BAR1ｲ" "filter/upper-case" {:value "BAR1ｲ"}
+    "foo BAR2ｲ" "filter/upper-case" {:value "bar2ｲ"}
+    "foo BAR3ｲ" "filter/upper-case" {:value "Bar3ｲ"}
+    "foo " "filter/upper-case" {:value ""}
     "foo " "filter/upper-case" {}
-    "foo bar" "filter/lower-case" {:value "BAR"}
+    "foo bar1ｲ" "filter/lower-case" {:value "BAR1ｲ"}
+    "foo bar2ｲ" "filter/lower-case" {:value "bar2ｲ"}
+    "foo bar3ｲ" "filter/lower-case" {:value "Bar3ｲ"}
+    "foo " "filter/lower-case" {:value ""}
     "foo " "filter/lower-case" {}
-    "Foo Bar" "filter/capitalize" {:value "BAR"}
+    "Foo Bar1ｲ" "filter/capitalize" {:value "BAR1ｲ"}
+    "Foo Bar2ｲ" "filter/capitalize" {:value "bar2ｲ"}
+    "Foo Bar3ｲ" "filter/capitalize" {:value "Bar3ｲ"}
+    "Foo " "filter/capitalize" {:value ""}
     "Foo " "filter/capitalize" {}
     "foo the strive LXXXIV ivy" "filter/upper-roman" {:value "lxxxIv"}
     "foo the strive  ivy" "filter/upper-roman" {}
