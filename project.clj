@@ -14,11 +14,15 @@
   :javac-options ["--release" "11"]
 
   :resource-paths ["src/resources"]
-  :profiles {:test {:global-vars    {*warn-on-reflection* true}
-                    :dependencies   [[ch.qos.logback/logback-classic "1.5.24"]
-                                     [criterium "0.4.6"]
-                                     [mock-clj "0.2.1"]]
-                    :resource-paths ["test/resources"]}}
+  :profiles {:benchmark {:source-paths   ["benchmark/src"]
+                         :resource-paths ["benchmark/resources"]
+                         :dependencies   [[selmer "1.12.70"]
+                                          [hiccup "2.0.0"]]}
+             :test      {:global-vars    {*warn-on-reflection* true}
+                         :dependencies   [[ch.qos.logback/logback-classic "1.5.24"]
+                                          [criterium "0.4.6"]
+                                          [mock-clj "0.2.1"]]
+                         :resource-paths ["test/resources"]}}
 
   :plugins [[org.clojars.jj/bump "1.0.4"]
             [lein-cloverage "1.2.4"]

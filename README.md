@@ -415,6 +415,17 @@ Check if template exists at a path.
 - **Html** - implementation for html pages
 - **Json** - implementation for Json
 
+## Performance
+Stress test was conducted rendering template 1000000 times using a standard web page with navigation, conditionals,
+loops, and nested data access.
+
+| Engine                | Total Time | Per Render | Throughput | vs Majavat    |
+|-----------------------|------------|------------|------------|---------------|
+| Majavat (String)      | 4.1s       | 4.1μs      | 243,902/s  | 1x (baseline) |
+| Majavat (InputStream) | 5.8s       | 5.8μs      | 172,414/s  | 1.41x slower  |
+| Selmer                | 128.6s     | 128.6μs    | 7,776/s    | 31.37x slower |
+| Hiccup                | 13.7s      | 13.7μs     | 72,993/s   | 3.34x slower  |
+
 ## Available Extensions
 
 - [File Renderer](https://github.com/ruroru/majavat-file-renderer) - Renders output directly to file.
