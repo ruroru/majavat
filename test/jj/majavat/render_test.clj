@@ -210,19 +210,19 @@ this is a  footer"
                                                              (parser/parse template-path contentResolver empty-fn-map)
                                                              context
                                                              (->Html)))))
-    "foo BAR1ｲ" "filter/upper-case" {:value "BAR1ｲ"}
-    "foo BAR2ｲ" "filter/upper-case" {:value "bar2ｲ"}
-    "foo BAR3ｲ" "filter/upper-case" {:value "Bar3ｲ"}
+    "foo BAR1 BAZｲ" "filter/upper-case" {:value "BAR1 BaZｲ"}
+    "foo BAR2 BAZｲ" "filter/upper-case" {:value "bar2 BaZｲ"}
+    "foo BAR3 BAZｲ" "filter/upper-case" {:value "Bar3 BaZｲ"}
     "foo " "filter/upper-case" {:value ""}
     "foo " "filter/upper-case" {}
-    "foo bar1ｲ" "filter/lower-case" {:value "BAR1ｲ"}
-    "foo bar2ｲ" "filter/lower-case" {:value "bar2ｲ"}
-    "foo bar3ｲ" "filter/lower-case" {:value "Bar3ｲ"}
+    "foo bar1 bazｲ" "filter/lower-case" {:value "BAR1 BaZｲ"}
+    "foo bar2 bazｲ" "filter/lower-case" {:value "bar2 BaZｲ"}
+    "foo bar3 bazｲ" "filter/lower-case" {:value "Bar3 BaZｲ"}
     "foo " "filter/lower-case" {:value ""}
     "foo " "filter/lower-case" {}
-    "Foo Bar1ｲ" "filter/capitalize" {:value "BAR1ｲ"}
-    "Foo Bar2ｲ" "filter/capitalize" {:value "bar2ｲ"}
-    "Foo Bar3ｲ" "filter/capitalize" {:value "Bar3ｲ"}
+    "Foo Bar1 bazｲ" "filter/capitalize" {:value "BAR1 BaZｲ"}
+    "Foo Bar2 bazｲ" "filter/capitalize" {:value "bar2 BaZｲ"}
+    "Foo Bar3 bazｲ" "filter/capitalize" {:value "Bar3 BaZｲ"}
     "Foo " "filter/capitalize" {:value ""}
     "Foo " "filter/capitalize" {}
     "foo the strive LXXXIV ivy" "filter/upper-roman" {:value "lxxxIv"}
