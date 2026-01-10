@@ -329,7 +329,8 @@
                                                                     [else-body remaining-after-else-body] (parse-ast remaining-after-else [] current-block true current-file-path template-resolver custom-filter-map)]
                                                                 [else-body remaining-after-else-body])
                                                               [[{:type :text :value ""}] remaining-after-true])
-                               if-not-node {:type       :if-not
+                               if-not-node {:type       :if
+                                            :negate     true
                                             :condition  (:value condition-token)
                                             :when-true  when-true
                                             :when-false when-false}]

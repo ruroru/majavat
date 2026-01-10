@@ -171,16 +171,11 @@
       :if
       (let [condition (node :condition)
             when-true (node :when-true)
-            when-false (node :when-false)]
-        (if (boolean (resolve-path context condition))
-          (when (seq when-true) (render-nodes when-true context sb sanitizer))
-          (when (seq when-false) (render-nodes when-false context sb sanitizer))))
-
-      :if-not
-      (let [condition (node :condition)
-            when-true (node :when-true)
-            when-false (node :when-false)]
-        (if (not (boolean (resolve-path context condition)))
+            when-false (node :when-false)
+            is-negated (node :negate false)
+            condition-result (boolean (resolve-path context condition))
+            should-execute-true (if is-negated (not condition-result) condition-result)]
+        (if should-execute-true
           (when (seq when-true) (render-nodes when-true context sb sanitizer))
           (when (seq when-false) (render-nodes when-false context sb sanitizer))))
       nil))
@@ -260,13 +255,10 @@
 
            :if
            (do
-             (let [branch (if (resolve-path context (node :condition)) :when-true :when-false)]
-               (render-nodes-to-bytes-vec (node branch) context charset sanitizer result))
-             (recur rest-nodes))
-
-           :if-not
-           (do
-             (let [branch (if-not (resolve-path context (node :condition)) :when-true :when-false)]
+             (let [is-negated (node :negate false)
+                   condition-result (resolve-path context (node :condition))
+                   should-execute-true (if is-negated (not condition-result) condition-result)
+                   branch (if should-execute-true :when-true :when-false)]
                (render-nodes-to-bytes-vec (node branch) context charset sanitizer result))
              (recur rest-nodes))
 
@@ -363,22 +355,14 @@
 
         :if
         (let [condition (node :condition)
-              condition-val (resolve-path context condition)]
+              condition-val (resolve-path context condition)
+              is-negated (node :negate false)]
           (if (some? condition-val)
-            (if (boolean condition-val)
-              (into acc (partial-render-nodes (node :when-true) context sanitizer))
-              (into acc (partial-render-nodes (node :when-false) context sanitizer)))
-            (conj acc (assoc node
-                        :when-true (partial-render-nodes (node :when-true) context sanitizer)
-                        :when-false (partial-render-nodes (node :when-false) context sanitizer)))))
-
-        :if-not
-        (let [condition (node :condition)
-              condition-val (resolve-path context condition)]
-          (if (some? condition-val)
-            (if (not (boolean condition-val))
-              (into acc (partial-render-nodes (node :when-true) context sanitizer))
-              (into acc (partial-render-nodes (node :when-false) context sanitizer)))
+            (let [condition-result (boolean condition-val)
+                  should-execute-true (if is-negated (not condition-result) condition-result)]
+              (if should-execute-true
+                (into acc (partial-render-nodes (node :when-true) context sanitizer))
+                (into acc (partial-render-nodes (node :when-false) context sanitizer))))
             (conj acc (assoc node
                         :when-true (partial-render-nodes (node :when-true) context sanitizer)
                         :when-false (partial-render-nodes (node :when-false) context sanitizer)))))

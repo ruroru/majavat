@@ -231,7 +231,8 @@
     [{:type  :text
       :value "hello "}
      {:condition  [:value]
-      :type       :if-not
+      :type       :if
+      :negate     true
       :when-false [{:type  :text
                     :value ""}]
       :when-true  [{:type  :text
@@ -241,7 +242,8 @@
     [{:type  :text
       :value "hello "}
      {:condition  [:value]
-      :type       :if-not
+      :type       :if
+      :negate     true
       :when-false [{:type  :text
                     :value "universe"}]
       :when-true  [{:type  :text
@@ -256,7 +258,8 @@
     [{:type  :text
       :value "start "}
      {:condition  [:flag]
-      :type       :if-not
+      :type       :if
+      :negate     true
       :when-false [{:type  :text
                     :value ""}]
       :when-true  [{:type  :text
