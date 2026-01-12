@@ -1,7 +1,7 @@
 (ns jj.majavat-test
   (:require [clojure.java.io :as io]
             [clojure.string :as str]
-            [clojure.test :refer [deftest is testing]]
+            [clojure.test :refer [deftest is are testing]]
             [criterium.core :as criterium]
             [jj.majavat :as majavat]
             [jj.majavat.parser :as parser]
@@ -325,3 +325,15 @@
                                                    :renderer   (->InputStreamRenderer)})
                                                 pre-render-context)))))
           "verifying render to input stream"))))
+
+(deftest pre-render-faulty
+  (let [file-path "html/index.html"]
+    (testing "Not escaped html"
+      (are [pre-render-value] (= (crlf->lf (slurp (io/resource "html/expected-without-title.html")))
+                                 (crlf->lf ((majavat/build-renderer file-path {:pre-render pre-render-value})
+                                            (dissoc context :page-title))))
+
+                              []
+                              nil))))
+
+

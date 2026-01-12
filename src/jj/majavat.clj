@@ -26,7 +26,9 @@
                       (->StringRenderer))
 
          cache? (get opts :cache? true)
-         pre-render-context (get opts :pre-render {})
+         pre-render-context (if (map? (get opts :pre-render {}))
+                              (get opts :pre-render {})
+                              (logger/errorf "pre-render is not a map"))
          sanitizer (get opts :sanitizer nil)
          builder (if cache?
                    (builder/->CachedBuilder pre-render-context filters)
