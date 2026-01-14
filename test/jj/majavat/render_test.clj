@@ -490,3 +490,21 @@ this is a  footer"
     "hello world6" "path-resolver/length-7" (Container6. (Container5. (Container4. (Container3. (Container2. (Container1. (Container. "world6")))))))
     ))
 
+(deftest unclosed-tag-error-messages
+  (are [expected-file input-file]
+    (= (crlf->lf (slurp (io/resource expected-file)))
+       (crlf->lf (String. (.readAllBytes ^InputStream (renderer/render
+                                                        (->InputStreamRenderer)
+                                                        (parser/parse input-file contentResolver empty-fn-map)
+                                                        {}
+                                                        nil))))
+       (crlf->lf (renderer/render (->StringRenderer)
+                                  (parser/parse input-file contentResolver empty-fn-map)
+                                  {}
+                                  nil
+                                  )))
+    "tagstack/expected-unclosed-each-tag.html" "tagstack/unclosed-each-tag"
+    "tagstack/expected-unclosed-if-tag.html" "tagstack/unclosed-if-tag"
+    "tagstack/expected-unclosed-for-tag.html" "tagstack/unclosed-for-tag"
+    "tagstack/expected-unclosed-let-tag.html" "tagstack/unclosed-let-tag"
+    ))

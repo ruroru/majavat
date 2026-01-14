@@ -1,0 +1,1 @@
+testing {% let foo = bar.qux %}{% if  value %} {{foo}}{% endlet %}baz

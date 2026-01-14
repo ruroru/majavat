@@ -1,0 +1,1 @@
+testing {% let foo = bar.qux %}{% for item in items %}{% endlet %}baz

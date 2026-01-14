@@ -396,3 +396,27 @@
            :source     [:planets]
            :type       :each}]
          (parser/parse "each/each" contentResolver empty-fn-map))))
+
+(deftest unclosed-tag-error
+  (are [expected-ast input-file]
+    (= expected-ast (parser/parse input-file (rcr/->ResourceResolver) empty-fn-map))
+    {:error-message "Unclosed 'let' tag starting on line 1"
+     :line          "1"
+     :type          "syntax-error"}
+    "tagstack/unclosed-let-tag"
+
+    {:error-message "Mismatched closing tag on line 1: expected 'endif' but found 'endlet' (opening tag was on line 1)"
+     :line          "1"
+     :type          "syntax-error"}
+    "tagstack/unclosed-if-tag"
+
+    {:error-message "Mismatched closing tag on line 1: expected 'endfor' but found 'endlet' (opening tag was on line 1)"
+     :line          "1"
+     :type          "syntax-error"}
+    "tagstack/unclosed-for-tag"
+
+    {:error-message "Mismatched closing tag on line 1: expected 'endeach' but found 'endlet' (opening tag was on line 1)"
+     :line          "1"
+     :type          "syntax-error"}
+    "tagstack/unclosed-each-tag"
+    ))
