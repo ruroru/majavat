@@ -333,8 +333,21 @@ input-file with content
 
 (render-fn {}) ;; returns "foo{{bar}}{%baz%}{#qux#}quux"
 ```
+### Escape
+If needed, ```Sanitizer``` implementation can be set/overridden via ```escape``` tag.
 
-## RendererTarget Protocol
+```
+{% escape html %}foo{{bar}}{% endescape %}
+```
+
+```clojure
+(def render-fn (build-renderer "input-file"))
+
+(render-fn {:bar "<div/>"}) ;; returns "&lt;div/&gt;"
+```
+
+
+## RenderTarget Protocol
 
 ### render
 
@@ -414,6 +427,7 @@ Check if template exists at a path.
 
 - **Html** - implementation for html pages
 - **Json** - implementation for Json
+- **None** - Implementation that does not sanitize
 
 ## Performance
 Stress test was conducted rendering template 1000000 times using a standard web page with navigation, conditionals,

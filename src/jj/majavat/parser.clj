@@ -373,6 +373,29 @@
                       [list (rest lexed-list) updated-tag-stack])
                     (recur (rest lexed-list) list current-block parsing-for-body current-file-path template-resolver filter-map tag-stack))
 
+         :keyword-escape (let [remaining (rest lexed-list)
+                               name-token (first remaining)
+                               remaining-after-name (rest remaining)
+                               block-end-token (first remaining-after-name)]
+                           (if (and (= :escape-name (:type name-token))
+                                    (= :block-end (:type block-end-token)))
+                             (let [remaining-after-block-end (rest remaining-after-name)
+                                   new-tag-stack (push-tag tag-stack :sanitizer (:line current-item))
+                                   [body remaining-after-body updated-tag-stack] (parse-ast remaining-after-block-end [] current-block true current-file-path template-resolver filter-map new-tag-stack)
+                                   sanitizer-node {:type :escape-block
+                                                   :sanitizer (:value name-token)
+                                                   :body body}]
+                               (recur remaining-after-body (conj list sanitizer-node) current-block parsing-for-body current-file-path template-resolver filter-map updated-tag-stack))
+                             (throw (ex-info (format "error on line %s" (:line (or block-end-token name-token current-item)))
+                                             {:type :syntax-error
+                                              :line (:line (or block-end-token name-token current-item))}))))
+
+         :keyword-end-escape (if parsing-for-body
+                               (let [updated-tag-stack (pop-tag tag-stack :sanitizer (or (:line current-item) 1))]
+                                 [list (rest lexed-list) updated-tag-stack])
+                               (recur (rest lexed-list) list current-block parsing-for-body current-file-path template-resolver filter-map tag-stack))
+
+         :escape-name (recur (rest lexed-list) list current-block parsing-for-body current-file-path template-resolver filter-map tag-stack)
          :end-each-token (if parsing-for-body
                            (let [updated-tag-stack (pop-tag tag-stack :each (or (:line current-item) 1))]
                              [list (rest lexed-list) updated-tag-stack])

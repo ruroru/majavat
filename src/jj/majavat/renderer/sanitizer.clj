@@ -78,3 +78,7 @@
       (if (needs-json-escaping? s (.length ^String s))
         (escape-json s (.length ^String s))
         s))))
+
+(defrecord None []
+  Sanitizer
+  (sanitize [_ s] s))

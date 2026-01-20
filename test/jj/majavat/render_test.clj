@@ -508,3 +508,52 @@ this is a  footer"
     "tagstack/expected-unclosed-for-tag.html" "tagstack/unclosed-for-tag"
     "tagstack/expected-unclosed-let-tag.html" "tagstack/unclosed-let-tag"
     ))
+
+(deftest escape-html
+  (let [context {:value "<some>tag</some>"}]
+    (are [rendered-string template-path]
+
+      (= rendered-string
+         (String. (.readAllBytes ^InputStream (renderer/render (->InputStreamRenderer)
+                                                               (parser/parse template-path contentResolver empty-fn-map)
+                                                               context
+                                                               nil)))
+         (renderer/render (->StringRenderer)
+                          (parser/parse template-path contentResolver empty-fn-map)
+                          context
+                          nil))
+      "&lt;some&gt;tag&lt;/some&gt;" "escape/escape-html"
+       )))
+
+(deftest escape-nil
+  (let [context {:value "<some>tag</some>"}]
+    (are [rendered-string template-path]
+
+      (= rendered-string
+         (String. (.readAllBytes ^InputStream (renderer/render (->InputStreamRenderer)
+                                                               (parser/parse template-path contentResolver empty-fn-map)
+                                                               context
+                                                               (->Html))))
+         (renderer/render (->StringRenderer)
+                          (parser/parse template-path contentResolver empty-fn-map)
+                          context
+                          (->Html)))
+      "<some>tag</some>" "escape/escape-nil"
+      )))
+
+(deftest partial-render-escape
+  (let [context {:value "<some>tag</some>"}]
+    (are [rendered-string template-path]
+
+      (= rendered-string
+         (renderer/render (->PartialRenderer)
+                          (parser/parse template-path contentResolver empty-fn-map)
+                          context
+                          (->Html))
+         )
+      [{:body      [{:type  :text
+                     :value "&lt;some&gt;tag&lt;/some&gt;"}]
+        :sanitizer :html
+        :type      :escape-block}]
+      "escape/escape-html"
+      )))

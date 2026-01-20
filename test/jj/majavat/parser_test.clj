@@ -420,3 +420,11 @@
      :type          "syntax-error"}
     "tagstack/unclosed-each-tag"
     ))
+
+
+(deftest escape-tag
+  (is (= [{:body      [{:type  :value-node
+                        :value [:value]}]
+           :sanitizer :html
+           :type      :escape-block}]
+         (parser/parse "escape/escape-html" contentResolver empty-fn-map))))

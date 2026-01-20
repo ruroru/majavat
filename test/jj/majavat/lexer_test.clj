@@ -359,3 +359,24 @@
           {:line 1
            :type :block-end}]
          (lexer/tokenize "{% each world in planets %} hello {{ world }}{% endeach %}"))))
+
+
+
+(deftest escape-test
+  (is (= [{:type :block-start}
+          {:type :keyword-escape}
+          {:type  :escape-name
+           :value :json}
+          {:line 1
+           :type :block-end}
+          {:type :opening-bracket}
+          {:type  :expression
+           :value [:world]}
+          {:line 1
+           :type :closing-bracket}
+          {:type :block-start}
+          {:type :keyword-end-escape}
+          {:line 1
+           :type :block-end}]
+
+         (lexer/tokenize "{% escape json %}{{ world }}{% endescape %}"))))

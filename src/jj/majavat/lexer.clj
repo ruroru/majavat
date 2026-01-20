@@ -112,6 +112,9 @@
             (= "endlet" trimmed-string)
             (recur (rrest my-sequence) "" (conj vector {:type :keyword-end-let} {:type :block-end :line line-number}) new-line-number)
 
+            (= "endescape" trimmed-string)
+            (recur (rrest my-sequence) "" (conj vector {:type :keyword-end-escape} {:type :block-end :line line-number}) new-line-number)
+
             (= "csrf-token" trimmed-string)
             (recur (rrest my-sequence) "" (conj vector {:type :keyword-csrf-token} {:type :block-end :line line-number}) new-line-number)
 
@@ -132,6 +135,9 @@
 
             (= (:type (last vector)) :keyword-let)
             (recur (rrest my-sequence) "" (conj vector {:type :block-end :line line-number}) new-line-number)
+
+            (= (:type (last vector)) :keyword-escape)
+            (recur (rrest my-sequence) "" (conj vector {:type :escape-name :value (keyword trimmed-string)} {:type :block-end :line line-number}) new-line-number)
 
             (= (:type (last vector)) :keyword-query-string)
             (recur (rrest my-sequence) "" (conj vector {:type :block-end :line line-number}) new-line-number)
@@ -273,6 +279,9 @@
 
           (= (string/trim current-string) "let")
           (recur (rest my-sequence) "" (conj vector {:type :keyword-let}) new-line-number)
+
+          (= (string/trim current-string) "escape")
+          (recur (rest my-sequence) "" (conj vector {:type :keyword-escape}) new-line-number)
 
           (= (string/trim current-string) "query-string")
           (recur (rest my-sequence) "" (conj vector {:type :keyword-query-string}) new-line-number)

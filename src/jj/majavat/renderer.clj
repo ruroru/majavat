@@ -107,6 +107,13 @@
            :first? (zero? index)
            :last?  (= index (dec count))}))
 
+(defn- get-sanitizer [sanitizer-name]
+  (case sanitizer-name
+    :html (jj.majavat.renderer.sanitizer/->Html)
+    :json (jj.majavat.renderer.sanitizer/->Json)
+    :none (jj.majavat.renderer.sanitizer/->None)
+    nil))
+
 (defn- render-nodes [nodes context ^StringBuilder sb sanitizer]
   (doseq [node nodes]
     (case (node :type)
@@ -141,6 +148,12 @@
             body (node :body)
             new-context (assoc context variable-name variable-value)]
         (render-nodes body new-context sb sanitizer))
+
+      :escape-block
+      (let [sanitizer-name (node :sanitizer)
+            body (node :body)
+            new-sanitizer (get-sanitizer sanitizer-name)]
+        (render-nodes body context sb new-sanitizer))
 
       :for (let [identifier (node :identifier)
                  source-path (node :source)
@@ -229,6 +242,13 @@
                (render-nodes-to-bytes-vec (node :body) new-ctx charset sanitizer result))
              (recur rest-nodes))
 
+           :escape-block
+           (do
+             (let [sanitizer-name (node :sanitizer)
+                   new-sanitizer (get-sanitizer sanitizer-name)]
+               (render-nodes-to-bytes-vec (node :body) context charset new-sanitizer result))
+             (recur rest-nodes))
+
            :for
            (do
              (let [items (resolve-path context (node :source))
@@ -314,6 +334,13 @@
           (if (= rendered-body body)
             (conj acc node)
             (conj acc (assoc node :body rendered-body))))
+
+        :escape-block
+        (let [sanitizer-name (node :sanitizer)
+              body (node :body)
+              new-sanitizer (get-sanitizer sanitizer-name)
+              rendered-body (partial-render-nodes body context new-sanitizer)]
+          (conj acc (assoc node :body rendered-body)))
 
         :for
         (let [identifier (node :identifier)
