@@ -34,9 +34,9 @@ Additional options can be passed with
                                                      :pre-render {:key "value"}
                                                      :filters    {:reverse (fn [value args]
                                                                              (string/reverse value))}
-                                                     :renderer   (->StringRenderer))
+                                                     :renderer   (->StringRenderer)}))
 
-  (render-fn {:user "jj"})
+(render-fn {:user "jj"})
 ```
 
 All supported options:
@@ -48,6 +48,8 @@ All supported options:
 | `template-resolver` | [`ResourceResolver`](#templateresolver) | [`TemplateResolver`](#templateresolver)             |
 | `pre-render`        | {}                                      | Map                                                 |
 | `filters`           | {}                                      | Map                                                 |
+| `sanitizer`         | nil                                     | Any Sanitizer implementation                        |
+| `sanitizers`        | {}                                      | Keyword -> Sanitizer Map                            |
 
 ### Creating templates
 
@@ -333,7 +335,9 @@ input-file with content
 
 (render-fn {}) ;; returns "foo{{bar}}{%baz%}{#qux#}quux"
 ```
+
 ### Escape
+
 If needed, ```Sanitizer``` implementation can be set/overridden via ```escape``` tag.
 
 ```
@@ -345,7 +349,12 @@ If needed, ```Sanitizer``` implementation can be set/overridden via ```escape```
 
 (render-fn {:bar "<div/>"}) ;; returns "&lt;div/&gt;"
 ```
+Available values:
+* none
+* html
+* json
 
+or ones provided by :sanitizers 
 
 ## RenderTarget Protocol
 
@@ -430,6 +439,7 @@ Check if template exists at a path.
 - **None** - Implementation that does not sanitize
 
 ## Performance
+
 Stress test was conducted rendering template 1000000 times using a standard web page with navigation, conditionals,
 loops, and nested data access.
 

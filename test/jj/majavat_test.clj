@@ -8,7 +8,8 @@
             [jj.majavat.renderer :refer [->InputStreamRenderer ->StringRenderer]]
             [jj.majavat.renderer.sanitizer :refer [->Html ->Json]]
             [mock-clj.core :as mock])
-  (:import (java.io InputStream)))
+  (:import (java.io InputStream)
+           (jj.majavat.renderer.sanitizer Sanitizer)))
 
 (defn- crlf->lf [s]
   (str/replace s "\r\n" "\n"))
@@ -336,4 +337,20 @@
                               []
                               nil))))
 
+(defrecord StarSanitizer []
+  Sanitizer
+  (sanitize [_ input]
+    (when input
+      (clojure.string/replace input #"\S" "*"))))
 
+
+
+(deftest custom-santizer
+  (let [file-path "html/customfilters/template.html"]
+    (testing "Not escaped html"
+      (are [value] (= (crlf->lf (slurp (io/resource "html/customfilters/expected.html")))
+                                 (crlf->lf ((majavat/build-renderer file-path {:sanitizers {:starnitizer (StarSanitizer.)}})
+                                            {:value value})))
+
+                              "a blast"
+                              ))))

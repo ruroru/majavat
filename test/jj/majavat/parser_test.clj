@@ -8,22 +8,23 @@
 
 (def contentResolver (rcr/->ResourceResolver))
 (def empty-fn-map {})
+(def empty-sanitizers-map {})
 
 
 (deftest test-parse-text
   (is (= [{:type  :text
            :value "hello world"}]
-         (parser/parse "test-parse-text.html" contentResolver empty-fn-map))))
+         (parser/parse "test-parse-text.html" contentResolver empty-fn-map empty-sanitizers-map))))
 
 (deftest insert-value
   (is (= [{:type :text :value "hello "}
           {:type :value-node :value [:name]}]
-         (parser/parse "insert-value.html" contentResolver empty-fn-map))))
+         (parser/parse "insert-value.html" contentResolver empty-fn-map empty-sanitizers-map))))
 
 (deftest test-parse-child-value
   (is (= [{:type :text :value "hello "}
           {:type :value-node :value [:user :name]}]
-         (parser/parse "insert-child-value.html" contentResolver empty-fn-map))))
+         (parser/parse "insert-child-value.html" contentResolver empty-fn-map empty-sanitizers-map))))
 
 (deftest test-parse-for-loop
   (is (= [{:body       [{:type  :text
@@ -33,7 +34,7 @@
            :identifier :world
            :source     [:planets]
            :type       :for}]
-         (parser/parse "for-loop.html" contentResolver empty-fn-map))))
+         (parser/parse "for-loop.html" contentResolver empty-fn-map empty-sanitizers-map))))
 
 (deftest if-statement
   (is (= [{:type  :text
@@ -47,7 +48,7 @@
                          :value "World from "}
                         {:type  :value-node
                          :value [:location]}]}]
-         (parser/parse "if-statement.txt" contentResolver empty-fn-map))))
+         (parser/parse "if-statement.txt" contentResolver empty-fn-map empty-sanitizers-map))))
 
 (deftest if-else-statement (is (= [{:type :text :value "hello "}
                                    {:when-true  [{:type :text :value "World"}
@@ -56,7 +57,7 @@
                                                  {:type :value-node :value [:location]}]
                                     :condition  [:some :condition]
                                     :type       :if}]
-                                  (parser/parse "if-else-statement.txt" contentResolver empty-fn-map))))
+                                  (parser/parse "if-else-statement.txt" contentResolver empty-fn-map empty-sanitizers-map))))
 
 
 (deftest if-else-statement
@@ -73,7 +74,7 @@
                          :value "World! from "}
                         {:type  :value-node
                          :value [:location]}]}]
-         (parser/parse "if-else-statement.txt" contentResolver empty-fn-map))))
+         (parser/parse "if-else-statement.txt" contentResolver empty-fn-map empty-sanitizers-map))))
 
 
 (deftest includes-test
@@ -83,7 +84,7 @@
            :value "hello "}
           {:type  :value-node
            :value [:name]}]
-         (parser/parse "includes-test" contentResolver empty-fn-map))))
+         (parser/parse "includes-test" contentResolver empty-fn-map empty-sanitizers-map))))
 
 
 (deftest includes-parent-file
@@ -93,7 +94,7 @@
            :value "hello "}
           {:type  :value-node
            :value [:name]}]
-         (parser/parse "subfolder/include" contentResolver empty-fn-map))))
+         (parser/parse "subfolder/include" contentResolver empty-fn-map empty-sanitizers-map))))
 
 (deftest includes-from-subfolder
   (is (= [{:type  :text
@@ -102,7 +103,7 @@
            :value "hello "}
           {:type  :value-node
            :value [:name]}]
-         (parser/parse "subfolder/include-subfolder" (rcr/->ResourceResolver) empty-fn-map))))
+         (parser/parse "subfolder/include-subfolder" (rcr/->ResourceResolver) empty-fn-map empty-sanitizers-map))))
 
 
 (deftest includes-complicated-path
@@ -112,7 +113,7 @@
            :value "hello "}
           {:type  :value-node
            :value [:name]}]
-         (parser/parse "subfolder/include-complicated-subfolder" (rcr/->ResourceResolver) empty-fn-map))))
+         (parser/parse "subfolder/include-complicated-subfolder" (rcr/->ResourceResolver) empty-fn-map empty-sanitizers-map))))
 
 (deftest extends-test
   (is (= [{:type  :text
@@ -121,7 +122,7 @@
            :value "hello world"}
           {:type  :text
            :value "this is a  footer"}]
-         (parser/parse "extends-file" (rcr/->ResourceResolver) empty-fn-map))))
+         (parser/parse "extends-file" (rcr/->ResourceResolver) empty-fn-map empty-sanitizers-map))))
 
 (deftest extends-from-parent-dir
   (is (= [{:type  :text
@@ -130,7 +131,7 @@
            :value "hello world"}
           {:type  :text
            :value "this is a  footer"}]
-         (parser/parse "subfolder/extends-from-parent-dir" (rcr/->ResourceResolver) empty-fn-map))))
+         (parser/parse "subfolder/extends-from-parent-dir" (rcr/->ResourceResolver) empty-fn-map empty-sanitizers-map))))
 
 (deftest extends-from-sub-dir
   (is (= [{:type  :text
@@ -139,13 +140,13 @@
            :value "hello world"}
           {:type  :text
            :value "this is a subfolder footer"}]
-         (parser/parse "subfolder/extends-from-sub-dir" (rcr/->ResourceResolver) empty-fn-map))))
+         (parser/parse "subfolder/extends-from-sub-dir" (rcr/->ResourceResolver) empty-fn-map empty-sanitizers-map))))
 
 (deftest linebreak-parsing
   (.mkdir ^File (File. "./target"))
   (are [expected linebreak-content] (do
                                       (spit "./target/linebreak" linebreak-content)
-                                      (= expected (parser/parse "./target/linebreak" (fcr/->FsResolver) empty-fn-map)))
+                                      (= expected (parser/parse "./target/linebreak" (fcr/->FsResolver) empty-fn-map empty-sanitizers-map)))
                                     [{:type  :text
                                       :value "hello\r\r"}
                                      {:type  :value-node
@@ -178,13 +179,13 @@
   (is (= {:error-message "error on line 3"
           :line          "3"
           :type          "syntax-error"}
-         (parser/parse "if/missing-condition" (rcr/->ResourceResolver) empty-fn-map))))
+         (parser/parse "if/missing-condition" (rcr/->ResourceResolver) empty-fn-map empty-sanitizers-map))))
 
 
 (deftest extends-errors
   (are [expected file-path]
     (= expected
-       (parser/parse file-path (rcr/->ResourceResolver) empty-fn-map))
+       (parser/parse file-path (rcr/->ResourceResolver) empty-fn-map empty-sanitizers-map))
     {:error-message "error on line 3"
      :line          "3"
      :type          "syntax-error"}
@@ -196,7 +197,7 @@
 (deftest include-errors
   (are [expected file-path]
     (= expected
-       (parser/parse file-path (rcr/->ResourceResolver) empty-fn-map))
+       (parser/parse file-path (rcr/->ResourceResolver) empty-fn-map empty-sanitizers-map))
     {:error-message "error on line 3"
      :line          "3"
      :type          "syntax-error"}
@@ -217,7 +218,7 @@
   (are [file-path] (= {:error-message "error on line 3"
                        :line          "3"
                        :type          "syntax-error"}
-                      (parser/parse file-path (rcr/->ResourceResolver) empty-fn-map))
+                      (parser/parse file-path (rcr/->ResourceResolver) empty-fn-map empty-sanitizers-map))
                    "loop/for"
                    "loop/for-in"
                    "loop/for-i-in"
@@ -226,7 +227,7 @@
 (deftest if-not-test
   (are [template expected-ast]
     (= expected-ast
-       (parser/parse template (rcr/->ResourceResolver) empty-fn-map))
+       (parser/parse template (rcr/->ResourceResolver) empty-fn-map empty-sanitizers-map))
     "if/if-not"
     [{:type  :text
       :value "hello "}
@@ -278,7 +279,7 @@
 (deftest if-not-negative-test
   (are [expected-ast]
     (= expected-ast
-       (parser/parse "if/if-not-missing-condition" (rcr/->ResourceResolver) empty-fn-map))
+       (parser/parse "if/if-not-missing-condition" (rcr/->ResourceResolver) empty-fn-map empty-sanitizers-map))
 
 
     {:error-message "error on line 3"
@@ -289,7 +290,7 @@
 (deftest let-test
   (are [expected-ast input-file]
     (= expected-ast
-       (parser/parse input-file (rcr/->ResourceResolver) empty-fn-map))
+       (parser/parse input-file (rcr/->ResourceResolver) empty-fn-map empty-sanitizers-map))
     [{:type  :text
       :value "testing "}
      {:type           :variable-declaration
@@ -317,7 +318,7 @@
 (deftest csrf-token-test
   (are [expected-ast input-file]
     (= expected-ast
-       (parser/parse input-file (rcr/->ResourceResolver) empty-fn-map))
+       (parser/parse input-file (rcr/->ResourceResolver) empty-fn-map empty-sanitizers-map))
     [{:type  :text
       :value "foo "}
      {:type  :text
@@ -335,7 +336,7 @@
 (deftest query-string
   (are [expected-ast input-file]
     (= expected-ast
-       (parser/parse input-file (rcr/->ResourceResolver) empty-fn-map))
+       (parser/parse input-file (rcr/->ResourceResolver) empty-fn-map empty-sanitizers-map))
     [{:type  :text
       :value "/some/route"}
      {:type  :query-string
@@ -345,7 +346,7 @@
 
 (deftest now
   (are [expected-ast input-file]
-    (= expected-ast (parser/parse input-file (rcr/->ResourceResolver) empty-fn-map))
+    (= expected-ast (parser/parse input-file (rcr/->ResourceResolver) empty-fn-map empty-sanitizers-map))
     [{:type  :text
       :value "current time is "}
      {:format    "yyyy/MM/dd hh:mm"
@@ -368,7 +369,7 @@
 
 (deftest verbatim
   (are [expected-ast input-file]
-    (= expected-ast (parser/parse input-file (rcr/->ResourceResolver) empty-fn-map))
+    (= expected-ast (parser/parse input-file (rcr/->ResourceResolver) empty-fn-map empty-sanitizers-map))
     [{:type  :text
       :value "testing "}
      {:type  :text
@@ -376,7 +377,7 @@
 
 (deftest filter-without-function
   (are [expected-ast input-file]
-    (= expected-ast (parser/parse input-file (rcr/->ResourceResolver) empty-fn-map))
+    (= expected-ast (parser/parse input-file (rcr/->ResourceResolver) empty-fn-map empty-sanitizers-map))
     {:error-message "error on line 3"
      :line          "3"
      :type          "syntax-error"}
@@ -395,11 +396,11 @@
            :identifier :world
            :source     [:planets]
            :type       :each}]
-         (parser/parse "each/each" contentResolver empty-fn-map))))
+         (parser/parse "each/each" contentResolver empty-fn-map empty-sanitizers-map))))
 
 (deftest unclosed-tag-error
   (are [expected-ast input-file]
-    (= expected-ast (parser/parse input-file (rcr/->ResourceResolver) empty-fn-map))
+    (= expected-ast (parser/parse input-file (rcr/->ResourceResolver) empty-fn-map empty-sanitizers-map))
     {:error-message "Unclosed 'let' tag starting on line 1"
      :line          "1"
      :type          "syntax-error"}
@@ -425,6 +426,6 @@
 (deftest escape-tag
   (is (= [{:body      [{:type  :value-node
                         :value [:value]}]
-           :sanitizer :html
+           :sanitizer #jj.majavat.renderer.sanitizer.Html{}
            :type      :escape-block}]
-         (parser/parse "escape/escape-html" contentResolver empty-fn-map))))
+         (parser/parse "escape/escape-html" contentResolver empty-fn-map empty-sanitizers-map))))

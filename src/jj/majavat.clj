@@ -30,9 +30,10 @@
                               (get opts :pre-render {})
                               (logger/errorf "pre-render is not a map"))
          sanitizer (get opts :sanitizer nil)
+         sanitizers (get opts :sanitizers {})
          builder (if cache?
-                   (builder/->CachedBuilder pre-render-context filters)
-                   (builder/->OneShotBuilder pre-render-context filters))]
+                   (builder/->CachedBuilder pre-render-context filters sanitizers)
+                   (builder/->OneShotBuilder pre-render-context filters sanitizers))]
 
      (builder/build-renderer builder file-path resolver renderer sanitizer))))
 

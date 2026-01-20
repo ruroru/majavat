@@ -6,6 +6,7 @@
 
 (def contentResolver (rcr/->ResourceResolver))
 (def empty-fn-map {})
+(def empty-sanitizers-map {})
 
 (deftest test-deeply-nested-conditionals
   (is (= [{:condition  [:user
@@ -34,7 +35,7 @@
                                        :value [:user
                                                :name]}]}]}]
 
-         (parser/parse "deeply-nested-conditionals.txt" contentResolver empty-fn-map))))
+         (parser/parse "deeply-nested-conditionals.txt" contentResolver empty-fn-map empty-sanitizers-map))))
 
 (deftest test-for-loop-with-nested-everything
   (is (= [{:body       [{:type  :text
@@ -95,7 +96,7 @@
                         :departments]
            :type       :for}]
 
-         (parser/parse "nested-for-loops.txt" contentResolver empty-fn-map))))
+         (parser/parse "nested-for-loops.txt" contentResolver empty-fn-map empty-sanitizers-map))))
 
 
 (deftest test-simple-text
