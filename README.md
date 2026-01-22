@@ -455,6 +455,14 @@ loops, and nested data access.
 - [File Renderer](https://github.com/ruroru/majavat-file-renderer) - Renders output directly to file.
 - [TTL Builder](https://github.com/ruroru/majavat-ttl-builder) - Reloads cache on a scheduled interval.
 
+## TODOS
+* Elif for conditionals
+* Whitespace control using `{%- -%}` and `{{- -}}`
+* i18n support
+* Default value when looping over empty lists.
+* Boolean `and` and `or` expressions
+* Macros
+
 ## License
 
 Copyright © 2025 [ruroru](https://github.com/ruroru)
