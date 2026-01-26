@@ -19,7 +19,7 @@
                          :dependencies   [[selmer "1.12.70"]
                                           [hiccup "2.0.0"]]}
              :test      {:global-vars    {*warn-on-reflection* true}
-                         :dependencies   [[ch.qos.logback/logback-classic "1.5.25"]
+                         :dependencies   [[ch.qos.logback/logback-classic "1.5.26"]
                                           [criterium "0.4.6"]
                                           [mock-clj "0.2.1"]]
                          :resource-paths ["test/resources"]}}
