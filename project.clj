@@ -16,7 +16,7 @@
   :resource-paths ["src/resources"]
   :profiles {:benchmark {:source-paths   ["benchmark/src"]
                          :resource-paths ["benchmark/resources"]
-                         :dependencies   [[selmer "1.12.70"]
+                         :dependencies   [[selmer "1.13.0"]
                                           [hiccup "2.0.0"]]}
              :test      {:global-vars    {*warn-on-reflection* true}
                          :dependencies   [[ch.qos.logback/logback-classic "1.5.28"]
