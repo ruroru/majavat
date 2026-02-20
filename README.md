@@ -59,7 +59,11 @@ Rendering `file.txt` with content
 
 ```
 Hello {{ name }}!
+; or namespaced value 
+Hello {{ [foo.bar/baz.quux] }}!
+
 ```
+
 
 ```clojure
 (def render-fn (build-renderer "file.txt"))

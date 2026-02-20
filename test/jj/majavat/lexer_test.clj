@@ -380,3 +380,15 @@
            :type :block-end}]
 
          (lexer/tokenize "{% escape json %}{{ world }}{% endescape %}"))))
+
+
+(deftest lex-namespaced-values
+  (is (= [{:type :opening-bracket}
+          {:type  :expression
+           :value [:foo
+                   :bar
+                   :baz/qux.quux
+                   :corge.grault]}
+          {:line 1
+           :type :closing-bracket}]
+         (lexer/tokenize "{{foo.bar.[baz/qux.quux].[corge.grault]}}"))))

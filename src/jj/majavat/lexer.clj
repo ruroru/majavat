@@ -4,6 +4,37 @@
 (defn- rrest [s]
   (rest (rest s)))
 
+(defn- parse-path [^String s]
+  (let [len (.length s)]
+    (loop [i 0
+           current (StringBuilder.)
+           result []]
+      (if (>= i len)
+        (let [remaining (.toString current)]
+          (if (string/blank? remaining)
+            result
+            (conj result (keyword remaining))))
+        (let [c (.charAt s i)]
+          (cond
+            (= c \[)
+            (let [close (.indexOf s "]" (int i))]
+              (if (pos? close)
+                (let [content (subs s (inc i) close)
+                      next-i (if (and (< (inc close) len) (= (.charAt s (inc close)) \.))
+                               (+ close 2)
+                               (inc close))]
+                  (recur next-i (StringBuilder.) (conj result (keyword content))))
+                (recur (inc i) (.append current c) result)))
+
+            (= c \.)
+            (let [remaining (.toString current)]
+              (if (string/blank? remaining)
+                (recur (inc i) (StringBuilder.) result)
+                (recur (inc i) (StringBuilder.) (conj result (keyword remaining)))))
+
+            :else
+            (recur (inc i) (.append current c) result)))))))
+
 (defn- parse-let-assignment [assignment-string]
   (let [trimmed (string/trim assignment-string)
         parts (string/split trimmed #"\s*=\s*" 2)]
@@ -13,7 +44,7 @@
             var-value (if (and (string/starts-with? var-value-str "\"")
                                (string/ends-with? var-value-str "\""))
                         (subs var-value-str 1 (dec (count var-value-str)))
-                        (mapv keyword (string/split var-value-str #"\.")))]
+                        (parse-path var-value-str))]
 
         {:variable-name var-name :variable-value var-value})
       {:variable-name nil :variable-value nil})))
@@ -23,7 +54,7 @@
     (if (and (string/starts-with? trimmed "\"")
              (string/ends-with? trimmed "\""))
       (subs trimmed 1 (dec (count trimmed)))
-      (mapv keyword (string/split trimmed #"\.")))))
+      (parse-path trimmed))))
 
 (defn- skip-comment [my-sequence line-number]
   (loop [seq-rest my-sequence
@@ -169,15 +200,13 @@
         (every? identity [(= (:type (last vector)) :keyword-in) (= next-char \%)])
         (let [current-trimmed (string/trim current-string)]
           (if (not (.isBlank ^String current-trimmed))
-            (recur (rest my-sequence) "" (conj vector {:type :identifier :value (mapv keyword (-> current-trimmed
-                                                                                                  (string/split #"\.")))}) new-line-number)
+            (recur (rest my-sequence) "" (conj vector {:type :identifier :value (parse-path current-trimmed)}) new-line-number)
             (recur (rest my-sequence) "" (conj vector {:type :identifier}) new-line-number)))
 
         (every? identity [(= (:type (last vector)) :each-in-token) (= next-char \%)])
         (let [current-trimmed (string/trim current-string)]
           (if (not (.isBlank ^String current-trimmed))
-            (recur (rest my-sequence) "" (conj vector {:type :each-identifier-token :value (mapv keyword (-> current-trimmed
-                                                                                                             (string/split #"\.")))}) new-line-number)
+            (recur (rest my-sequence) "" (conj vector {:type :each-identifier-token :value (parse-path current-trimmed)}) new-line-number)
             (recur (rest my-sequence) "" (conj vector {:type :each-identifier-token}) new-line-number)))
 
         (every? identity [(= (:type (last vector)) :keyword-in)])
@@ -207,15 +236,14 @@
 
             :else
             (recur (rrest my-sequence) "" (conj vector {:type  :expression
-                                                        :value (mapv keyword (-> trimmed-string
-                                                                                 (string/split #"\.")))}
+                                                        :value (parse-path trimmed-string)}
                                                 {:type :closing-bracket :line line-number}) new-line-number)))
 
         (= (:type (last vector)) :opening-bracket)
         (cond
           (and (= current-char \|) (not (string/blank? current-string)))
           (let [trimmed-string (string/trim current-string)]
-            (recur (rest my-sequence) "" (conj vector {:type :expression :value (mapv keyword (-> trimmed-string (string/split #"\.")))} {:type :filter-tag}) new-line-number))
+            (recur (rest my-sequence) "" (conj vector {:type :expression :value (parse-path trimmed-string)} {:type :filter-tag}) new-line-number))
           :else
           (recur (rest my-sequence) (str current-string current-char) vector new-line-number))
 
@@ -323,8 +351,7 @@
             (= (:type (last vector)) :keyword-if-not))
         (if
           (and (= current-char \ ) (not (string/blank? current-string)))
-          (recur (rest my-sequence) (str "" current-char) (conj vector {:type :identifier :value (mapv keyword (-> (string/trim current-string)
-                                                                                                                   (string/split #"\.")))}) new-line-number)
+          (recur (rest my-sequence) (str "" current-char) (conj vector {:type :identifier :value (parse-path (string/trim current-string))}) new-line-number)
           (recur (rest my-sequence) (str current-string current-char) vector new-line-number))
 
         (= (:type (last vector)) :keyword-let)
