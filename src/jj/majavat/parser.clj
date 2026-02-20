@@ -43,7 +43,7 @@
 
 (defn- create-filter-fn [{:keys [filter-name args]} filter-map]
   (if-let [f (get filter-map filter-name)]
-    (fn [input] (f input args))
+    (fn [input] (apply f input args))
     (throw (ex-info (format "Unsupported filter: %s" (name filter-name))
                     {:type        :syntax-error
                      :filter-name filter-name

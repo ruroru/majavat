@@ -260,7 +260,7 @@ this is a  footer"
 
 (deftest render-custom-filter
   (let [filter-map {:quote (fn [value args]
-                             (format "\"%s\" - %s" value (first args)))}]
+                             (format "\"%s\" - %s" value args))}]
     (are [expected-value template-path context]
       (= expected-value
          (String. (.readAllBytes ^InputStream (renderer/render (->InputStreamRenderer)

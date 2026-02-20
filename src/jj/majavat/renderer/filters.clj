@@ -9,7 +9,7 @@
 (def ^:private formatter-cache (atom {}))
 (def ^:const ^:private roman-regex #"(?i)\b(?=[mdclxvi])M{0,4}(?:CM|CD|D?C{0,3})(?:XC|XL|L?X{0,3})(?:IX|IV|V?I{0,3})\b")
 
-(defn title-case [s args]
+(defn title-case [s]
   (when (some? s)
     (let [sb (StringBuilder.)
           char-array (char-array s)]
@@ -27,11 +27,11 @@
                 (recur (inc index) false))))
           (.toString sb))))))
 
-(defn upper-roman [v args]
+(defn upper-roman [v]
   (when v (str/replace v roman-regex str/upper-case)))
 
 (defn file-size
-  [bytes args]
+  [bytes]
   (when (number? bytes)
     (when bytes
       (when (number? bytes)
@@ -72,47 +72,45 @@
                 (str (int pb) " PB")
                 (str (format "%.1f" pb) " PB")))))))))
 
-(defn as-long [s args]
+(defn as-long [s]
   (try
     (Long/parseLong s)
     (catch Exception _ nil)))
 
-(defn as-int [s args]
+(defn as-int [s]
   (try
     (Integer/parseInt s)
     (catch Exception _ nil)))
 
-(defn round-number [n args]
+(defn round-number [n]
   (when (number? n)
     (Math/round (double n))))
 
-(defn get-floor [n args]
+(defn get-floor [n]
   (when (number? n)
     (Math/floor (double n))))
 
-(defn get-ceiling [n args]
+(defn get-ceiling [n]
   (when (number? n)
     (Math/ceil (double n))))
 
-(defn get-absolute-value [n args]
+(defn get-absolute-value [n]
   (when (number? n)
     (Math/abs (double n))))
 
-(defn append [v filter-args]
+(defn append [v append-string]
   (when (some? v)
-    (let [arg (first filter-args)]
-      (str v arg))))
+    (str v append-string)))
 
 (defn prepend [v filter-args]
   (when (some? v)
-    (let [arg (first filter-args)]
-      (str arg v))))
+    (str filter-args v)))
 
 
-(defn get-default [v filter-args]
+(defn get-default [v default-value]
   (if (some? v)
     v
-    (first filter-args)))
+    default-value))
 
 (defn- get-date-time-formatter [pattern]
   (try
@@ -192,16 +190,14 @@
 (defn ->uri-to-string [^URI uri]
   (.toString uri))
 
-(defn ->handle-where [v filter-args]
+(defn ->handle-where [v filter-key filter-value]
   (when (sequential? v)
-    (into []
-          (let [[filter-key filter-value] filter-args]
-            (filter #(= (get % filter-key) filter-value) v)))))
+    (into [] (filter #(= (get % filter-key) filter-value) v))))
 
 (defn seq->str [v]
   (str v))
 
-(defn slugify [v args]
+(defn slugify [v]
   (when v
     (-> (str v)
         clojure.string/lower-case
@@ -210,7 +206,7 @@
         (clojure.string/replace #"-+" "-")
         clojure.string/trim)))
 
-(defn trim-string [value args]
+(defn trim-string [value]
   (when (some? value)
     (.trim ^String value)))
 
@@ -222,7 +218,7 @@
         false)
       true)))
 
-(defn upper-case-string [^String value _]
+(defn upper-case-string [^String value]
   (when (some? value)
     (if-not (should-upper-case-case? value (.length value))
       (.toUpperCase ^String value)
@@ -236,7 +232,7 @@
         false)
       true)))
 
-(defn lower-case-string [^String k _]
+(defn lower-case-string [^String k]
   (when (some? k)
     (if-not (should-lower-case? k (.length k))
       (.toLowerCase ^String k)
@@ -253,44 +249,44 @@
               (recur (inc i))
               false))))
 
-(defn capitalize-string [^String value _]
+(defn capitalize-string [^String value]
   (when (some? value)
     (if-not (should-capitalize? value (.length value))
       (clojure.string/capitalize ^String value)
       value)))
 
-(defn get-name [value args]
+(defn get-name [value]
   (if (keyword? value)
     (name value)
     value))
 
-(defn dec-number [n args]
+(defn dec-number [n]
   (when (number? n)
     (dec n)))
 
-(defn inc-number [n args]
+(defn inc-number [n]
   (when (number? n)
     (inc n)))
 
-(defn handle-date [% args]
+(defn handle-date [v & args]
   (cond
-    (instance? LocalDate %) (->formatted-local-date % args)
-    (instance? LocalDateTime %) (->formatted-local-date-time % args)
-    (instance? LocalTime %) (->formatted-local-time % args)
-    (instance? ZonedDateTime %) (->formatted-zoned-date-time % args)
-    (instance? Instant %) (->formatted-instant % args)
-    :else (str %)))
+    (instance? LocalDate v)       (->formatted-local-date v args)
+    (instance? LocalDateTime v)   (->formatted-local-date-time v args)
+    (instance? LocalTime v)       (->formatted-local-time v args)
+    (instance? ZonedDateTime v)   (->formatted-zoned-date-time v args)
+    (instance? Instant v)         (->formatted-instant v args)
+    :else                         (str v)))
 
-(defn handle-str [v args]
+(defn handle-str [v]
   (if (sequential? v) (seq->str v) (str v)))
 
-(defn get-first [v ars]
+(defn get-first [v]
   (when (or
           (sequential? v)
           (map? v))
     (first v)))
 
-(defn get-rest [v ars]
+(defn get-rest [v]
 
   (cond
     (sequential? v) (rest v)

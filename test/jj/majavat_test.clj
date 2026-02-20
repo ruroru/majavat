@@ -15,7 +15,7 @@
   (str/replace s "\r\n" "\n"))
 
 
-(def filters {:italic (fn [value args]
+(def filters {:italic (fn [value]
                         (format "<i>%s</i>" value))})
 
 (def pre-render-context-with-html-chars {
@@ -349,8 +349,8 @@
   (let [file-path "html/customfilters/template.html"]
     (testing "Not escaped html"
       (are [value] (= (crlf->lf (slurp (io/resource "html/customfilters/expected.html")))
-                                 (crlf->lf ((majavat/build-renderer file-path {:sanitizers {:starnitizer (StarSanitizer.)}})
-                                            {:value value})))
+                      (crlf->lf ((majavat/build-renderer file-path {:sanitizers {:starnitizer (StarSanitizer.)}})
+                                 {:value value})))
 
-                              "a blast"
-                              ))))
+                   "a blast"
+                   ))))

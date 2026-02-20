@@ -9,7 +9,7 @@
 
 
 (deftest upper-roman-test
-  (are [expected input] (= expected (filters/upper-roman input []))
+  (are [expected input] (= expected (filters/upper-roman input))
                         "I" "i"
                         "V" "v"
                         "X" "x"
@@ -33,7 +33,7 @@
                         "123iv" "123iv"))
 
 (deftest file-size
-  (are [expected input] (= expected (filters/file-size input []))
+  (are [expected input] (= expected (filters/file-size input ))
                         nil nil
                         nil "not-a-number"
                         nil "1024"
@@ -92,24 +92,24 @@
                         "1000 PB" 1125899906842624000))
 
 (deftest as-int
-  (are [expected input] (= expected (filters/as-int input []))
+  (are [expected input] (= expected (filters/as-int input))
                         nil nil
                         1 "1"
                         1025 "1025"))
 
 
 (deftest as-long
-  (are [expected input] (= expected (filters/as-long input []))
+  (are [expected input] (= expected (filters/as-long input))
                         nil nil
                         1 "1"
                         1025 "1025"))
 
 (deftest title-case
-  (are [expected input] (= expected (filters/title-case input []))
+  (are [expected input] (= expected (filters/title-case input))
                         "Foo Bar-Baz Qux. Quux" "foo bar-baz qux. quux"))
 
 (deftest get-default
-  (are [expected input] (= expected (filters/get-default input ["default"]))
+  (are [expected input] (= expected (filters/get-default input "default"))
                         "default" nil
                         "foo" "foo"))
 
@@ -163,22 +163,22 @@
                         "/some/path" (URI. "/some/path")))
 
 (deftest map-where
-  (are [expected input args] (= expected (filters/->handle-where input args))
-                             (list
-                               {:key "y" :random "d" :value "d"}
-                               {:key "y" :random "f" :value "t"}
-                               {:key "y" :random "i" :value "r"})
-                             [
-                              {:key "a" :value "b" :random "c"}
-                              {:key "y" :value "d" :random "d"}
-                              {:key "b" :value "b" :random "e"}
-                              {:key "y" :value "t" :random "f"}
-                              {:key "d" :value "t" :random "g"}
-                              {:key "d" :value "b" :random "h"}
-                              {:key "y" :value "r" :random "i"}]
-                             [:key "y"]))
+  (are [expected input key value] (= expected (filters/->handle-where input key value))
+                                  (list
+                                    {:key "y" :random "d" :value "d"}
+                                    {:key "y" :random "f" :value "t"}
+                                    {:key "y" :random "i" :value "r"})
+                                  [
+                                   {:key "a" :value "b" :random "c"}
+                                   {:key "y" :value "d" :random "d"}
+                                   {:key "b" :value "b" :random "e"}
+                                   {:key "y" :value "t" :random "f"}
+                                   {:key "d" :value "t" :random "g"}
+                                   {:key "d" :value "b" :random "h"}
+                                   {:key "y" :value "r" :random "i"}]
+                                  :key "y"))
 (deftest round
-  (are [input expected] (= expected (filters/round-number input []))
+  (are [input expected] (= expected (filters/round-number input))
                         1 1
                         1.4 1
                         1.5 2
@@ -187,7 +187,7 @@
                         2.0 2))
 
 (deftest floor-test
-  (are [input expected] (= expected (filters/get-floor input []))
+  (are [input expected] (= expected (filters/get-floor input))
                         1 1.0
                         1.4 1.0
                         1.5 1.0
@@ -196,7 +196,7 @@
                         2.0 2.0))
 
 (deftest ceil-test
-  (are [input expected] (= expected (filters/get-ceiling input []))
+  (are [input expected] (= expected (filters/get-ceiling input))
                         1 1.0
                         1.4 2.0
                         1.5 2.0
@@ -205,26 +205,24 @@
                         2.0 2.0))
 
 (deftest abs-test
-  (are [input expected] (= expected (filters/get-absolute-value input []))
+  (are [input expected] (= expected (filters/get-absolute-value input))
                         1 1.0
                         0 0.0
                         -1 1.0))
 (deftest append
   (are [input arg expected] (= expected (filters/append input arg))
-                            "foo" ["bar"] "foobar"
-                            "foo" [] "foo"
+                            "foo" "bar" "foobar"
                             "foo" nil "foo"
 
                             ))
 
 (deftest prepend
   (are [input arg expected] (= expected (filters/prepend input arg))
-                            "foo" ["bar"] "barfoo"
-                            "foo" [] "foo"
+                            "foo" "bar" "barfoo"
                             "foo" nil "foo"
                             ))
 (deftest slugify
-  (are [input expected] (= expected (filters/slugify input []))
+  (are [input expected] (= expected (filters/slugify input))
                         "foo" "foo"
                         "Foo" "foo"
                         "foo bar baz" "foo-bar-baz"
@@ -232,13 +230,13 @@
                         ))
 
 (deftest first-test
-  (are [input expected] (= expected (filters/get-first input []))
+  (are [input expected] (= expected (filters/get-first input))
                         (list :a :b) :a
                         {:a :b :c :d} [:a :b]
                         ))
 
 (deftest rest-test
-  (are [input expected] (= expected (filters/get-rest input []))
+  (are [input expected] (= expected (filters/get-rest input))
                         (list :a :b) (list :b)
                         {:a :b :c :d} {:c :d}
                         ))
