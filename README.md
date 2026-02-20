@@ -167,6 +167,20 @@ Rendering input file with content:
 (render-fn {:items ["Apple" "Banana" "Orange"]}) ;; returns "- Apple is 0 of 3\n- Banana is 1 of 3\n- Orange is 2 of 3"
 ```
 
+or default value 
+```
+{% for item in items %}
+- {{ item }} is {{ loop.index }} of {{ loop.total }}
+{% else %}
+empty list
+{% endfor %}
+```
+```clojure
+(def render-fn (build-renderer "input-file"))
+
+(render-fn {}) ;; returns "empty list"
+```
+
 The loop context provides access to:
 
 `loop.total` - total number of items in the collection

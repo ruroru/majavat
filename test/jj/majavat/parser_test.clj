@@ -36,6 +36,18 @@
            :type       :for}]
          (parser/parse "for-loop.html" contentResolver empty-fn-map empty-sanitizers-map))))
 
+(deftest test-parse-for-loop-else
+  (is (= [{:type  :text
+           :value "The planets are: "}
+          {:body       [{:type  :value-node
+                         :value [:world]}]
+           :identifier :world
+           :source     [:planets]
+           :type       :for
+           :when-empty [{:type  :text
+                         :value "No planets"}]}]
+         (parser/parse "loop/for-loop-else" contentResolver empty-fn-map empty-sanitizers-map))))
+
 (deftest if-statement
   (is (= [{:type  :text
            :value "hello "}

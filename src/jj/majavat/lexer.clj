@@ -127,6 +127,9 @@
             (= "else" trimmed-string)
             (recur (rrest my-sequence) "" (conj vector {:type :keyword-else} {:type :block-end :line line-number}) new-line-number)
 
+            (= "empty" trimmed-string)
+            (recur (rrest my-sequence) "" (conj vector {:type :keyword-empty} {:type :block-end :line line-number}) new-line-number)
+
             (and (= "" trimmed-string) (= (:type (last vector)) :keyword-extends))
             (recur (rrest my-sequence) "" (conj vector {:type :block-end :line line-number}) new-line-number)
 

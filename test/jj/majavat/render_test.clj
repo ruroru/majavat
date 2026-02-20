@@ -328,6 +328,26 @@ this is a  footer"
 
     (slurp (io/resource "loop/expected-for-loop")) "loop/for-loop"))
 
+(deftest loop-over-empty-sequence
+  (are [expected template-path context]
+    (let [
+          render-result (renderer/render (->StringRenderer)
+                                         (parser/parse template-path contentResolver empty-fn-map empty-sanitizers-map)
+                                         context
+                                         (->Html))
+          render-is-result (String. (.readAllBytes ^InputStream (renderer/render
+                                                                  (->InputStreamRenderer)
+                                                                  (parser/parse template-path contentResolver empty-fn-map empty-sanitizers-map) context
+                                                                  (->Html))))]
+
+      (and (= expected render-result)
+           (= expected render-is-result)
+           (= render-result render-is-result)))
+
+    (slurp (io/resource "loop/for-loop-else-expected")) "loop/for-loop-else" {:planets []}
+    (slurp (io/resource "loop/for-loop-else-expected")) "loop/for-loop-else" {}
+    ))
+
 (deftest each
   (let [context {:planets ["Mercury" "Venus" "Earth" "Mars" "Jupiter" "Saturn" "Uranus" "Neptune"]}
         string-renderer (renderer/render (->StringRenderer)

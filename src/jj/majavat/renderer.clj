@@ -152,26 +152,32 @@
                  body (node :body)
                  items (resolve-path context source-path)
                  item-count (count items)]
-             (loop [i 0
-                    remaining (seq items)]
-               (when remaining
-                 (let [item (first remaining)
-                       loop-context (get-loop-context context i item-count)
-                       new-context (assoc loop-context identifier item)]
-                   (render-nodes body new-context sb sanitizer)
-                   (recur (inc i) (next remaining))))))
+             (if (seq items)
+               (loop [i 0
+                      remaining (seq items)]
+                 (when remaining
+                   (let [item (first remaining)
+                         loop-context (get-loop-context context i item-count)
+                         new-context (assoc loop-context identifier item)]
+                     (render-nodes body new-context sb sanitizer)
+                     (recur (inc i) (next remaining)))))
+               (when-let [when-empty (node :when-empty)]
+                 (render-nodes when-empty context sb sanitizer))))
 
       :each
       (let [identifier (node :identifier)
             source-path (node :source)
             body (node :body)
             items (resolve-path context source-path)]
-        (loop [i 0
-               remaining (seq items)]
-          (when remaining
-            (let [item (first remaining)]
-              (render-nodes body (assoc context identifier item) sb sanitizer)
-              (recur (inc i) (next remaining))))))
+        (if (seq items)
+          (loop [i 0
+                 remaining (seq items)]
+            (when remaining
+              (let [item (first remaining)]
+                (render-nodes body (assoc context identifier item) sb sanitizer)
+                (recur (inc i) (next remaining)))))
+          (when-let [when-empty (node :when-empty)]
+            (render-nodes when-empty context sb sanitizer))))
 
       :if
       (let [condition (node :condition)
@@ -244,24 +250,30 @@
            (do
              (let [items (resolve-path context (node :source))
                    total (count items)]
-               (loop [i 0
-                      item-remaining (seq items)]
-                 (when item-remaining
-                   (let [item (first item-remaining)
-                         loop-ctx (get-loop-context context i total)
-                         new-ctx (assoc loop-ctx (node :identifier) item)]
-                     (render-nodes-to-bytes-vec (node :body) new-ctx charset sanitizer result)
-                     (recur (inc i) (next item-remaining))))))
+               (if (seq items)
+                 (loop [i 0
+                        item-remaining (seq items)]
+                   (when item-remaining
+                     (let [item (first item-remaining)
+                           loop-ctx (get-loop-context context i total)
+                           new-ctx (assoc loop-ctx (node :identifier) item)]
+                       (render-nodes-to-bytes-vec (node :body) new-ctx charset sanitizer result)
+                       (recur (inc i) (next item-remaining)))))
+                 (when-let [when-empty (node :when-empty)]
+                   (render-nodes-to-bytes-vec when-empty context charset sanitizer result))))
              (recur rest-nodes))
 
            :each
            (do
              (let [items (resolve-path context (node :source))]
-               (loop [item-remaining (seq items)]
-                 (when item-remaining
-                   (let [item (first item-remaining)]
-                     (render-nodes-to-bytes-vec (node :body) (assoc context (node :identifier) item) charset sanitizer result)
-                     (recur (next item-remaining))))))
+               (if (seq items)
+                 (loop [item-remaining (seq items)]
+                   (when item-remaining
+                     (let [item (first item-remaining)]
+                       (render-nodes-to-bytes-vec (node :body) (assoc context (node :identifier) item) charset sanitizer result)
+                       (recur (next item-remaining)))))
+                 (when-let [when-empty (node :when-empty)]
+                   (render-nodes-to-bytes-vec when-empty context charset sanitizer result))))
              (recur rest-nodes))
 
            :if
@@ -338,18 +350,23 @@
               body (node :body)
               items (resolve-path context source-path)]
           (if (some? items)
-            (let [item-count (count items)]
-              (loop [i 0
-                     remaining (seq items)
-                     result acc]
-                (if remaining
-                  (let [item (first remaining)
-                        loop-context (get-loop-context context i item-count)
-                        new-context (assoc loop-context identifier item)
-                        rendered (partial-render-nodes body new-context sanitizer)]
-                    (recur (inc i) (next remaining) (into result rendered)))
-                  result)))
-            (conj acc (assoc node :body (partial-render-nodes body context sanitizer)))))
+            (if (seq items)
+              (let [item-count (count items)]
+                (loop [i 0
+                       remaining (seq items)
+                       result acc]
+                  (if remaining
+                    (let [item (first remaining)
+                          loop-context (get-loop-context context i item-count)
+                          new-context (assoc loop-context identifier item)
+                          rendered (partial-render-nodes body new-context sanitizer)]
+                      (recur (inc i) (next remaining) (into result rendered)))
+                    result)))
+              (if-let [when-empty (node :when-empty)]
+                (into acc (partial-render-nodes when-empty context sanitizer))
+                acc))
+            (conj acc (cond-> (assoc node :body (partial-render-nodes body context sanitizer))
+                              (node :when-empty) (assoc :when-empty (partial-render-nodes (node :when-empty) context sanitizer))))))
 
         :each
         (let [identifier (node :identifier)
@@ -357,18 +374,23 @@
               body (node :body)
               items (resolve-path context source-path)]
           (if (some? items)
-            (let [item-count (count items)]
-              (loop [i 0
-                     remaining (seq items)
-                     result acc]
-                (if remaining
-                  (let [item (first remaining)
-                        loop-context (get-loop-context context i item-count)
-                        new-context (assoc loop-context identifier item)
-                        rendered (partial-render-nodes body new-context sanitizer)]
-                    (recur (inc i) (next remaining) (into result rendered)))
-                  result)))
-            (conj acc (assoc node :body (partial-render-nodes body context sanitizer)))))
+            (if (seq items)
+              (let [item-count (count items)]
+                (loop [i 0
+                       remaining (seq items)
+                       result acc]
+                  (if remaining
+                    (let [item (first remaining)
+                          loop-context (get-loop-context context i item-count)
+                          new-context (assoc loop-context identifier item)
+                          rendered (partial-render-nodes body new-context sanitizer)]
+                      (recur (inc i) (next remaining) (into result rendered)))
+                    result)))
+              (if-let [when-empty (node :when-empty)]
+                (into acc (partial-render-nodes when-empty context sanitizer))
+                acc))
+            (conj acc (cond-> (assoc node :body (partial-render-nodes body context sanitizer))
+                              (node :when-empty) (assoc :when-empty (partial-render-nodes (node :when-empty) context sanitizer))))))
 
         :if
         (let [condition (node :condition)
