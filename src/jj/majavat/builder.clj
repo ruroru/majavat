@@ -27,8 +27,8 @@
       (if pre-render?
         (fn [context]
           (let [template (parser/parse file-path template-resolver filters sanitizers)
-                ast-renderer (renderer/->PartialRenderer)]
-            (renderer/render renderer (renderer/render ast-renderer template pre-render-context sanitizer) context sanitizer)))
+                merged-context (merge context pre-render-context)]
+            (renderer/render renderer template merged-context sanitizer)))
         (fn [context]
           (let [template (parser/parse file-path template-resolver filters sanitizers)]
             (renderer/render renderer template context sanitizer)))))))
