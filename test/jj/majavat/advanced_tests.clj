@@ -9,31 +9,31 @@
 (def empty-sanitizers-map {})
 
 (deftest test-deeply-nested-conditionals
-  (is (= [{:condition  [:user
-                        :is_admin]
-           :type       :if
-           :when-false [{:condition  [:user
-                                      :is_logged_in]
-                         :type       :if
-                         :when-false [{:type  :text
-                                       :value "Please log in"}]
-                         :when-true  [{:type  :text
-                                       :value "Welcome "}
-                                      {:type  :value-node
-                                       :value [:user
-                                               :name]}
-                                      {:type  :text
-                                       :value "!"}]}]
-           :when-true  [{:condition  [:user
-                                      :has_permissions]
-                         :type       :if
-                         :when-false [{:type  :text
-                                       :value "Access Denied - No Permissions"}]
-                         :when-true  [{:type  :text
+  (is (= [{:branches [[{:condition [:user
+                                    :is_admin]}
+                       [{:branches [[{:condition [:user
+                                                  :has_permissions]}
+                                     [{:type  :text
                                        :value "Admin Panel: "}
                                       {:type  :value-node
                                        :value [:user
-                                               :name]}]}]}]
+                                               :name]}]]]
+                         :else     [{:type  :text
+                                     :value "Access Denied - No Permissions"}]
+                         :type     :if}]]]
+           :else     [{:branches [[{:condition [:user
+                                                :is_logged_in]}
+                                   [{:type  :text
+                                     :value "Welcome "}
+                                    {:type  :value-node
+                                     :value [:user
+                                             :name]}
+                                    {:type  :text
+                                     :value "!"}]]]
+                       :else     [{:type  :text
+                                   :value "Please log in"}]
+                       :type     :if}]
+           :type     :if}]
 
          (parser/parse "deeply-nested-conditionals.txt" contentResolver empty-fn-map empty-sanitizers-map))))
 
@@ -50,20 +50,9 @@
                                  :budget]}
                         {:type  :text
                          :value ")"}
-                        {:body       [{:condition  [:employeew
-                                                    :is_manager]
-                                       :type       :if
-                                       :when-false [{:type  :text
-                                                     :value "👤 "}
-                                                    {:type  :value-node
-                                                     :value [:employee
-                                                             :name]}
-                                                    {:type  :text
-                                                     :value " - "}
-                                                    {:type  :value-node
-                                                     :value [:employee
-                                                             :title]}]
-                                       :when-true  [{:type  :text
+                        {:body       [{:branches [[{:condition [:employeew
+                                                                :is_manager]}
+                                                   [{:type  :text
                                                      :value "👔 MANAGER: "}
                                                     {:type  :value-node
                                                      :value [:employee
@@ -86,7 +75,18 @@
                                                      :identifier :report
                                                      :source     [:employee
                                                                   :direct_reports]
-                                                     :type       :for}]}]
+                                                     :type       :for}]]]
+                                       :else     [{:type  :text
+                                                   :value "👤 "}
+                                                  {:type  :value-node
+                                                   :value [:employee
+                                                           :name]}
+                                                  {:type  :text
+                                                   :value " - "}
+                                                  {:type  :value-node
+                                                   :value [:employee
+                                                           :title]}]
+                                       :type     :if}]
                          :identifier :employee
                          :source     [:department
                                       :employees]

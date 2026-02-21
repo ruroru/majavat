@@ -107,7 +107,7 @@
 
 (defn- parse-ast
   ([lexed-list list current-block template-resolver filter-map merged-sanitizers]
-   (parse-ast lexed-list list current-block false nil template-resolver filter-map merged-sanitizers []))
+   (parse-ast lexed-list list current-block false nil template-resolver filter-map  merged-sanitizers []))
   ([lexed-list list current-block parsing-for-body current-file-path template-resolver filter-map merged-sanitizers tag-stack]
    (if (empty? lexed-list)
      (if parsing-for-body
@@ -180,7 +180,7 @@
          :keyword-csrf-token (recur (rest lexed-list) (apply conj list '({:type :text :value "<input type=\"hidden\" name=\"csrf_token\" value=\""}
                                                                          {:type :value-node :value [:csrf-token]}
                                                                          {:type :text :value "\">"}))
-                                    current-block parsing-for-body current-file-path template-resolver filter-map merged-sanitizers tag-stack)
+                                    current-block parsing-for-body current-file-path template-resolver filter-map  merged-sanitizers tag-stack)
 
          :keyword-query-string (let [remaining (rest lexed-list)
                                      query-string-decl-token (first remaining)
@@ -248,7 +248,7 @@
                           (if replacement-content
                             (recur remaining-after-block-name (into list replacement-content) current-block parsing-for-body current-file-path template-resolver filter-map merged-sanitizers tag-stack)
                             (let [[block-content remaining-after-block _] (parse-ast remaining-after-block-name [] current-block true current-file-path template-resolver filter-map merged-sanitizers tag-stack)]
-                              (recur remaining-after-block (into list block-content) current-block parsing-for-body current-file-path template-resolver filter-map merged-sanitizers tag-stack))))
+                              (recur remaining-after-block (into list block-content) current-block parsing-for-body current-file-path template-resolver filter-map merged-sanitizers  tag-stack))))
 
          :keyword-let (let [remaining (rest lexed-list)
                             var-decl-token (first remaining)]
@@ -345,21 +345,42 @@
          :keyword-if (let [remaining (rest lexed-list)
                            condition-token (first remaining)
                            remaining-after-condition (rest remaining)
-                           remaining-after-block-end (rest remaining-after-condition)
-                           new-tag-stack (push-tag tag-stack :if (:line current-item))
-                           [when-true remaining-after-true updated-tag-stack-1] (parse-ast remaining-after-block-end [] current-block true current-file-path template-resolver filter-map merged-sanitizers new-tag-stack)
-                           [when-false remaining-final updated-tag-stack-2] (if (and (seq remaining-after-true)
-                                                                                     (= :keyword-else (:type (first remaining-after-true))))
-                                                                              (let [remaining-after-else (rest (rest remaining-after-true))
-                                                                                    [else-body remaining-after-else-body updated-stack] (parse-ast remaining-after-else [] current-block true current-file-path template-resolver filter-map merged-sanitizers updated-tag-stack-1)]
-                                                                                [else-body remaining-after-else-body updated-stack])
-                                                                              [[{:type :text :value ""}] remaining-after-true updated-tag-stack-1])
-                           if-node {:type       :if
-                                    :condition  (:value condition-token)
-                                    :when-true  when-true
-                                    :when-false when-false}]
+                           remaining-after-block-end (rest remaining-after-condition)]
                        (if (some? (:value condition-token))
-                         (recur remaining-final (conj list if-node) current-block parsing-for-body current-file-path template-resolver filter-map merged-sanitizers updated-tag-stack-2)
+                         (let [new-tag-stack (push-tag tag-stack :if (:line current-item))
+                               [branches else-body remaining-final final-tag-stack]
+                               (loop [branches []
+                                      current-condition {:condition (:value condition-token)}
+                                      remaining remaining-after-block-end
+                                      ts new-tag-stack]
+                                 (let [[body remaining-after-body updated-ts] (parse-ast remaining [] current-block true current-file-path template-resolver filter-map merged-sanitizers ts)
+                                       next-token (first remaining-after-body)]
+                                   (cond
+                                     (and next-token (or (= :keyword-elif (:type next-token))
+                                                         (= :keyword-elif-not (:type next-token))))
+                                     (let [elif-remaining (rest remaining-after-body)
+                                           elif-condition-token (first elif-remaining)
+                                           elif-remaining-after-condition (rest elif-remaining)
+                                           elif-remaining-after-block-end (rest elif-remaining-after-condition)
+                                           negate? (= :keyword-elif-not (:type next-token))
+                                           elif-cond (cond-> {:condition (:value elif-condition-token)}
+                                                             negate? (assoc :negate true))]
+                                       (recur (conj branches [current-condition body])
+                                              elif-cond
+                                              elif-remaining-after-block-end
+                                              updated-ts))
+
+                                     (and next-token (= :keyword-else (:type next-token)))
+                                     (let [remaining-after-else (rest (rest remaining-after-body))
+                                           [else-body remaining-after-else-body final-ts] (parse-ast remaining-after-else [] current-block true current-file-path template-resolver filter-map merged-sanitizers updated-ts)]
+                                       [(conj branches [current-condition body]) else-body remaining-after-else-body final-ts])
+
+                                     :else
+                                     [(conj branches [current-condition body]) [] remaining-after-body updated-ts])))
+                               if-node {:type     :if
+                                        :branches branches
+                                        :else     else-body}]
+                           (recur remaining-final (conj list if-node) current-block parsing-for-body current-file-path template-resolver filter-map merged-sanitizers final-tag-stack))
                          (throw (ex-info (format "error on line %s" (:line condition-token))
                                          {:type :syntax-error
                                           :line (:line condition-token)}))))
@@ -367,22 +388,42 @@
          :keyword-if-not (let [remaining (rest lexed-list)
                                condition-token (first remaining)
                                remaining-after-condition (rest remaining)
-                               remaining-after-block-end (rest remaining-after-condition)
-                               new-tag-stack (push-tag tag-stack :if (:line current-item))
-                               [when-true remaining-after-true updated-tag-stack-1] (parse-ast remaining-after-block-end [] current-block true current-file-path template-resolver filter-map merged-sanitizers new-tag-stack)
-                               [when-false remaining-final updated-tag-stack-2] (if (and (seq remaining-after-true)
-                                                                                         (= :keyword-else (:type (first remaining-after-true))))
-                                                                                  (let [remaining-after-else (rest (rest remaining-after-true))
-                                                                                        [else-body remaining-after-else-body updated-stack] (parse-ast remaining-after-else [] current-block true current-file-path template-resolver filter-map merged-sanitizers updated-tag-stack-1)]
-                                                                                    [else-body remaining-after-else-body updated-stack])
-                                                                                  [[{:type :text :value ""}] remaining-after-true updated-tag-stack-1])
-                               if-not-node {:type       :if
-                                            :negate     true
-                                            :condition  (:value condition-token)
-                                            :when-true  when-true
-                                            :when-false when-false}]
+                               remaining-after-block-end (rest remaining-after-condition)]
                            (if (some? (:value condition-token))
-                             (recur remaining-final (conj list if-not-node) current-block parsing-for-body current-file-path template-resolver filter-map merged-sanitizers updated-tag-stack-2)
+                             (let [new-tag-stack (push-tag tag-stack :if (:line current-item))
+                                   [branches else-body remaining-final final-tag-stack]
+                                   (loop [branches []
+                                          current-condition {:condition (:value condition-token) :negate true}
+                                          remaining remaining-after-block-end
+                                          ts new-tag-stack]
+                                     (let [[body remaining-after-body updated-ts] (parse-ast remaining [] current-block true current-file-path template-resolver filter-map merged-sanitizers ts)
+                                           next-token (first remaining-after-body)]
+                                       (cond
+                                         (and next-token (or (= :keyword-elif (:type next-token))
+                                                             (= :keyword-elif-not (:type next-token))))
+                                         (let [elif-remaining (rest remaining-after-body)
+                                               elif-condition-token (first elif-remaining)
+                                               elif-remaining-after-condition (rest elif-remaining)
+                                               elif-remaining-after-block-end (rest elif-remaining-after-condition)
+                                               negate? (= :keyword-elif-not (:type next-token))
+                                               elif-cond (cond-> {:condition (:value elif-condition-token)}
+                                                                 negate? (assoc :negate true))]
+                                           (recur (conj branches [current-condition body])
+                                                  elif-cond
+                                                  elif-remaining-after-block-end
+                                                  updated-ts))
+
+                                         (and next-token (= :keyword-else (:type next-token)))
+                                         (let [remaining-after-else (rest (rest remaining-after-body))
+                                               [else-body remaining-after-else-body final-ts] (parse-ast remaining-after-else [] current-block true current-file-path template-resolver filter-map merged-sanitizers updated-ts)]
+                                           [(conj branches [current-condition body]) else-body remaining-after-else-body final-ts])
+
+                                         :else
+                                         [(conj branches [current-condition body]) [] remaining-after-body updated-ts])))
+                                   if-node {:type     :if
+                                            :branches branches
+                                            :else     else-body}]
+                               (recur remaining-final (conj list if-node) current-block parsing-for-body current-file-path template-resolver filter-map merged-sanitizers final-tag-stack))
                              (throw (ex-info (format "error on line %s" (:line condition-token))
                                              {:type :syntax-error
                                               :line (:line condition-token)}))))
@@ -424,6 +465,14 @@
                          [list lexed-list tag-stack]
                          (recur (rest lexed-list) list current-block parsing-for-body current-file-path template-resolver filter-map merged-sanitizers tag-stack))
 
+         :keyword-elif (if parsing-for-body
+                         [list lexed-list tag-stack]
+                         (recur (rest lexed-list) list current-block parsing-for-body current-file-path template-resolver filter-map merged-sanitizers tag-stack))
+
+         :keyword-elif-not (if parsing-for-body
+                             [list lexed-list tag-stack]
+                             (recur (rest lexed-list) list current-block parsing-for-body current-file-path template-resolver filter-map merged-sanitizers tag-stack))
+
          :keyword-empty (if parsing-for-body
                           [list lexed-list tag-stack]
                           (recur (rest lexed-list) list current-block parsing-for-body current-file-path template-resolver filter-map merged-sanitizers tag-stack))
@@ -432,6 +481,7 @@
                           (let [updated-tag-stack (pop-tag tag-stack :if (or (:line current-item) 1))]
                             [list (rest lexed-list) updated-tag-stack])
                           (recur (rest lexed-list) list current-block parsing-for-body current-file-path template-resolver filter-map merged-sanitizers tag-stack))
+
          :keyword-end-let (if parsing-for-body
                             (let [updated-tag-stack (pop-tag tag-stack :let (or (:line current-item) 1))]
                               [list (rest lexed-list) updated-tag-stack])
@@ -460,7 +510,7 @@
           merged-sanitizers (merge user-sanitizers sanitizers)
           ]
       (try
-        (parse-ast lexed-value [] {} false resource-path template-resolver filter-map merged-sanitizers [])
+        (parse-ast lexed-value [] {} false resource-path template-resolver filter-map merged-sanitizers [] )
         (catch ExceptionInfo e
           (let [data (ex-data e)]
             (case (:type data)

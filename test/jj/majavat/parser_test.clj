@@ -51,15 +51,14 @@
 (deftest if-statement
   (is (= [{:type  :text
            :value "hello "}
-          {:condition  [:some
-                        :condition]
-           :type       :if
-           :when-false [{:type  :text
-                         :value ""}]
-           :when-true  [{:type  :text
+          {:branches [[{:condition [:some
+                                    :condition]}
+                       [{:type  :text
                          :value "World from "}
                         {:type  :value-node
-                         :value [:location]}]}]
+                         :value [:location]}]]]
+           :else     []
+           :type     :if}]
          (parser/parse "if-statement.txt" contentResolver empty-fn-map empty-sanitizers-map))))
 
 (deftest if-else-statement (is (= [{:type :text :value "hello "}
@@ -75,17 +74,17 @@
 (deftest if-else-statement
   (is (= [{:type  :text
            :value "hello "}
-          {:condition  [:some
-                        :condition]
-           :type       :if
-           :when-false [{:type  :text
-                         :value "jj! "}
-                        {:type  :value-node
-                         :value [:location]}]
-           :when-true  [{:type  :text
+          {:branches [[{:condition [:some
+                                    :condition]}
+                       [{:type  :text
                          :value "World! from "}
                         {:type  :value-node
-                         :value [:location]}]}]
+                         :value [:location]}]]]
+           :else     [{:type  :text
+                       :value "jj! "}
+                      {:type  :value-node
+                       :value [:location]}]
+           :type     :if}]
          (parser/parse "if-else-statement.txt" contentResolver empty-fn-map empty-sanitizers-map))))
 
 
@@ -243,24 +242,23 @@
     "if/if-not"
     [{:type  :text
       :value "hello "}
-     {:condition  [:value]
-      :type       :if
-      :negate     true
-      :when-false [{:type  :text
-                    :value ""}]
-      :when-true  [{:type  :text
-                    :value "world"}]}]
+     {:branches [[{:condition [:value]
+                   :negate    true}
+                  [{:type  :text
+                    :value "world"}]]]
+      :else     []
+      :type     :if}]
 
     "if/if-not-else"
     [{:type  :text
       :value "hello "}
-     {:condition  [:value]
-      :type       :if
-      :negate     true
-      :when-false [{:type  :text
-                    :value "universe"}]
-      :when-true  [{:type  :text
-                    :value "world"}]}]
+     {:branches [[{:condition [:value]
+                   :negate    true}
+                  [{:type  :text
+                    :value "world"}]]]
+      :else     [{:type  :text
+                  :value "universe"}]
+      :type     :if}]
 
     "if/if-not-missing-condition"
     {:error-message "error on line 3"
@@ -270,21 +268,19 @@
     "if/nested-if-not-if"
     [{:type  :text
       :value "start "}
-     {:condition  [:flag]
-      :type       :if
-      :negate     true
-      :when-false [{:type  :text
-                    :value ""}]
-      :when-true  [{:type  :text
+     {:branches [[{:condition [:flag]
+                   :negate    true}
+                  [{:type  :text
                     :value "middle "}
-                   {:condition  [:nested]
-                    :type       :if
-                    :when-false [{:type  :text
-                                  :value ""}]
-                    :when-true  [{:type  :text
-                                  :value "deep"}]}
+                   {:branches [[{:condition [:nested]}
+                                [{:type  :text
+                                  :value "deep"}]]]
+                    :else     []
+                    :type     :if}
                    {:type  :text
-                    :value " end"}]}
+                    :value " end"}]]]
+      :else     []
+      :type     :if}
      {:type  :text
       :value " finish"}]))
 
@@ -441,3 +437,28 @@
            :sanitizer #jj.majavat.renderer.sanitizer.Html{}
            :type      :escape-block}]
          (parser/parse "escape/escape-html" contentResolver empty-fn-map empty-sanitizers-map))))
+
+
+(deftest if-elif
+  (are [template expected-ast]
+    (= expected-ast
+       (parser/parse template (rcr/->ResourceResolver) empty-fn-map empty-sanitizers-map))
+    "if/if-elif-else"
+    [{:branches [[{:condition [:small]}
+                  [{:type  :text
+                    :value "small"}]]
+                 [{:condition [:big]}
+                  [{:type  :text
+                    :value "big"}]]]
+      :else     [{:type  :text
+                  :value "none"}]
+      :type     :if}]
+
+
+
+
+
+
+
+
+    ))

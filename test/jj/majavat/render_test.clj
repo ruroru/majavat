@@ -68,9 +68,9 @@
                                 {:type       :for
                                  :identifier :employee
                                  :source     [:department :employees]
-                                 :body       [{:type       :if
-                                               :condition  [:employee :is_manager]
-                                               :when-true  [{:type :text :value "👔 MANAGER: "}
+                                 :body       [{:type     :if
+                                               :branches [[{:condition [:employee :is_manager]}
+                                                           [{:type :text :value "👔 MANAGER: "}
                                                             {:type :value-node :value [:employee :name]}
                                                             {:type :text :value " - "}
                                                             {:type :value-node :value [:employee :title]}
@@ -82,12 +82,12 @@
                                                                           {:type :value-node :value [:report :name]}
                                                                           {:type :text :value " ("}
                                                                           {:type :value-node :value [:report :role]}
-                                                                          {:type :text :value ")\n"}]}]
-                                               :when-false [{:type :text :value "👤 "}
-                                                            {:type :value-node :value [:employee :name]}
-                                                            {:type :text :value " - "}
-                                                            {:type :value-node :value [:employee :title]}
-                                                            {:type :text :value "\n"}]}]}
+                                                                          {:type :text :value ")\n"}]}]]]
+                                               :else     [{:type :text :value "👤 "}
+                                                          {:type :value-node :value [:employee :name]}
+                                                          {:type :text :value " - "}
+                                                          {:type :value-node :value [:employee :title]}
+                                                          {:type :text :value "\n"}]}]}
                                 {:type :text :value "\n"}]}]
         expected-string "Department: Engineering (Budget: $500K)
 👔 MANAGER: Alice Johnson - Senior Developer
@@ -450,29 +450,28 @@ this is a  footer"
                                            [{:type :text :value "hello World from "} {:type :value-node :value [:location]}] "if-statement.txt" {:some {:condition "wolrd"}}
                                            [{:type  :text
                                              :value "hello "}
-                                            {:condition  [:some
-                                                          :condition]
-                                             :type       :if
-                                             :when-false [{:type  :text
-                                                           :value ""}]
-                                             :when-true  [{:type  :text
+                                            {:branches [[{:condition [:some
+                                                                      :condition]}
+                                                         [{:type  :text
                                                            :value "World from "}
                                                           {:type  :value-node
-                                                           :value [:location]}]}] "if-statement.txt" {}
+                                                           :value [:location]}]]]
+                                             :else     []
+                                             :type     :if}] "if-statement.txt" {}
                                            [{:type :text :value "hello World! from world"}] "if-else-statement.txt" {:some {:condition true} :location "world"}
                                            [{:type  :text
                                              :value "hello "}
-                                            {:condition  [:some
-                                                          :condition]
-                                             :type       :if
-                                             :when-false [{:type  :text
-                                                           :value "jj! "}
-                                                          {:type  :value-node
-                                                           :value [:location]}]
-                                             :when-true  [{:type  :text
+                                            {:branches [[{:condition [:some
+                                                                      :condition]}
+                                                         [{:type  :text
                                                            :value "World! from "}
                                                           {:type  :value-node
-                                                           :value [:location]}]}] "if-else-statement.txt" {}
+                                                           :value [:location]}]]]
+                                             :else     [{:type  :text
+                                                         :value "jj! "}
+                                                        {:type  :value-node
+                                                         :value [:location]}]
+                                             :type     :if}] "if-else-statement.txt" {}
 
                                            [{:type  :text
                                              :value "The planets are:Planet Mercury index is 1,that makes it firstPlanet Venus index is 2Planet Earth index is 3Planet Mars index is 4Planet Jupiter index is 5Planet Saturn index is 6Planet Uranus index is 7Planet Neptune index is 8,that makes it last"}]
@@ -544,7 +543,7 @@ this is a  footer"
                           context
                           nil))
       "&lt;some&gt;tag&lt;/some&gt;" "escape/escape-html"
-       )))
+      )))
 
 (deftest escape-nil
   (let [context {:value "<some>tag</some>"}]
@@ -578,3 +577,19 @@ this is a  footer"
         :type      :escape-block}]
       "escape/escape-html"
       )))
+
+(deftest if-not-test
+  (are [context rendered-string template-path]
+    (= rendered-string
+       (String. (.readAllBytes ^InputStream (renderer/render (->InputStreamRenderer)
+                                                             (parser/parse template-path contentResolver empty-fn-map empty-sanitizers-map)
+                                                             context
+                                                             (->Html))))
+       (renderer/render (->StringRenderer)
+                        (parser/parse template-path contentResolver empty-fn-map empty-sanitizers-map)
+                        context
+                        (->Html)))
+    {:small true} "small" "if/if-elif-else"
+    {:big true} "big" "if/if-elif-else"
+    {} "none" "if/if-elif-else"
+    ))

@@ -320,6 +320,9 @@
           (= (string/trim current-string) "if")
           (recur (rest my-sequence) "" (conj vector {:type :keyword-if}) new-line-number)
 
+          (= (string/trim current-string) "elif")
+          (recur (rest my-sequence) "" (conj vector {:type :keyword-elif}) new-line-number)
+
           (= (string/trim current-string) "include")
           (recur (rest my-sequence) "" (conj vector {:type :keyword-include}) new-line-number)
 
@@ -347,8 +350,16 @@
         (let [current-vector (pop vector)]
           (recur (rest my-sequence) "" (conj current-vector {:type :keyword-if-not}) new-line-number))
 
+        (and (= (:type (last vector)) :keyword-elif)
+             (= (string/trim current-string) "not")
+             (= current-char \ ))
+        (let [current-vector (pop vector)]
+          (recur (rest my-sequence) "" (conj current-vector {:type :keyword-elif-not}) new-line-number))
+
         (or (= (:type (last vector)) :keyword-if)
-            (= (:type (last vector)) :keyword-if-not))
+            (= (:type (last vector)) :keyword-if-not)
+            (= (:type (last vector)) :keyword-elif)
+            (= (:type (last vector)) :keyword-elif-not))
         (if
           (and (= current-char \ ) (not (string/blank? current-string)))
           (recur (rest my-sequence) (str "" current-char) (conj vector {:type :identifier :value (parse-path (string/trim current-string))}) new-line-number)

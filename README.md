@@ -121,8 +121,8 @@ Hello {{ name | upper-case }}!
 Assoc :filter to option map, when building renderer, with this value
 
 ```clojure
-{:quote (fn [value args]
-          (format "\"%s\" - %s" value (first args)))}
+{:quote (fn [value author]
+          (format "\"%s\" - %s" value author))}
 ```
 
 #### Conditionals
@@ -195,14 +195,12 @@ The loop context provides access to:
 
 `loop.last?` - true only for the last item
 
-##### each
-
-In situations where loop context is not needed, `each` can be used
+In situations where loop context is not needed, `only` can be used
 
 ```
-{% each item in items %}
+{% for item only in items %}
 - {{ item }}
-{% endeach %}
+{% endfor %}
 ```
 
 ```clojure
@@ -474,10 +472,8 @@ loops, and nested data access.
 - [TTL Builder](https://github.com/ruroru/majavat-ttl-builder) - Reloads cache on a scheduled interval.
 
 ## TODOS
-* Elif for conditionals
 * Whitespace control using `{%- -%}` and `{{- -}}`
 * i18n support
-* Default value when looping over empty lists.
 * Boolean `and` and `or` expressions
 * Macros
 

@@ -10,14 +10,11 @@
  {:type :text, :value "</div>\n"}
 
  {:type :if,
-  :condition [:line],
-  :when-true
-  [{:type :text, :value "    <div class=\"error-line\">Line: "}
-   {:type :value-node, :value [:line]}
-   {:type :text, :value "</div>\n"}],
-  :when-false
-  [{:type :text, :value ""}]}
-
+  :branches [[{:condition [:line]}
+              [{:type :text, :value "    <div class=\"error-line\">Line: "}
+               {:type :value-node, :value [:line]}
+               {:type :text, :value "</div>\n"}]]]
+  :else []}
  {:type :text, :value "    <div class=\"error-message\">"}
 
  {:type :value-node, :value [:error-message]}

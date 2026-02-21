@@ -126,7 +126,8 @@
         (.append sb query-str))
 
       :keyword-now
-      (.append sb (filters/->formatted-instant (Instant/now) [(node :format)]))
+      (do (println "format value:" (node :format))
+          (.append sb (filters/->formatted-instant (Instant/now) [(node :format)])))
 
       :variable-assignment
       (let [variable-name (node :variable-name)
@@ -180,15 +181,17 @@
             (render-nodes when-empty context sb sanitizer))))
 
       :if
-      (let [condition (node :condition)
-            when-true (node :when-true)
-            when-false (node :when-false)
-            is-negated (node :negate false)
-            condition-result (boolean (resolve-path context condition))
-            should-execute-true (if is-negated (not condition-result) condition-result)]
-        (if should-execute-true
-          (when (seq when-true) (render-nodes when-true context sb sanitizer))
-          (when (seq when-false) (render-nodes when-false context sb sanitizer))))
+      (let [branches (node :branches)
+            else-body (node :else)]
+        (or (some (fn [[condition body]]
+                    (let [condition-result (boolean (resolve-path context (:condition condition)))
+                          matches? (if (:negate condition) (not condition-result) condition-result)]
+                      (when matches?
+                        (render-nodes body context sb sanitizer)
+                        true)))
+                  branches)
+            (when (seq else-body)
+              (render-nodes else-body context sb sanitizer))))
       nil))
   sb)
 
@@ -223,10 +226,8 @@
              (recur rest-nodes))
 
            :keyword-now
-           (do
-             (let [now-str (filters/->formatted-instant (Instant/now) [(node :format)])]
-               (.add result (.getBytes ^String now-str charset)))
-             (recur rest-nodes))
+           (let [now-str (filters/->formatted-instant (Instant/now) [(node :format)])]
+             (.add result (.getBytes ^String now-str charset)))
 
            :variable-declaration
            (do
@@ -278,11 +279,17 @@
 
            :if
            (do
-             (let [is-negated (node :negate false)
-                   condition-result (resolve-path context (node :condition))
-                   should-execute-true (if is-negated (not condition-result) condition-result)
-                   branch (if should-execute-true :when-true :when-false)]
-               (render-nodes-to-bytes-vec (node branch) context charset sanitizer result))
+             (let [branches (node :branches)
+                   else-body (node :else)]
+               (or (some (fn [[condition body]]
+                           (let [condition-result (boolean (resolve-path context (:condition condition)))
+                                 matches? (if (:negate condition) (not condition-result) condition-result)]
+                             (when matches?
+                               (render-nodes-to-bytes-vec body context charset sanitizer result)
+                               true)))
+                         branches)
+                   (when (seq else-body)
+                     (render-nodes-to-bytes-vec else-body context charset sanitizer result))))
              (recur rest-nodes))
 
            (recur rest-nodes)))))
@@ -393,18 +400,33 @@
                               (node :when-empty) (assoc :when-empty (partial-render-nodes (node :when-empty) context sanitizer))))))
 
         :if
-        (let [condition (node :condition)
-              condition-val (resolve-path context condition)
-              is-negated (node :negate false)]
-          (if (some? condition-val)
-            (let [condition-result (boolean condition-val)
-                  should-execute-true (if is-negated (not condition-result) condition-result)]
-              (if should-execute-true
-                (into acc (partial-render-nodes (node :when-true) context sanitizer))
-                (into acc (partial-render-nodes (node :when-false) context sanitizer))))
+        (let [branches (node :branches)
+              else-body (node :else)
+              first-unresolved (reduce
+                                 (fn [acc [condition body]]
+                                   (let [condition-val (resolve-path context (:condition condition))]
+                                     (if (some? condition-val)
+                                       (let [result (boolean condition-val)
+                                             matches? (if (:negate condition) (not result) result)]
+                                         (if matches?
+                                           (reduced {:resolved true :body body})
+                                           acc))
+                                       (reduced {:resolved false}))))
+                                 nil
+                                 branches)]
+          (cond
+            (and first-unresolved (:resolved first-unresolved))
+            (into acc (partial-render-nodes (:body first-unresolved) context sanitizer))
+
+            (and (nil? first-unresolved))
+            (into acc (partial-render-nodes else-body context sanitizer))
+
+            :else
             (conj acc (assoc node
-                        :when-true (partial-render-nodes (node :when-true) context sanitizer)
-                        :when-false (partial-render-nodes (node :when-false) context sanitizer)))))
+                        :branches (mapv (fn [[condition body]]
+                                          [condition (partial-render-nodes body context sanitizer)])
+                                        branches)
+                        :else (partial-render-nodes else-body context sanitizer)))))
 
         (conj acc node)))
     []
