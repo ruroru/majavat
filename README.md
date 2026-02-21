@@ -58,16 +58,17 @@ All supported options:
 Rendering `file.txt` with content
 
 ```
-Hello {{ name }}!
+Hello {{ user.name }}!
 ; or namespaced value 
-Hello {{ [foo.bar/baz.quux] }}!
+ID is: {{ user.[namespaced/user.id] }}!
 
 ```
 
 
 ```clojure
 (def render-fn (build-renderer "file.txt"))
-(render-fn {:name "world"}) ;; => returns Hello world!
+(render-fn {:user {:name "jj"
+                   :namespaced/user.id "foo"}}) ;; => returns "Hello world!\nID is foo"
 ```
 
 or with a filter
@@ -130,13 +131,14 @@ Assoc :filter to option map, when building renderer, with this value
 Rendering input file with content:
 
 ```
-"Hello {% if name %}{{name}}{% else %}world{% endif %}!"
+"Hello {% if name %}{{name}}{% elif id %}{% else %}world{% endif %}!"
 ```
 
 ```clojure
 (def render-fn (build-renderer "input-file"))
 
 (render-fn {:name "jj"}) ;; returns "Hello jj!"
+(render-fn {:id "JJ"}) ;; returns "Hello JJ!"
 (render-fn {}) ;; returns "Hello world!"
 ```
 
