@@ -1,6 +1,8 @@
 (ns jj.majavat.parser-test
   (:require [clojure.test :refer [are deftest is]]
             [jj.majavat.parser :as parser]
+            [jj.majavat.renderer.filters :as filters]
+            [jj.majavat.renderer.tests :as tests]
             [jj.majavat.resolver.fs :as fcr]
             [jj.majavat.resolver.resource :as rcr])
   (:import (java.io File)
@@ -51,8 +53,9 @@
 (deftest if-statement
   (is (= [{:type  :text
            :value "hello "}
-          {:branches [[{:condition [:some
-                                    :condition]}
+          {:branches [[{:condition           [:some
+                                              :condition]
+                        :evaluation-function tests/default-test}
                        [{:type  :text
                          :value "World from "}
                         {:type  :value-node
@@ -74,8 +77,9 @@
 (deftest if-else-statement
   (is (= [{:type  :text
            :value "hello "}
-          {:branches [[{:condition [:some
-                                    :condition]}
+          {:branches [[{:condition           [:some
+                                              :condition]
+                        :evaluation-function tests/default-test}
                        [{:type  :text
                          :value "World! from "}
                         {:type  :value-node
@@ -242,8 +246,9 @@
     "if/if-not"
     [{:type  :text
       :value "hello "}
-     {:branches [[{:condition [:value]
-                   :negate    true}
+     {:branches [[{:condition           [:value]
+                   :evaluation-function tests/default-test
+                   :negate              true}
                   [{:type  :text
                     :value "world"}]]]
       :else     []
@@ -253,6 +258,7 @@
     [{:type  :text
       :value "hello "}
      {:branches [[{:condition [:value]
+                   :evaluation-function tests/default-test
                    :negate    true}
                   [{:type  :text
                     :value "world"}]]]
@@ -268,11 +274,13 @@
     "if/nested-if-not-if"
     [{:type  :text
       :value "start "}
-     {:branches [[{:condition [:flag]
-                   :negate    true}
+     {:branches [[{:condition           [:flag]
+                   :evaluation-function tests/default-test
+                   :negate              true}
                   [{:type  :text
                     :value "middle "}
-                   {:branches [[{:condition [:nested]}
+                   {:branches [[{:condition           [:nested]
+                                 :evaluation-function tests/default-test}
                                 [{:type  :text
                                   :value "deep"}]]]
                     :else     []
@@ -444,21 +452,16 @@
     (= expected-ast
        (parser/parse template (rcr/->ResourceResolver) empty-fn-map empty-sanitizers-map))
     "if/if-elif-else"
-    [{:branches [[{:condition [:small]}
+    [{:branches [[{:evaluation-function tests/default-test
+                   :condition           [:small]}
                   [{:type  :text
                     :value "small"}]]
-                 [{:condition [:big]}
+                 [{:condition           [:big]
+                   :evaluation-function tests/default-test}
                   [{:type  :text
                     :value "big"}]]]
       :else     [{:type  :text
                   :value "none"}]
       :type     :if}]
-
-
-
-
-
-
-
 
     ))

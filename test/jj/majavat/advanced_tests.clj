@@ -2,6 +2,7 @@
   (:require [clojure.test :refer [deftest is testing]]
             [jj.majavat.lexer :as lexer]
             [jj.majavat.parser :as parser]
+            [jj.majavat.renderer.tests :as tests]
             [jj.majavat.resolver.resource :as rcr]))
 
 (def contentResolver (rcr/->ResourceResolver))
@@ -9,10 +10,11 @@
 (def empty-sanitizers-map {})
 
 (deftest test-deeply-nested-conditionals
-  (is (= [{:branches [[{:condition [:user
-                                    :is_admin]}
-                       [{:branches [[{:condition [:user
-                                                  :has_permissions]}
+  (is (= [{:branches [[{:condition           [:user :is_admin]
+                        :evaluation-function tests/default-test}
+                       [{:branches [[{:condition           [:user
+                                                            :has_permissions]
+                                      :evaluation-function tests/default-test}
                                      [{:type  :text
                                        :value "Admin Panel: "}
                                       {:type  :value-node
@@ -21,8 +23,9 @@
                          :else     [{:type  :text
                                      :value "Access Denied - No Permissions"}]
                          :type     :if}]]]
-           :else     [{:branches [[{:condition [:user
-                                                :is_logged_in]}
+           :else     [{:branches [[{:condition           [:user
+                                                          :is_logged_in]
+                                    :evaluation-function tests/default-test}
                                    [{:type  :text
                                      :value "Welcome "}
                                     {:type  :value-node
@@ -50,8 +53,9 @@
                                  :budget]}
                         {:type  :text
                          :value ")"}
-                        {:body       [{:branches [[{:condition [:employeew
-                                                                :is_manager]}
+                        {:body       [{:branches [[{:condition           [:employeew
+                                                                          :is_manager]
+                                                    :evaluation-function tests/default-test}
                                                    [{:type  :text
                                                      :value "👔 MANAGER: "}
                                                     {:type  :value-node

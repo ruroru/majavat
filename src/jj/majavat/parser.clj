@@ -2,6 +2,7 @@
   (:require [jj.majavat.lexer :as lexer]
             [jj.majavat.renderer.filters :as filters]
             [jj.majavat.renderer.sanitizer]
+            [jj.majavat.renderer.tests :as tests]
             [jj.majavat.resolver :as cr])
   (:import (clojure.lang ExceptionInfo)
            (java.io PushbackReader StringWriter)
@@ -35,11 +36,13 @@
    :rest             filters/get-rest
    :str              filters/handle-str})
 
-
 (def ^:private ^:const sanitizers {:html (jj.majavat.renderer.sanitizer/->Html)
                                    :json (jj.majavat.renderer.sanitizer/->Json)
-                                   :none (jj.majavat.renderer.sanitizer/->None)
-                                   })
+                                   :none (jj.majavat.renderer.sanitizer/->None)})
+
+(def ^:private evalaution-functions {:default tests/default-test
+
+                                     })
 
 (defn- create-filter-fn [{:keys [filter-name args]} filter-map]
   (if-let [f (get filter-map filter-name)]
@@ -107,7 +110,7 @@
 
 (defn- parse-ast
   ([lexed-list list current-block template-resolver filter-map merged-sanitizers]
-   (parse-ast lexed-list list current-block false nil template-resolver filter-map  merged-sanitizers []))
+   (parse-ast lexed-list list current-block false nil template-resolver filter-map merged-sanitizers []))
   ([lexed-list list current-block parsing-for-body current-file-path template-resolver filter-map merged-sanitizers tag-stack]
    (if (empty? lexed-list)
      (if parsing-for-body
@@ -129,7 +132,10 @@
                                                                             (= :filter-function (:type (first remaining-after-tag))))
                                                                      (let [filter-function (first remaining-after-tag)
                                                                            remaining-after-function (rest remaining-after-tag)
-                                                                           [args remaining-after-args] (loop [remaining remaining-after-function
+                                                                           has-paren (and (seq remaining-after-function)
+                                                                                          (= :filter-paren-open (:type (first remaining-after-function))))
+                                                                           remaining-after-paren (if has-paren (rest remaining-after-function) remaining-after-function)
+                                                                           [args remaining-after-args] (loop [remaining remaining-after-paren
                                                                                                               args []]
                                                                                                          (if (and (seq remaining) (= :filter-arg (:type (first remaining))))
                                                                                                            (recur (rest remaining) (conj args (:value (first remaining))))
@@ -180,7 +186,7 @@
          :keyword-csrf-token (recur (rest lexed-list) (apply conj list '({:type :text :value "<input type=\"hidden\" name=\"csrf_token\" value=\""}
                                                                          {:type :value-node :value [:csrf-token]}
                                                                          {:type :text :value "\">"}))
-                                    current-block parsing-for-body current-file-path template-resolver filter-map  merged-sanitizers tag-stack)
+                                    current-block parsing-for-body current-file-path template-resolver filter-map merged-sanitizers tag-stack)
 
          :keyword-query-string (let [remaining (rest lexed-list)
                                      query-string-decl-token (first remaining)
@@ -248,7 +254,7 @@
                           (if replacement-content
                             (recur remaining-after-block-name (into list replacement-content) current-block parsing-for-body current-file-path template-resolver filter-map merged-sanitizers tag-stack)
                             (let [[block-content remaining-after-block _] (parse-ast remaining-after-block-name [] current-block true current-file-path template-resolver filter-map merged-sanitizers tag-stack)]
-                              (recur remaining-after-block (into list block-content) current-block parsing-for-body current-file-path template-resolver filter-map merged-sanitizers  tag-stack))))
+                              (recur remaining-after-block (into list block-content) current-block parsing-for-body current-file-path template-resolver filter-map merged-sanitizers tag-stack))))
 
          :keyword-let (let [remaining (rest lexed-list)
                             var-decl-token (first remaining)]
@@ -350,7 +356,8 @@
                          (let [new-tag-stack (push-tag tag-stack :if (:line current-item))
                                [branches else-body remaining-final final-tag-stack]
                                (loop [branches []
-                                      current-condition {:condition (:value condition-token)}
+                                      current-condition {:condition           (:value condition-token)
+                                                         :evaluation-function (:default evalaution-functions)}
                                       remaining remaining-after-block-end
                                       ts new-tag-stack]
                                  (let [[body remaining-after-body updated-ts] (parse-ast remaining [] current-block true current-file-path template-resolver filter-map merged-sanitizers ts)
@@ -363,7 +370,8 @@
                                            elif-remaining-after-condition (rest elif-remaining)
                                            elif-remaining-after-block-end (rest elif-remaining-after-condition)
                                            negate? (= :keyword-elif-not (:type next-token))
-                                           elif-cond (cond-> {:condition (:value elif-condition-token)}
+                                           elif-cond (cond-> {:condition           (:value elif-condition-token)
+                                                              :evaluation-function (:default evalaution-functions)}
                                                              negate? (assoc :negate true))]
                                        (recur (conj branches [current-condition body])
                                               elif-cond
@@ -393,7 +401,9 @@
                              (let [new-tag-stack (push-tag tag-stack :if (:line current-item))
                                    [branches else-body remaining-final final-tag-stack]
                                    (loop [branches []
-                                          current-condition {:condition (:value condition-token) :negate true}
+                                          current-condition {:condition           (:value condition-token)
+                                                             :negate              true
+                                                             :evaluation-function (:default evalaution-functions)}
                                           remaining remaining-after-block-end
                                           ts new-tag-stack]
                                      (let [[body remaining-after-body updated-ts] (parse-ast remaining [] current-block true current-file-path template-resolver filter-map merged-sanitizers ts)
@@ -406,7 +416,8 @@
                                                elif-remaining-after-condition (rest elif-remaining)
                                                elif-remaining-after-block-end (rest elif-remaining-after-condition)
                                                negate? (= :keyword-elif-not (:type next-token))
-                                               elif-cond (cond-> {:condition (:value elif-condition-token)}
+                                               elif-cond (cond-> {:condition           (:value elif-condition-token)
+                                                                  :evaluation-function (:default evalaution-functions)}
                                                                  negate? (assoc :negate true))]
                                            (recur (conj branches [current-condition body])
                                                   elif-cond
@@ -507,10 +518,9 @@
     (let [file-content (read-content-as-string template-resolver resource-path)
           lexed-value (lexer/tokenize file-content)
           filter-map (merge default-filter-map user-filters)
-          merged-sanitizers (merge user-sanitizers sanitizers)
-          ]
+          merged-sanitizers (merge user-sanitizers sanitizers)]
       (try
-        (parse-ast lexed-value [] {} false resource-path template-resolver filter-map merged-sanitizers [] )
+        (parse-ast lexed-value [] {} false resource-path template-resolver filter-map merged-sanitizers [])
         (catch ExceptionInfo e
           (let [data (ex-data e)]
             (case (:type data)

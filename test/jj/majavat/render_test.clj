@@ -6,6 +6,7 @@
     [jj.majavat.parser :as parser]
     [jj.majavat.renderer :as renderer :refer [->InputStreamRenderer ->PartialRenderer ->StringRenderer]]
     [jj.majavat.renderer.sanitizer :refer [->Html]]
+    [jj.majavat.renderer.tests :as tests]
     [jj.majavat.resolver.fs :as fcr]
     [jj.majavat.resolver.resource :as rcr])
   (:import (java.io InputStream)
@@ -451,7 +452,8 @@ this is a  footer"
                                            [{:type  :text
                                              :value "hello "}
                                             {:branches [[{:condition [:some
-                                                                      :condition]}
+                                                                      :condition]
+                                                          :evaluation-function tests/default-test}
                                                          [{:type  :text
                                                            :value "World from "}
                                                           {:type  :value-node
@@ -461,8 +463,9 @@ this is a  footer"
                                            [{:type :text :value "hello World! from world"}] "if-else-statement.txt" {:some {:condition true} :location "world"}
                                            [{:type  :text
                                              :value "hello "}
-                                            {:branches [[{:condition [:some
-                                                                      :condition]}
+                                            {:branches [[{:evaluation-function tests/default-test
+                                                          :condition           [:some
+                                                                                :condition]}
                                                          [{:type  :text
                                                            :value "World! from "}
                                                           {:type  :value-node
