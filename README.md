@@ -7,7 +7,7 @@ A templating engine for Clojure
 Add majavat to dependency list
 
 ```clojure
-[org.clojars.jj/majavat "1.20.1"]
+[org.clojars.jj/majavat "1.21.0"]
 ```
 
 ## Usage
