@@ -64,10 +64,9 @@ ID is: {{ user.[namespaced/user.id] }}!
 
 ```
 
-
 ```clojure
 (def render-fn (build-renderer "file.txt"))
-(render-fn {:user {:name "jj"
+(render-fn {:user {:name               "jj"
                    :namespaced/user.id "foo"}}) ;; => returns "Hello world!\nID is foo"
 ```
 
@@ -155,6 +154,24 @@ or
 (render-fn {}) ;; returns "Hello world!"
 ```
 
+or with tests
+
+```
+"Hello {% if value is even %}even{% else %}not even{% endif %}!"
+```
+
+```clojure
+(render-fn {:value 2}) ;; returns "even"
+(render-fn {:value 1}) ;; returns "not even"
+```
+
+Available tests:
+
+| test name |
+|-----------|
+| even      |
+| odd       |
+
 #### Looping
 
 ##### for
@@ -173,7 +190,8 @@ Rendering input file with content:
 (render-fn {:items ["Apple" "Banana" "Orange"]}) ;; returns "- Apple is 0 of 3\n- Banana is 1 of 3\n- Orange is 2 of 3"
 ```
 
-or default value 
+or default value
+
 ```
 {% for item in items %}
 - {{ item }} is {{ loop.index }} of {{ loop.total }}
@@ -181,6 +199,7 @@ or default value
 empty list
 {% endfor %}
 ```
+
 ```clojure
 (def render-fn (build-renderer "input-file"))
 
@@ -367,12 +386,14 @@ If needed, ```Sanitizer``` implementation can be set/overridden via ```escape```
 
 (render-fn {:bar "<div/>"}) ;; returns "&lt;div/&gt;"
 ```
+
 Available values:
+
 * none
 * html
 * json
 
-or ones provided by :sanitizers 
+or ones provided by :sanitizers
 
 ## RenderTarget Protocol
 
@@ -474,6 +495,7 @@ loops, and nested data access.
 - [TTL Builder](https://github.com/ruroru/majavat-ttl-builder) - Reloads cache on a scheduled interval.
 
 ## TODOS
+
 * Whitespace control using `{%- -%}` and `{{- -}}`
 * i18n support
 * Boolean `and` and `or` expressions

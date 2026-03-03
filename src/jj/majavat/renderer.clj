@@ -107,6 +107,17 @@
            :first? (zero? index)
            :last?  (= index (dec count))}))
 
+(defn- evaluate-condition
+  "Evaluates a condition map against the current context.
+  Uses :evaluation-function (e.g. tests/is-even?) when present, otherwise plain boolean.
+  Applies :negate when set."
+  [condition context]
+  (let [eval-fn  (or (:evaluation-function condition) boolean)
+        raw-val  (resolve-path context (:condition condition))
+        result   (boolean (eval-fn raw-val))
+        matches? (if (:negate condition) (not result) result)]
+    matches?))
+
 (defn- render-nodes [nodes context ^StringBuilder sb sanitizer]
   (doseq [node nodes]
     (case (node :type)
@@ -184,14 +195,13 @@
       (let [branches (node :branches)
             else-body (node :else)]
         (or (some (fn [[condition body]]
-                    (let [condition-result (boolean (resolve-path context (:condition condition)))
-                          matches? (if (:negate condition) (not condition-result) condition-result)]
-                      (when matches?
-                        (render-nodes body context sb sanitizer)
-                        true)))
+                    (when (evaluate-condition condition context)
+                      (render-nodes body context sb sanitizer)
+                      true))
                   branches)
             (when (seq else-body)
               (render-nodes else-body context sb sanitizer))))
+
       nil))
   sb)
 
@@ -282,11 +292,9 @@
              (let [branches (node :branches)
                    else-body (node :else)]
                (or (some (fn [[condition body]]
-                           (let [condition-result (boolean (resolve-path context (:condition condition)))
-                                 matches? (if (:negate condition) (not condition-result) condition-result)]
-                             (when matches?
-                               (render-nodes-to-bytes-vec body context charset sanitizer result)
-                               true)))
+                           (when (evaluate-condition condition context)
+                             (render-nodes-to-bytes-vec body context charset sanitizer result)
+                             true))
                          branches)
                    (when (seq else-body)
                      (render-nodes-to-bytes-vec else-body context charset sanitizer result))))
@@ -406,7 +414,8 @@
                                  (fn [acc [condition body]]
                                    (let [condition-val (resolve-path context (:condition condition))]
                                      (if (some? condition-val)
-                                       (let [result (boolean condition-val)
+                                       (let [eval-fn  (or (:evaluation-function condition) boolean)
+                                             result   (boolean (eval-fn condition-val))
                                              matches? (if (:negate condition) (not result) result)]
                                          (if matches?
                                            (reduced {:resolved true :body body})

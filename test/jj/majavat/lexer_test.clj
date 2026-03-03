@@ -392,3 +392,23 @@
           {:line 1
            :type :closing-bracket}]
          (lexer/tokenize "{{foo.bar.[baz/qux.quux].[corge.grault]}}"))))
+
+(deftest if-with-operator-statement
+  (is (= [{:type :block-start}
+          {:type :keyword-if}
+          {:type  :identifier
+           :value [:some
+                   :condition]}
+          {:type  :operator
+           :value :is}
+          {:type  :operator-test
+           :value :even}
+          {:line 1
+           :type :block-end}
+          {:type  :text
+           :value "yes"}
+          {:type :block-start}
+          {:type :keyword-endif}
+          {:line 1
+           :type :block-end}]
+         (lexer/tokenize "{% if some.condition is even %}yes{% endif %}"))))

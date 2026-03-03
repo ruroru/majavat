@@ -1,0 +1,1 @@
+{% if value is even %}even{% else %}odd{% endif %}

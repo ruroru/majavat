@@ -41,8 +41,8 @@
                                    :none (jj.majavat.renderer.sanitizer/->None)})
 
 (def ^:private evalaution-functions {:default tests/default-test
-
-                                     })
+                                     :even    tests/is-even?
+                                     :odd     tests/is-odd?})
 
 (defn- create-filter-fn [{:keys [filter-name args]} filter-map]
   (if-let [f (get filter-map filter-name)]
@@ -107,6 +107,20 @@
                       {:type :syntax-error
                        :tag  (:tag unclosed-tag)
                        :line (or (:line unclosed-tag) 1)})))))
+
+(defn- parse-operator-test
+  [remaining-after-condition]
+  (let [next-token (first remaining-after-condition)]
+    (if (and next-token
+             (= :operator (:type next-token))
+             (= :is (:value next-token)))
+      (let [remaining-after-op (rest remaining-after-condition)
+            test-token (first remaining-after-op)
+            remaining-after-test (rest remaining-after-op)]
+        [(get evalaution-functions (:value test-token) (:default evalaution-functions))
+         (rest remaining-after-test)])
+      [(:default evalaution-functions)
+       (rest remaining-after-condition)])))
 
 (defn- parse-ast
   ([lexed-list list current-block template-resolver filter-map merged-sanitizers]
@@ -351,13 +365,13 @@
          :keyword-if (let [remaining (rest lexed-list)
                            condition-token (first remaining)
                            remaining-after-condition (rest remaining)
-                           remaining-after-block-end (rest remaining-after-condition)]
+                           [eval-fn remaining-after-block-end] (parse-operator-test remaining-after-condition)]
                        (if (some? (:value condition-token))
                          (let [new-tag-stack (push-tag tag-stack :if (:line current-item))
                                [branches else-body remaining-final final-tag-stack]
                                (loop [branches []
                                       current-condition {:condition           (:value condition-token)
-                                                         :evaluation-function (:default evalaution-functions)}
+                                                         :evaluation-function eval-fn}
                                       remaining remaining-after-block-end
                                       ts new-tag-stack]
                                  (let [[body remaining-after-body updated-ts] (parse-ast remaining [] current-block true current-file-path template-resolver filter-map merged-sanitizers ts)
@@ -509,6 +523,8 @@
          :filter-tag (recur (rest lexed-list) list current-block parsing-for-body current-file-path template-resolver filter-map merged-sanitizers tag-stack)
          :filter-function (recur (rest lexed-list) list current-block parsing-for-body current-file-path template-resolver filter-map merged-sanitizers tag-stack)
          :filter-arg (recur (rest lexed-list) list current-block parsing-for-body current-file-path template-resolver filter-map merged-sanitizers tag-stack)
+         :operator (recur (rest lexed-list) list current-block parsing-for-body current-file-path template-resolver filter-map merged-sanitizers tag-stack)
+         :operator-test (recur (rest lexed-list) list current-block parsing-for-body current-file-path template-resolver filter-map merged-sanitizers tag-stack)
 
          (recur (rest lexed-list) list current-block parsing-for-body current-file-path template-resolver filter-map merged-sanitizers tag-stack))))))
 

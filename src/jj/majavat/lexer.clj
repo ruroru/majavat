@@ -191,6 +191,19 @@
             :else
             (recur (rrest my-sequence) "" (conj vector {:type :block-end :line line-number}) new-line-number)))
 
+        (and (= (:type (last vector)) :identifier)
+             (= (string/trim current-string) "is")
+             (= current-char \ ))
+        (recur (rest my-sequence) "" (conj vector {:type :operator :value :is}) new-line-number)
+
+        (= (:type (last vector)) :operator)
+        (if (= next-char \%)
+          (let [trimmed (string/trim current-string)]
+            (if (not (string/blank? trimmed))
+              (recur (rest my-sequence) "" (conj vector {:type :operator-test :value (keyword trimmed)}) new-line-number)
+              (recur (rest my-sequence) "" vector new-line-number)))
+          (recur (rest my-sequence) (str current-string current-char) vector new-line-number))
+
         (every? identity [(= "in" (string/trim current-string)) (= (:type (last vector)) :identifier)])
         (recur (rest my-sequence) (str "" current-char) (conj vector {:type :keyword-in}) new-line-number)
 

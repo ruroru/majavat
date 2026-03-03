@@ -1,7 +1,8 @@
 (ns jj.majavat.parser-test
   (:require [clojure.test :refer [are deftest is]]
+            [jj.majavat.lexer :as lexer]
             [jj.majavat.parser :as parser]
-            [jj.majavat.renderer.filters :as filters]
+            [clojure.pprint :as pprint]
             [jj.majavat.renderer.tests :as tests]
             [jj.majavat.resolver.fs :as fcr]
             [jj.majavat.resolver.resource :as rcr])
@@ -465,3 +466,19 @@
       :type     :if}]
 
     ))
+
+(deftest if-is-even
+
+  (pprint/pprint (lexer/tokenize "{% if value is even %}even{% else %}odd{% endif %}"))
+
+  (are [template expected-ast]
+    (= expected-ast
+       (parser/parse template (rcr/->ResourceResolver) empty-fn-map empty-sanitizers-map))
+    "if/if-is-even-else"
+    [{:branches [[{:evaluation-function tests/is-even?
+                   :condition           [:value]}
+                  [{:type  :text
+                    :value "even"}]]]
+      :else     [{:type  :text
+                  :value "odd"}]
+      :type     :if}]))

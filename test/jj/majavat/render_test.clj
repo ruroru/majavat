@@ -451,8 +451,8 @@ this is a  footer"
                                            [{:type :text :value "hello World from "} {:type :value-node :value [:location]}] "if-statement.txt" {:some {:condition "wolrd"}}
                                            [{:type  :text
                                              :value "hello "}
-                                            {:branches [[{:condition [:some
-                                                                      :condition]
+                                            {:branches [[{:condition           [:some
+                                                                                :condition]
                                                           :evaluation-function tests/default-test}
                                                          [{:type  :text
                                                            :value "World from "}
@@ -596,3 +596,21 @@ this is a  footer"
     {:big true} "big" "if/if-elif-else"
     {} "none" "if/if-elif-else"
     ))
+
+(deftest if-is-even-test
+  (are [expected template-path context]
+
+    (= expected
+       (renderer/render (->StringRenderer)
+                        (parser/parse template-path contentResolver empty-fn-map empty-sanitizers-map)
+                        context
+                        (->Html))
+       )
+    "odd" "if/if-is-even-else" {:value 1}
+    "even" "if/if-is-even-else" {:value 2}
+    )
+
+
+  )
+
+
