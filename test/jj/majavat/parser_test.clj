@@ -488,5 +488,15 @@
   (are [expected-ast input-file]
     (= expected-ast
        (parser/parse input-file (rcr/->ResourceResolver) empty-fn-map empty-sanitizers-map))
-    [{:type :debug}]
+    [{:type :debug
+      :target :default}]
     "debug/debug"))
+
+(deftest parsed-debug
+  (pprint/pprint (lexer/tokenize "{% debug logger %}"))
+  (are [expected-ast input-file]
+    (= expected-ast
+       (parser/parse input-file (rcr/->ResourceResolver) empty-fn-map empty-sanitizers-map))
+    [{:type   :debug
+      :target :logger}]
+    "debug/debug-with-target"))

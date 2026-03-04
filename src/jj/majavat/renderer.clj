@@ -2,6 +2,7 @@
   (:require [clojure.edn :as edn]
             [clojure.java.io :as io]
             [clojure.pprint :as pprint]
+            [clojure.tools.logging :as log]
             [jj.majavat.renderer.filters :as filters]
             [jj.majavat.renderer.sanitizer :refer [sanitize]])
   (:import (java.io PushbackReader)
@@ -69,7 +70,6 @@
             6 (let [[a b c d e f] path] (local-get-in context a b c d e f))
             (get-in context path))))
 
-
 (defn- escape-if-needed [val s]
   (if (nil? s) val (sanitize s val)))
 
@@ -77,7 +77,6 @@
   (if (string? v)
     v
     (str v)))
-
 
 (defn- remove-nil [[_ v]]
   (not (nil? v)))
@@ -119,6 +118,15 @@
         matches? (if (:negate condition) (not result) result)]
     matches?))
 
+(defn- debug-output [node context]
+  (let [target (node :target)]
+    (if (= :default target)
+      (pprint/pprint context)
+      (if-let [w (get context target)]
+        (binding [*out* w]
+          (pprint/pprint (dissoc context target)))
+        (pprint/pprint context)))))
+
 (defn- render-nodes [nodes context ^StringBuilder sb sanitizer]
   (doseq [node nodes]
     (case (node :type)
@@ -138,8 +146,7 @@
         (.append sb query-str))
 
       :keyword-now
-      (do (println "format value:" (node :format))
-          (.append sb (filters/->formatted-instant (Instant/now) [(node :format)])))
+      (.append sb (filters/->formatted-instant (Instant/now) [(node :format)]))
 
       :variable-assignment
       (let [variable-name (node :variable-name)
@@ -204,7 +211,7 @@
               (render-nodes else-body context sb sanitizer))))
 
       :debug
-      (pprint/pprint context)
+      (debug-output node context)
 
       nil))
   sb)
@@ -240,8 +247,10 @@
              (recur rest-nodes))
 
            :keyword-now
-           (let [now-str (filters/->formatted-instant (Instant/now) [(node :format)])]
-             (.add result (.getBytes ^String now-str charset)))
+           (do
+             (let [now-str (filters/->formatted-instant (Instant/now) [(node :format)])]
+               (.add result (.getBytes ^String now-str charset)))
+             (recur rest-nodes))
 
            :variable-declaration
            (do
@@ -306,14 +315,11 @@
 
            :debug
            (do
-             (pprint/pprint context)
+             (debug-output node context)
              (recur rest-nodes))
 
            (recur rest-nodes)))))
    result))
-
-
-
 
 (defn- partial-render-nodes [nodes context sanitizer]
   (reduce
@@ -448,7 +454,7 @@
 
         :debug
         (do
-          (pprint/pprint context)
+          (debug-output node context)
           acc)
 
         (conj acc node)))

@@ -384,6 +384,16 @@ Currennt context can be printed out with debug tag
 (render-fn {:number 1}) ;; prints out "{:number 1}" to console   
 ```
 
+or if you want to write to custom `Writer`
+```
+{% debug writer-imp%}
+```
+and render file
+```clojure
+(def render-fn (build-renderer "input-file"))
+
+(render-fn {:number 1 :writer-imp (java.io.StringWriter.)}) ;; prints out "{:number 1}" to console   
+```
 
 
 ### Escape

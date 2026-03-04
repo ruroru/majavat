@@ -419,3 +419,11 @@
           {:line 1
            :type :block-end}]
          (lexer/tokenize "{% debug %}"))))
+
+(deftest debug-lex1
+  (is (= [{:type :block-start}
+          {:type :token/debug}
+          {:type :token/debug-target
+           :value :logger-writer}
+          {:line 1 :type :block-end}]
+         (lexer/tokenize "{% debug logger-writer %}"))))

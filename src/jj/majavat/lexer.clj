@@ -188,6 +188,12 @@
                 (recur remaining-seq "" (conj vector {:type :block-end :line line-number}) updated-line-number)
                 (recur remaining-seq "" (conj vector {:type :block-end :line line-number} {:type :text :value verbatim-content}) updated-line-number)))
 
+            (= (:type (last vector)) :token/debug-target)
+            (recur (rrest my-sequence) "" (conj vector {:type :block-end :line line-number}) new-line-number)
+
+            (= (:type (last vector)) :token/debug)
+            (recur (rrest my-sequence) "" (conj vector {:type :block-end :line line-number}) new-line-number)
+
             :else
             (recur (rrest my-sequence) "" (conj vector {:type :block-end :line line-number}) new-line-number)))
 
@@ -331,7 +337,7 @@
           (recur (rest my-sequence) "" (conj vector {:type :keyword-query-string}) new-line-number)
 
           (= (string/trim current-string) "debug")
-          (recur (rest my-sequence) "" (conj vector {:type :token/debug}) new-line-number)
+          (recur (rest my-sequence) (str "" current-char) (conj vector {:type :token/debug}) new-line-number)
 
           (= (string/trim current-string) "if")
           (recur (rest my-sequence) "" (conj vector {:type :keyword-if}) new-line-number)
@@ -360,6 +366,17 @@
           :else
           (recur (rest my-sequence) (str current-string current-char) vector new-line-number))
 
+        ;; NEW: collect debug target after :token/debug
+        (= (:type (last vector)) :token/debug)
+        (if (= next-char \%)
+          (let [trimmed (string/trim current-string)]
+            (if (string/blank? trimmed)
+              (recur (rest my-sequence) "" vector new-line-number)
+              (recur (rest my-sequence) "" (conj vector {:type  :token/debug-target
+                                                         :value (keyword trimmed)})
+                     new-line-number)))
+          (recur (rest my-sequence) (str current-string current-char) vector new-line-number))
+
         (and (= (:type (last vector)) :keyword-if)
              (= (string/trim current-string) "not")
              (= current-char \ ))
@@ -384,7 +401,6 @@
         (= (:type (last vector)) :keyword-let)
         (if (= next-char \%)
           (let [{:keys [variable-name variable-value]} (parse-let-assignment (string/trim current-string))]
-
             (recur (rest my-sequence) "" (conj vector {:type           :variable-declaration
                                                        :variable-name  variable-name
                                                        :variable-value variable-value}) new-line-number))

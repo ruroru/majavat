@@ -11,7 +11,7 @@
     [jj.majavat.renderer.tests :as tests]
     [jj.majavat.resolver.fs :as fcr]
     [jj.majavat.resolver.resource :as rcr])
-  (:import (java.io InputStream)
+  (:import (java.io InputStream StringWriter Writer)
            (java.net URI)
            (java.time LocalDate LocalDateTime LocalTime ZoneId ZonedDateTime)
            (java.util UUID)))
@@ -626,3 +626,29 @@ this is a  footer"
     "debug/debug" {:value 1}))
 
 
+(deftest debug-test
+  (are [template-path context-without-writer]
+    (let [buffer         (StringBuilder.)
+          capture-writer (proxy [java.io.Writer] []
+                           (write
+                             ([c]
+                              (if (integer? c)
+                                (.append buffer (char c))
+                                (.append buffer ^String c)))
+                             ([buf off len]
+                              (if (string? buf)
+                                (.append buffer ^String (.substring ^String buf off (+ off len)))
+                                (.append buffer ^chars buf off len))))
+                           (flush [])
+                           (close []))
+          context        (assoc context-without-writer :logger capture-writer)
+          parse          #(parser/parse template-path contentResolver empty-fn-map empty-sanitizers-map)]
+
+      (renderer/render (->StringRenderer) (parse) context (->Html))
+      (let [string-result (edn/read-string (.toString buffer))]
+
+        (= context-without-writer  string-result))
+
+      )
+
+    "debug/debug-with-target" {:value 1}))
