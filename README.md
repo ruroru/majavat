@@ -373,6 +373,19 @@ input-file with content
 (render-fn {}) ;; returns "foo{{bar}}{%baz%}{#qux#}quux"
 ```
 
+### Debug
+Currennt context can be printed out with debug tag
+```
+{% debug %}
+```
+```clojure
+(def render-fn (build-renderer "input-file"))
+
+(render-fn {:number 1}) ;; prints out "{:number 1}" to console   
+```
+
+
+
 ### Escape
 
 If needed, ```Sanitizer``` implementation can be set/overridden via ```escape``` tag.

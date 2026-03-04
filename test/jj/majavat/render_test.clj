@@ -1,6 +1,8 @@
 (ns jj.majavat.render-test
   (:require
+    [clojure.edn :as edn]
     [clojure.java.io :as io]
+    [clojure.pprint :as pprint]
     [clojure.string :as str]
     [clojure.test :refer [are deftest is testing]]
     [jj.majavat.parser :as parser]
@@ -607,10 +609,20 @@ this is a  footer"
                         (->Html))
        )
     "odd" "if/if-is-even-else" {:value 1}
-    "even" "if/if-is-even-else" {:value 2}
-    )
+    "even" "if/if-is-even-else" {:value 2}))
 
+(deftest debug-test
+  (are [ template-path context]
+    (= context
+       (edn/read-string (with-out-str (String. (.readAllBytes ^InputStream (renderer/render (->InputStreamRenderer)
+                                                                                            (parser/parse template-path contentResolver empty-fn-map empty-sanitizers-map)
+                                                                                            context
+                                                                                            (->Html))))))
 
-  )
+       (edn/read-string (with-out-str (renderer/render (->StringRenderer)
+                                                               (parser/parse template-path contentResolver empty-fn-map empty-sanitizers-map)
+                                                               context
+                                                               (->Html)))))
+    "debug/debug" {:value 1}))
 
 

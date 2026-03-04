@@ -412,3 +412,10 @@
           {:line 1
            :type :block-end}]
          (lexer/tokenize "{% if some.condition is even %}yes{% endif %}"))))
+
+(deftest debug-lex
+  (is (= [{:type :block-start}
+          {:type :token/debug}
+          {:line 1
+           :type :block-end}]
+         (lexer/tokenize "{% debug %}"))))

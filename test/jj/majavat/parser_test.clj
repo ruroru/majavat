@@ -258,9 +258,9 @@
     "if/if-not-else"
     [{:type  :text
       :value "hello "}
-     {:branches [[{:condition [:value]
+     {:branches [[{:condition           [:value]
                    :evaluation-function tests/default-test
-                   :negate    true}
+                   :negate              true}
                   [{:type  :text
                     :value "world"}]]]
       :else     [{:type  :text
@@ -482,3 +482,11 @@
       :else     [{:type  :text
                   :value "odd"}]
       :type     :if}]))
+
+(deftest parsed-debug
+  (pprint/pprint (lexer/tokenize "{% debug %}"))
+  (are [expected-ast input-file]
+    (= expected-ast
+       (parser/parse input-file (rcr/->ResourceResolver) empty-fn-map empty-sanitizers-map))
+    [{:type :debug}]
+    "debug/debug"))

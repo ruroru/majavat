@@ -330,6 +330,9 @@
           (= (string/trim current-string) "query-string")
           (recur (rest my-sequence) "" (conj vector {:type :keyword-query-string}) new-line-number)
 
+          (= (string/trim current-string) "debug")
+          (recur (rest my-sequence) "" (conj vector {:type :token/debug}) new-line-number)
+
           (= (string/trim current-string) "if")
           (recur (rest my-sequence) "" (conj vector {:type :keyword-if}) new-line-number)
 

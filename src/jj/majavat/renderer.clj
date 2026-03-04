@@ -1,6 +1,7 @@
 (ns jj.majavat.renderer
   (:require [clojure.edn :as edn]
             [clojure.java.io :as io]
+            [clojure.pprint :as pprint]
             [jj.majavat.renderer.filters :as filters]
             [jj.majavat.renderer.sanitizer :refer [sanitize]])
   (:import (java.io PushbackReader)
@@ -202,6 +203,9 @@
             (when (seq else-body)
               (render-nodes else-body context sb sanitizer))))
 
+      :debug
+      (pprint/pprint context)
+
       nil))
   sb)
 
@@ -298,6 +302,11 @@
                          branches)
                    (when (seq else-body)
                      (render-nodes-to-bytes-vec else-body context charset sanitizer result))))
+             (recur rest-nodes))
+
+           :debug
+           (do
+             (pprint/pprint context)
              (recur rest-nodes))
 
            (recur rest-nodes)))))
@@ -436,6 +445,11 @@
                                           [condition (partial-render-nodes body context sanitizer)])
                                         branches)
                         :else (partial-render-nodes else-body context sanitizer)))))
+
+        :debug
+        (do
+          (pprint/pprint context)
+          acc)
 
         (conj acc node)))
     []
