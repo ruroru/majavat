@@ -32,7 +32,7 @@ Additional options can be passed with
 ```clojure
 (def render-fn (majavat/build-renderer "index.html" {:cache?     false
                                                      :pre-render {:key "value"}
-                                                     :filters    {:reverse (fn [value args]
+                                                     :filters    {:reverse (fn [value]
                                                                              (string/reverse value))}
                                                      :renderer   (->StringRenderer)}))
 
@@ -59,9 +59,7 @@ Rendering `file.txt` with content
 
 ```
 Hello {{ user.name }}!
-; or namespaced value 
 ID is: {{ user.[namespaced/user.id] }}!
-
 ```
 
 ```clojure
@@ -195,7 +193,7 @@ or default value
 ```
 {% for item in items %}
 - {{ item }} is {{ loop.index }} of {{ loop.total }}
-{% else %}
+{% empty %}
 empty list
 {% endfor %}
 ```
@@ -374,10 +372,13 @@ input-file with content
 ```
 
 ### Debug
+
 Currennt context can be printed out with debug tag
+
 ```
 {% debug %}
 ```
+
 ```clojure
 (def render-fn (build-renderer "input-file"))
 
@@ -385,16 +386,18 @@ Currennt context can be printed out with debug tag
 ```
 
 or if you want to write to custom `Writer`
+
 ```
 {% debug writer-imp%}
 ```
+
 and render file
+
 ```clojure
 (def render-fn (build-renderer "input-file"))
 
 (render-fn {:number 1 :writer-imp (java.io.StringWriter.)}) ;; prints out "{:number 1}" to console   
 ```
-
 
 ### Escape
 
