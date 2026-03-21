@@ -1,9 +1,9 @@
 (ns jj.majavat.resolver.resource
   (:require [clojure.java.io :as io]
-            [jj.majavat.resolver :as cr]))
+            [jj.majavat.protocol.resolver :as template-resolver]))
 
 (defrecord ResourceResolver []
-  cr/TemplateResolver
+  template-resolver/TemplateResolver
 
   (open-reader [_ content-path]
     (when-let [resource (io/resource content-path)]

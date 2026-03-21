@@ -1,18 +1,17 @@
 (ns jj.majavat.builder
   (:require [jj.majavat.parser :as parser]
-            [jj.majavat.renderer :as renderer]))
-
-(defprotocol Builder
-  (build-renderer [this file-path template-resolver renderer escape-config]))
+            [jj.majavat.protocol.builder :as builder]
+            [jj.majavat.renderer :as renderers]
+            [jj.majavat.protocol.renderer.render-target :as renderer]))
 
 
 (defrecord CachedBuilder [pre-render-context filters sanitizers]
-  Builder
+  builder/Builder
   (build-renderer [this file-path template-resolver renderer sanitizer]
     (let [pre-render? (not (empty? pre-render-context))]
       (if pre-render?
         (let [template (parser/parse file-path template-resolver filters sanitizers)
-              ast-renderer (renderer/->PartialRenderer)]
+              ast-renderer (renderers/->PartialRenderer)]
           (fn [context]
             (renderer/render renderer (renderer/render ast-renderer template pre-render-context sanitizer) context sanitizer)))
         (let [template (parser/parse file-path template-resolver filters sanitizers)]
@@ -21,7 +20,7 @@
 
 
 (defrecord OneShotBuilder [pre-render-context filters sanitizers]
-  Builder
+  builder/Builder
   (build-renderer [this file-path template-resolver renderer sanitizer]
     (let [pre-render? (not (empty? pre-render-context))]
       (if pre-render?

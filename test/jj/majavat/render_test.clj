@@ -2,16 +2,16 @@
   (:require
     [clojure.edn :as edn]
     [clojure.java.io :as io]
-    [clojure.pprint :as pprint]
     [clojure.string :as str]
     [clojure.test :refer [are deftest is testing]]
     [jj.majavat.parser :as parser]
-    [jj.majavat.renderer :as renderer :refer [->InputStreamRenderer ->PartialRenderer ->StringRenderer]]
+    [jj.majavat.renderer  :refer [->InputStreamRenderer ->PartialRenderer ->StringRenderer]]
+    [jj.majavat.protocol.renderer.render-target :as renderer]
     [jj.majavat.renderer.sanitizer :refer [->Html]]
     [jj.majavat.renderer.tests :as tests]
     [jj.majavat.resolver.fs :as fcr]
     [jj.majavat.resolver.resource :as rcr])
-  (:import (java.io InputStream StringWriter Writer)
+  (:import (java.io InputStream Writer)
            (java.net URI)
            (java.time LocalDate LocalDateTime LocalTime ZoneId ZonedDateTime)
            (java.util UUID)))
@@ -629,7 +629,7 @@ this is a  footer"
 (deftest debug-test
   (are [template-path context-without-writer]
     (let [buffer         (StringBuilder.)
-          capture-writer (proxy [java.io.Writer] []
+          capture-writer (proxy [Writer] []
                            (write
                              ([c]
                               (if (integer? c)

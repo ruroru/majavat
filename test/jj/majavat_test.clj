@@ -6,10 +6,11 @@
             [jj.majavat :as majavat]
             [jj.majavat.parser :as parser]
             [jj.majavat.renderer :refer [->InputStreamRenderer ->StringRenderer]]
+            [jj.majavat.protocol.renderer.sanitizer :as sanitizer]
             [jj.majavat.renderer.sanitizer :refer [->Html ->Json]]
             [mock-clj.core :as mock])
   (:import (java.io InputStream)
-           (jj.majavat.renderer.sanitizer Sanitizer)))
+           ))
 
 (defn- crlf->lf [s]
   (str/replace s "\r\n" "\n"))
@@ -338,7 +339,7 @@
                               nil))))
 
 (defrecord StarSanitizer []
-  Sanitizer
+  sanitizer/Sanitizer
   (sanitize [_ input]
     (when input
       (clojure.string/replace input #"\S" "*"))))

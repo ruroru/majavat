@@ -2,9 +2,9 @@
   (:require [clojure.edn :as edn]
             [clojure.java.io :as io]
             [clojure.pprint :as pprint]
-            [clojure.tools.logging :as log]
             [jj.majavat.renderer.filters :as filters]
-            [jj.majavat.renderer.sanitizer :refer [sanitize]])
+            [jj.majavat.protocol.renderer.sanitizer :refer [sanitize]]
+            [jj.majavat.protocol.renderer.render-target :as render-target])
   (:import (java.io PushbackReader)
            (java.net URLEncoder)
            (java.nio.charset Charset StandardCharsets)
@@ -112,9 +112,9 @@
   Uses :evaluation-function (e.g. tests/is-even?) when present, otherwise plain boolean.
   Applies :negate when set."
   [condition context]
-  (let [eval-fn  (or (:evaluation-function condition) boolean)
-        raw-val  (resolve-path context (:condition condition))
-        result   (boolean (eval-fn raw-val))
+  (let [eval-fn (or (:evaluation-function condition) boolean)
+        raw-val (resolve-path context (:condition condition))
+        result (boolean (eval-fn raw-val))
         matches? (if (:negate condition) (not result) result)]
     matches?))
 
@@ -429,8 +429,8 @@
                                  (fn [acc [condition body]]
                                    (let [condition-val (resolve-path context (:condition condition))]
                                      (if (some? condition-val)
-                                       (let [eval-fn  (or (:evaluation-function condition) boolean)
-                                             result   (boolean (eval-fn condition-val))
+                                       (let [eval-fn (or (:evaluation-function condition) boolean)
+                                             result (boolean (eval-fn condition-val))
                                              matches? (if (:negate condition) (not result) result)]
                                          (if matches?
                                            (reduced {:resolved true :body body})
@@ -481,28 +481,25 @@
     []
     nodes))
 
-(defprotocol RenderTarget
-  (render [this template context sanitizer]))
-
 (defrecord StringRenderer []
-  RenderTarget
+  render-target/RenderTarget
   (render [this template context sanitizer]
     (if-not (map? template)
       (.toString ^StringBuilder (render-nodes template context (StringBuilder.) sanitizer))
-      (render (->StringRenderer) (read-edn-resource "jj/majavat/error-template.edn") template sanitizer))))
+      (render-target/render (->StringRenderer) (read-edn-resource "jj/majavat/error-template.edn") template sanitizer))))
 
 (defrecord InputStreamRenderer []
-  RenderTarget
+  render-target/RenderTarget
   (render [this template context sanitizer]
     (if-not (map? template)
       (let [byte-arrays (render-nodes-to-bytes-vec template context StandardCharsets/UTF_8 sanitizer)]
         (SequentialByteArrayInputStream. byte-arrays))
-      (render (->InputStreamRenderer) (read-edn-resource "jj/majavat/error-template.edn") template sanitizer))))
+      (render-target/render (->InputStreamRenderer) (read-edn-resource "jj/majavat/error-template.edn") template sanitizer))))
 
 (defrecord PartialRenderer []
-  RenderTarget
+  render-target/RenderTarget
   (render [this template context sanitizer]
     (if-not (map? template)
       (-> (partial-render-nodes template context sanitizer)
           optimize-ast)
-      (render (->PartialRenderer) (read-edn-resource "jj/majavat/error-template.edn") template sanitizer))))
+      (render-target/render (->PartialRenderer) (read-edn-resource "jj/majavat/error-template.edn") template sanitizer))))

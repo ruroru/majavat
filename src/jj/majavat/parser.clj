@@ -1,9 +1,9 @@
 (ns jj.majavat.parser
   (:require [jj.majavat.lexer :as lexer]
             [jj.majavat.renderer.filters :as filters]
-            [jj.majavat.renderer.sanitizer]
             [jj.majavat.renderer.tests :as tests]
-            [jj.majavat.resolver :as cr])
+            [jj.majavat.renderer.sanitizer :as sanitizer]
+            [jj.majavat.protocol.resolver :as resolver])
   (:import (clojure.lang ExceptionInfo)
            (java.io PushbackReader StringWriter)
            (java.nio.file Paths)
@@ -36,9 +36,9 @@
    :rest             filters/get-rest
    :str              filters/handle-str})
 
-(def ^:private ^:const sanitizers {:html (jj.majavat.renderer.sanitizer/->Html)
-                                   :json (jj.majavat.renderer.sanitizer/->Json)
-                                   :none (jj.majavat.renderer.sanitizer/->None)})
+(def ^:private ^:const sanitizers {:html (sanitizer/->Html)
+                                   :json (sanitizer/->Json)
+                                   :none (sanitizer/->None)})
 
 (def ^:private evalaution-functions {:default tests/default-test
                                      :even    tests/is-even?
@@ -68,7 +68,7 @@
         (.toString))))
 
 (defn- read-content-as-string [template-resolver content-path]
-  (when-let [reader (PushbackReader. (cr/open-reader template-resolver content-path))]
+  (when-let [reader (PushbackReader. (resolver/open-reader template-resolver content-path))]
     (with-open [r reader]
       (let [writer (StringWriter.)]
         (.transferTo r writer)
@@ -227,7 +227,7 @@
                                     resolved-filename (if current-file-path
                                                         (resolve-path current-file-path filename)
                                                         filename)]
-                                (if (cr/template-exists? template-resolver resolved-filename)
+                                (if (resolver/template-exists? template-resolver resolved-filename)
                                   (let [file-content (read-content-as-string template-resolver resolved-filename)
                                         included-lexed (lexer/tokenize file-content)
                                         included-content (parse-ast included-lexed [] {} false resolved-filename template-resolver filter-map merged-sanitizers [])]
@@ -247,7 +247,7 @@
                                     resolved-file-path (if current-file-path
                                                          (resolve-path current-file-path file-path)
                                                          file-path)]
-                                (if (cr/template-exists? template-resolver resolved-file-path)
+                                (if (resolver/template-exists? template-resolver resolved-file-path)
                                   (let [parent-content-str (read-content-as-string template-resolver resolved-file-path)
                                         parent-lexed (lexer/tokenize parent-content-str)
                                         [block-content remaining-after-block new-tag-stack] (parse-ast remaining-after-file-path [] current-block true current-file-path template-resolver filter-map merged-sanitizers tag-stack)
@@ -539,7 +539,7 @@
 
 (defn parse
   [resource-path template-resolver user-filters user-sanitizers]
-  (if (cr/template-exists? template-resolver resource-path)
+  (if (resolver/template-exists? template-resolver resource-path)
     (let [file-content (read-content-as-string template-resolver resource-path)
           lexed-value (lexer/tokenize file-content)
           filter-map (merge default-filter-map user-filters)

@@ -1,4 +1,4 @@
-(ns jj.majavat.resolver)
+(ns jj.majavat.protocol.resolver)
 
 (defprotocol TemplateResolver
   "Protocol for template resolution and access operations."
