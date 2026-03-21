@@ -13,7 +13,7 @@ Add majavat to dependency list
 ## Usage
 
 ### Rendering templates
-
+#### Direct rendering
 ```clojure
 (:require
   [jj.majavat :as majavat]
@@ -37,6 +37,15 @@ Additional options can be passed with
                                                      :renderer   (->StringRenderer)}))
 
 (render-fn {:user "jj"})
+```
+
+#### Indirect rendering
+It will cache all render-functions for user
+
+```clojure
+(:require [jj.majavat.cache :as majavat-cache])
+
+(majavat-cache/render-html "index.html" {:user "jj"})
 ```
 
 All supported options:
