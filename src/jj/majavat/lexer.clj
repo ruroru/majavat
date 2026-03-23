@@ -143,6 +143,9 @@
             (= "endlet" trimmed-string)
             (recur (rrest my-sequence) "" (conj vector {:type :keyword-end-let} {:type :block-end :line line-number}) new-line-number)
 
+            (= "endmacro" trimmed-string)
+            (recur (rrest my-sequence) "" (conj vector {:type :keyword-end-macro} {:type :block-end :line line-number}) new-line-number)
+
             (= "endescape" trimmed-string)
             (recur (rrest my-sequence) "" (conj vector {:type :keyword-end-escape} {:type :block-end :line line-number}) new-line-number)
 
@@ -192,6 +195,9 @@
             (recur (rrest my-sequence) "" (conj vector {:type :block-end :line line-number}) new-line-number)
 
             (= (:type (last vector)) :token/debug)
+            (recur (rrest my-sequence) "" (conj vector {:type :block-end :line line-number}) new-line-number)
+
+            (= (:type (last vector)) :macro-name)
             (recur (rrest my-sequence) "" (conj vector {:type :block-end :line line-number}) new-line-number)
 
             :else
@@ -363,10 +369,12 @@
           (= (string/trim current-string) "verbatim")
           (recur (rest my-sequence) "" (conj vector {:type :verbatim}) new-line-number)
 
+          (= (string/trim current-string) "macro")
+          (recur (rest my-sequence) "" (conj vector {:type :keyword-macro}) new-line-number)
+
           :else
           (recur (rest my-sequence) (str current-string current-char) vector new-line-number))
 
-        ;; NEW: collect debug target after :token/debug
         (= (:type (last vector)) :token/debug)
         (if (= next-char \%)
           (let [trimmed (string/trim current-string)]
@@ -438,6 +446,14 @@
           (not (= current-char \"))
           (recur (rest my-sequence) (str current-string current-char) vector new-line-number)
 
+          :else
+          (recur (rest my-sequence) (str current-string current-char) vector new-line-number))
+
+        (= (:type (last vector)) :keyword-macro)
+        (cond
+          (and (not (string/blank? current-string))
+               (or (= current-char \ ) (= next-char \%)))
+          (recur (rest my-sequence) (str "" current-char) (conj vector {:type :macro-name :value (keyword (string/trim current-string))}) new-line-number)
           :else
           (recur (rest my-sequence) (str current-string current-char) vector new-line-number))
 

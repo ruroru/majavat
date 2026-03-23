@@ -420,10 +420,27 @@
            :type :block-end}]
          (lexer/tokenize "{% debug %}"))))
 
-(deftest debug-lex1
+(deftest debug-lex-with-output
   (is (= [{:type :block-start}
           {:type :token/debug}
-          {:type :token/debug-target
-           :value :logger-writer}
+          {:type :token/debug-target :value :logger-writer}
           {:line 1 :type :block-end}]
          (lexer/tokenize "{% debug logger-writer %}"))))
+
+
+(deftest macro
+  (is (= [{:type :block-start}
+          {:type :keyword-macro}
+          {:type :macro-name :value :foo}
+          {:line 1 :type :block-end}
+          {:type :text :value "bar"}
+          {:type :opening-bracket}
+          {:type :expression :value [:baz]}
+          {:line 1 :type :closing-bracket}
+          {:type :block-start}
+          {:type :keyword-end-macro}
+          {:line 1 :type :block-end}
+          {:type :opening-bracket}
+          {:type :expression :value [:foo]}
+          {:line 1 :type :closing-bracket}]
+         (lexer/tokenize "{% macro foo %}bar{{baz}}{% endmacro %}{{foo}}"))))

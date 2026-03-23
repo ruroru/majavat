@@ -5,7 +5,7 @@
     [clojure.string :as str]
     [clojure.test :refer [are deftest is testing]]
     [jj.majavat.parser :as parser]
-    [jj.majavat.renderer  :refer [->InputStreamRenderer ->PartialRenderer ->StringRenderer]]
+    [jj.majavat.renderer :refer [->InputStreamRenderer ->PartialRenderer ->StringRenderer]]
     [jj.majavat.protocol.renderer.render-target :as renderer]
     [jj.majavat.renderer.sanitizer :refer [->Html]]
     [jj.majavat.renderer.tests :as tests]
@@ -612,7 +612,7 @@ this is a  footer"
     "even" "if/if-is-even-else" {:value 2}))
 
 (deftest debug-test
-  (are [ template-path context]
+  (are [template-path context]
     (= context
        (edn/read-string (with-out-str (String. (.readAllBytes ^InputStream (renderer/render (->InputStreamRenderer)
                                                                                             (parser/parse template-path contentResolver empty-fn-map empty-sanitizers-map)
@@ -620,15 +620,15 @@ this is a  footer"
                                                                                             (->Html))))))
 
        (edn/read-string (with-out-str (renderer/render (->StringRenderer)
-                                                               (parser/parse template-path contentResolver empty-fn-map empty-sanitizers-map)
-                                                               context
-                                                               (->Html)))))
+                                                       (parser/parse template-path contentResolver empty-fn-map empty-sanitizers-map)
+                                                       context
+                                                       (->Html)))))
     "debug/debug" {:value 1}))
 
 
 (deftest debug-test
   (are [template-path context-without-writer]
-    (let [buffer         (StringBuilder.)
+    (let [buffer (StringBuilder.)
           capture-writer (proxy [Writer] []
                            (write
                              ([c]
@@ -641,14 +641,19 @@ this is a  footer"
                                 (.append buffer ^chars buf off len))))
                            (flush [])
                            (close []))
-          context        (assoc context-without-writer :logger capture-writer)
-          parse          #(parser/parse template-path contentResolver empty-fn-map empty-sanitizers-map)]
+          context (assoc context-without-writer :logger capture-writer)
+          parse #(parser/parse template-path contentResolver empty-fn-map empty-sanitizers-map)]
 
       (renderer/render (->StringRenderer) (parse) context (->Html))
       (let [string-result (edn/read-string (.toString buffer))]
-
-        (= context-without-writer  string-result))
-
-      )
-
+        (= context-without-writer string-result)))
     "debug/debug-with-target" {:value 1}))
+
+(deftest macro
+  (let [expected "barbazbarbaz"
+        input-file "macro/macro"]
+    (is (= expected
+           (renderer/render (->StringRenderer)
+                            (parser/parse input-file contentResolver empty-fn-map empty-sanitizers-map)
+                            {:baz "baz"}
+                            (->Html))))))

@@ -430,6 +430,17 @@ Available values:
 
 or ones provided by :sanitizers
 
+### Macro
+```
+{% macro foo %}foobar{{baz}}{% endmacro %}{{foo}}{{foo}}
+```
+
+```clojure
+(def render-fn (build-renderer "input-file"))
+
+(render-fn {:baz "baz"}) ;; returns "foobarbazfoobarbaz"
+```
+
 ## RenderTarget Protocol
 
 ### render
@@ -534,7 +545,6 @@ loops, and nested data access.
 * Whitespace control using `{%- -%}` and `{{- -}}`
 * i18n support
 * Boolean `and` and `or` expressions
-* Macros
 
 ## License
 

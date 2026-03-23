@@ -488,7 +488,7 @@
   (are [expected-ast input-file]
     (= expected-ast
        (parser/parse input-file (rcr/->ResourceResolver) empty-fn-map empty-sanitizers-map))
-    [{:type :debug
+    [{:type   :debug
       :target :default}]
     "debug/debug"))
 
@@ -500,3 +500,16 @@
     [{:type   :debug
       :target :logger}]
     "debug/debug-with-target"))
+
+
+(deftest macro
+  (pprint/pprint (lexer/tokenize "{% macro foo %}bar{{baz}}{% endmacro %}{{foo}}"))
+
+  (let [expected-ast [{:type :text :value "bar"}
+                      {:type :value-node :value [:baz]}
+                      {:type :text :value "bar"}
+                      {:type :value-node :value [:baz]}]
+        input-file "macro/macro"]
+    (is (= expected-ast (parser/parse input-file (rcr/->ResourceResolver) empty-fn-map empty-sanitizers-map)))
+    )
+  )
