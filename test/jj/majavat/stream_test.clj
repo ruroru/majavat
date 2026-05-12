@@ -19,6 +19,7 @@
 (deftest available-test
   (are [expected input] (= expected (.available ^SequentialByteArrayInputStream (SequentialByteArrayInputStream. (ArrayList. ^List input))))
                         0 []
+                        0 nil
                         1 [(.getBytes "a")]
                         3 [
                            (.getBytes "一")

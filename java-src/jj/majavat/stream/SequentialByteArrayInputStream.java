@@ -4,6 +4,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.util.ArrayList;
+import java.util.Objects;
 
 final public class SequentialByteArrayInputStream extends InputStream {
     private final ArrayList<byte[]> arrays;
@@ -11,7 +12,7 @@ final public class SequentialByteArrayInputStream extends InputStream {
     private int position;
 
     public SequentialByteArrayInputStream(ArrayList<byte[]> arrays) {
-        this.arrays = arrays;
+        this.arrays = Objects.requireNonNullElseGet(arrays, ArrayList::new);
         this.arrayIndex = 0;
         this.position = 0;
     }
