@@ -8,63 +8,51 @@ import java.util.ArrayList;
 final public class SequentialByteArrayInputStream extends InputStream {
     private final ArrayList<byte[]> arrays;
     private int arrayIndex;
-    private byte[] currentArray;
     private int position;
 
     public SequentialByteArrayInputStream(ArrayList<byte[]> arrays) {
         this.arrays = arrays;
         this.arrayIndex = 0;
         this.position = 0;
-        advanceToNextArray();
     }
 
-    private void advanceToNextArray() {
+    private byte[] getCurrentArray() {
         while (arrayIndex < arrays.size()) {
-            currentArray = arrays.get(arrayIndex++);
-            if (currentArray.length > 0) {
-                position = 0;
-                return;
+            byte[] arr = arrays.get(arrayIndex);
+            if (position < arr.length) {
+                return arr;
             }
+            arrayIndex++;
+            position = 0;
         }
-        currentArray = null;
+        return null;
     }
 
     @Override
     public int read() {
-        while (currentArray != null) {
-            if (position < currentArray.length) {
-                return currentArray[position++] & 0xFF;
-            }
-            advanceToNextArray();
+        byte[] current = getCurrentArray();
+        if (current != null) {
+            return current[position++] & 0xFF;
         }
         return -1;
     }
 
     @Override
     public int read(byte[] b, int off, int len) {
-        if (b == null) {
-            throw new NullPointerException();
-        }
-        if (off < 0 || len < 0 || len > b.length - off) {
-            throw new IndexOutOfBoundsException();
-        }
-        if (len == 0) {
-            return 0;
-        }
+        if (b == null) throw new NullPointerException();
+        if (off < 0 || len < 0 || len > b.length - off) throw new IndexOutOfBoundsException();
+        if (len == 0) return 0;
 
         int totalRead = 0;
+        byte[] current;
 
-        while (currentArray != null && totalRead < len) {
-            int available = currentArray.length - position;
+        while (totalRead < len && (current = getCurrentArray()) != null) {
+            int available = current.length - position;
             int toRead = Math.min(available, len - totalRead);
 
-            System.arraycopy(currentArray, position, b, off + totalRead, toRead);
+            System.arraycopy(current, position, b, off + totalRead, toRead);
             position += toRead;
             totalRead += toRead;
-
-            if (position >= currentArray.length) {
-                advanceToNextArray();
-            }
         }
 
         return totalRead > 0 ? totalRead : -1;
@@ -73,34 +61,26 @@ final public class SequentialByteArrayInputStream extends InputStream {
     @Override
     public long transferTo(OutputStream out) throws IOException {
         long transferred = 0;
+        byte[] current;
 
-        if (currentArray != null && position < currentArray.length) {
-            int remaining = currentArray.length - position;
-            out.write(currentArray, position, remaining);
+        while ((current = getCurrentArray()) != null) {
+            int remaining = current.length - position;
+            out.write(current, position, remaining);
             transferred += remaining;
+
+            position += remaining;
         }
 
-        while (arrayIndex < arrays.size()) {
-            byte[] array = arrays.get(arrayIndex++);
-            if (array.length > 0) {
-                out.write(array, 0, array.length);
-                transferred += array.length;
-            }
-        }
-
-        currentArray = null;
         return transferred;
     }
 
     @Override
     public int available() {
-        if (currentArray == null) {
-            return 0;
-        }
+        byte[] current = getCurrentArray();
+        if (current == null) return 0;
 
-        long total = currentArray.length - position;
-
-        for (int i = arrayIndex; i < arrays.size(); i++) {
+        long total = current.length - position;
+        for (int i = arrayIndex + 1; i < arrays.size(); i++) {
             total += arrays.get(i).length;
         }
 
@@ -108,27 +88,19 @@ final public class SequentialByteArrayInputStream extends InputStream {
     }
 
     @Override
-    public void close() {
-        currentArray = null;
-        position = 0;
-        arrayIndex = arrays.size();
-    }
-
-    @Override
     public long skip(long n) {
-        if (n <= 0) {
-            return 0;
-        }
+        if (n <= 0) return 0;
 
         long totalSkipped = 0;
+        byte[] current;
 
-        while (currentArray != null && totalSkipped < n) {
-            int available = currentArray.length - position;
+        while (totalSkipped < n && (current = getCurrentArray()) != null) {
+            int available = current.length - position;
             long remaining = n - totalSkipped;
 
             if (remaining >= available) {
                 totalSkipped += available;
-                advanceToNextArray();
+                position += available;
             } else {
                 position += (int) remaining;
                 totalSkipped = n;
@@ -136,5 +108,12 @@ final public class SequentialByteArrayInputStream extends InputStream {
         }
 
         return totalSkipped;
+    }
+
+    @Override
+    public void close() throws IOException {
+        arrayIndex = arrays.size();
+        super.close();
+        position = 0;
     }
 }
