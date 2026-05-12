@@ -1,8 +1,6 @@
 (ns jj.majavat.renderer.sanitizer
   (:require [jj.majavat.protocol.renderer.sanitizer :as sanitizer]))
 
-(def ^:private ^:const escape-growth-factor 1.5)
-
 (defn- needs-json-escaping? [^String s len]
   (loop [i 0]
     (if (< i len)
@@ -37,7 +35,7 @@
       (.toString sb))))
 
 (defn- escape-html [s len]
-  (escape-html-sb s len (StringBuilder. (int (* len escape-growth-factor)))))
+  (escape-html-sb s len (StringBuilder. (^[int int] Math/multiplyExact len 2))))
 
 (defrecord Html []
   sanitizer/Sanitizer
@@ -67,7 +65,7 @@
       (.toString ^StringBuilder sb))))
 
 (defn- escape-json [s len]
-  (escape-json-sb s len (StringBuilder. (int (* len escape-growth-factor)))))
+  (escape-json-sb s len (StringBuilder. (int (* len (^[int int] Math/multiplyExact len 2))))))
 
 (defrecord Json []
   sanitizer/Sanitizer
