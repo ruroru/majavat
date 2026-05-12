@@ -65,7 +65,7 @@
       (.toString ^StringBuilder sb))))
 
 (defn- escape-json [s len]
-  (escape-json-sb s len (StringBuilder. (int (* len (^[int int] Math/multiplyExact len 2))))))
+  (escape-json-sb s len (StringBuilder. (^[int int] Math/multiplyExact len 2))))
 
 (defrecord Json []
   sanitizer/Sanitizer

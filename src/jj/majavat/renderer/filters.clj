@@ -30,47 +30,33 @@
 (defn upper-roman [v]
   (when v (str/replace v roman-regex str/upper-case)))
 
+(defn- format-unit [value unit]
+  (if (== (mod value 1) 0)
+    (str (int value) " " unit)
+    (str (format "%.1f" value) " " unit)))
+
 (defn file-size
   [bytes]
   (when (number? bytes)
-    (when bytes
-      (when (number? bytes)
-        (let [abs-bytes (Math/abs (double bytes))]
-          (cond
-            (< abs-bytes 1024)
-            (if (== bytes 1)
-              "1 byte"
-              (str (int bytes) " bytes"))
+    (let [abs-bytes (Math/abs (double bytes))]
+      (cond
+        (< abs-bytes 1024)
+        (if (== bytes 1) "1 byte" (str (int bytes) " bytes"))
 
-            (< abs-bytes (* 1024 1024))
-            (let [kb (/ bytes 1024.0)]
-              (if (== (mod kb 1) 0)
-                (str (int kb) " KB")
-                (str (format "%.1f" kb) " KB")))
+        (< abs-bytes (* 1024 1024))
+        (format-unit (/ bytes 1024.0) "KB")
 
-            (< abs-bytes (* 1024 1024 1024))
-            (let [mb (/ bytes (* 1024.0 1024))]
-              (if (== (mod mb 1) 0)
-                (str (int mb) " MB")
-                (str (format "%.1f" mb) " MB")))
+        (< abs-bytes (* 1024 1024 1024))
+        (format-unit (/ bytes (* 1024.0 1024)) "MB")
 
-            (< abs-bytes (* 1024 1024 1024 1024))
-            (let [gb (/ bytes (* 1024.0 1024 1024))]
-              (if (== (mod gb 1) 0)
-                (str (int gb) " GB")
-                (str (format "%.1f" gb) " GB")))
+        (< abs-bytes (* 1024 1024 1024 1024))
+        (format-unit (/ bytes (* 1024.0 1024 1024)) "GB")
 
-            (< abs-bytes (* 1024 1024 1024 1024 1024))
-            (let [tb (/ bytes (* 1024.0 1024 1024 1024))]
-              (if (== (mod tb 1) 0)
-                (str (int tb) " TB")
-                (str (format "%.1f" tb) " TB")))
+        (< abs-bytes (* 1024 1024 1024 1024 1024))
+        (format-unit (/ bytes (* 1024.0 1024 1024 1024)) "TB")
 
-            :else
-            (let [pb (/ bytes (* 1024.0 1024 1024 1024 1024))]
-              (if (== (mod pb 1) 0)
-                (str (int pb) " PB")
-                (str (format "%.1f" pb) " PB")))))))))
+        :else
+        (format-unit (/ bytes (* 1024.0 1024 1024 1024 1024)) "PB")))))
 
 (defn as-long [s]
   (try
