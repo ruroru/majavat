@@ -2,10 +2,11 @@
   (:require [clojure.test :refer :all])
   (:import
     (java.io ByteArrayOutputStream)
+    (java.util ArrayList List)
     (jj.majavat.stream SequentialByteArrayInputStream)))
 
 (deftest read-all-bytes-test
-  (are [expected input] (= expected (String. (.readAllBytes (SequentialByteArrayInputStream. input))))
+  (are [expected input] (= expected (String. (.readAllBytes (SequentialByteArrayInputStream. (ArrayList. ^List input)))))
                         "" []
                         "a" [(.getBytes "a")]
                         "一二三" [
@@ -16,7 +17,7 @@
 
 
 (deftest available-test
-  (are [expected input] (= expected (.available ^SequentialByteArrayInputStream (SequentialByteArrayInputStream. input)))
+  (are [expected input] (= expected (.available ^SequentialByteArrayInputStream (SequentialByteArrayInputStream. (ArrayList. ^List input))))
                         0 []
                         1 [(.getBytes "a")]
                         3 [
@@ -26,14 +27,14 @@
                            ]))
 
 (deftest read-single-byte-test
-  (are [expected input] (= expected (.read (SequentialByteArrayInputStream. input)))
+  (are [expected input] (= expected (.read (SequentialByteArrayInputStream. (ArrayList. ^List input))))
                         -1 []
                         97 [(.getBytes "a")]
                         228 [(.getBytes "一")]))
 
 (deftest read-byte-array-test
   (let [buf (byte-array 10)]
-    (are [expected input] (let [stream (SequentialByteArrayInputStream. input)
+    (are [expected input] (let [stream (SequentialByteArrayInputStream. (ArrayList. ^List input))
                                 n (.read stream buf)]
                             (= expected n))
                           -1 []
@@ -53,7 +54,7 @@
 
 (deftest read-with-offset-test
   (let [buf (byte-array 10)]
-    (are [expected input] (let [stream (SequentialByteArrayInputStream. input)
+    (are [expected input] (let [stream (SequentialByteArrayInputStream. (ArrayList. ^List input))
                                 n (.read stream buf 2 5)]
                             (= expected n))
                           -1 []
@@ -64,7 +65,7 @@
 
 
 (deftest read-after-close-test
-  (are [input] (let [stream (SequentialByteArrayInputStream. input)]
+  (are [input] (let [stream (SequentialByteArrayInputStream. (ArrayList. ^List input))]
                  (.close stream)
                  (= -1 (.read stream)))
                []
@@ -72,7 +73,7 @@
                [(.getBytes "一")]))
 
 (deftest multiple-reads-test
-  (are [expected input] (let [stream (SequentialByteArrayInputStream. input)
+  (are [expected input] (let [stream (SequentialByteArrayInputStream. (ArrayList. ^List input))
                               first (.read stream)
                               second (.read stream)
                               third (.read stream)]
@@ -82,7 +83,7 @@
                         [228 184 128] [(.getBytes "一")]))
 
 (deftest transfer-to-test
-  (are [expected input] (let [stream (SequentialByteArrayInputStream. input)
+  (are [expected input] (let [stream (SequentialByteArrayInputStream. (ArrayList. ^List input))
                               out (ByteArrayOutputStream.)]
                           (.transferTo stream out)
                           (= expected (String. (.toByteArray out))))
@@ -136,3 +137,45 @@
                                             (.getBytes "r")
                                             (.getBytes "t")
                                             (.getBytes "s")]))
+
+(deftest skip-test
+  (testing "Basic skipping logic"
+    (are [expected-skip expected-remaining input n]
+      (let [stream (SequentialByteArrayInputStream. (ArrayList. ^List input))
+            actual-skip (.skip stream n)
+            remaining (String. (.readAllBytes stream))]
+        (and (= expected-skip actual-skip)
+             (= expected-remaining remaining)))
+
+      0 "abc" [(.getBytes "abc")] 0
+      2 "c" [(.getBytes "abc")] 2
+      3 "" [(.getBytes "abc")] 5
+      3 "def" [(.getBytes "abc") (.getBytes "def")] 3
+      4 "ef" [(.getBytes "abc") (.getBytes "def")] 4
+      0 "" [] 10))
+
+  (testing "Negative skip"
+    (let [stream (SequentialByteArrayInputStream. (ArrayList. [(.getBytes "abc")]))]
+      (is (= 0 (.skip stream -1)) "Negative skip should return 0"))))
+
+(deftest available-test
+  (testing "Initial available count"
+    (are [expected input] (= expected (.available ^SequentialByteArrayInputStream (SequentialByteArrayInputStream. input)))
+                          0 (ArrayList.)
+                          1 (ArrayList. [(.getBytes "a")])
+                          6 (ArrayList. [(.getBytes "one") (.getBytes "two")])
+                          ))
+
+  (testing "Available count decreases as we read"
+    (let [stream (SequentialByteArrayInputStream. (ArrayList. [(.getBytes "abc") (.getBytes "de")]))]
+      (is (= 5 (.available stream)))
+      (.read stream)
+      (is (= 4 (.available stream)))
+      (.read stream)
+      (.read stream)
+      (is (= 2 (.available stream)))))
+
+  (testing "Available after close"
+    (let [stream (SequentialByteArrayInputStream. (ArrayList. [(.getBytes "abc")]))]
+      (.close stream)
+      (is (= 0 (.available stream))))))

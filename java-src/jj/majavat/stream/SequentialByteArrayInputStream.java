@@ -3,15 +3,15 @@ package jj.majavat.stream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
-import java.util.List;
+import java.util.ArrayList;
 
 final public class SequentialByteArrayInputStream extends InputStream {
-    private final List<byte[]> arrays;
+    private final ArrayList<byte[]> arrays;
     private int arrayIndex;
     private byte[] currentArray;
     private int position;
 
-    public SequentialByteArrayInputStream(List<byte[]> arrays) {
+    public SequentialByteArrayInputStream(ArrayList<byte[]> arrays) {
         this.arrays = arrays;
         this.arrayIndex = 0;
         this.position = 0;
@@ -94,7 +94,17 @@ final public class SequentialByteArrayInputStream extends InputStream {
 
     @Override
     public int available() {
-        return (currentArray == null) ? 0 : currentArray.length - position;
+        if (currentArray == null) {
+            return 0;
+        }
+
+        long total = currentArray.length - position;
+
+        for (int i = arrayIndex; i < arrays.size(); i++) {
+            total += arrays.get(i).length;
+        }
+
+        return (total > Integer.MAX_VALUE) ? Integer.MAX_VALUE : (int) total;
     }
 
     @Override
