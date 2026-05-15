@@ -22,7 +22,7 @@
                          :dependencies   [[ch.qos.logback/logback-classic "1.5.32"]
                                           [criterium "0.4.6"]
                                           [mock-clj "0.2.1"]
-                                          [org.clojure/math.combinatorics "0.3.0"]]
+                                          [org.clojure/math.combinatorics "0.3.2"]]
                          :resource-paths ["test/resources"]}}
 
   :plugins [[org.clojars.jj/bump "1.0.4"]
