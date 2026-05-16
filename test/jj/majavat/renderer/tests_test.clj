@@ -41,3 +41,24 @@
                false
                2
                4))
+
+(deftest is-empty-returns-true
+  (are [input] (= true (tests/is-empty? input))
+               nil
+               ""
+               []
+               {}
+               #{}
+               '()))
+
+(deftest is-empty-returns-false
+  (are [input] (= false (tests/is-empty? input))
+               "string"
+               :keyword
+               true
+               false
+               0
+               1
+               [1]
+               {:a 1}
+               #{:a}))

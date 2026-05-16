@@ -8,3 +8,10 @@
 
 (defn is-odd? [v]
   (and (integer? v) (odd? v)))
+
+(defn is-empty? [v]
+  (cond
+    (nil? v) true
+    (string? v) (zero? (.length ^String v))
+    (coll? v) (empty? v)
+    :else false))

@@ -42,7 +42,8 @@
 
 (def ^:private evalaution-functions {:default tests/default-test
                                      :even    tests/is-even?
-                                     :odd     tests/is-odd?})
+                                     :odd     tests/is-odd?
+                                     :empty   tests/is-empty?})
 
 (defn- create-filter-fn [{:keys [filter-name args]} filter-map]
   (if-let [f (get filter-map filter-name)]
