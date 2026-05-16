@@ -22,7 +22,7 @@
          resolver (or (:template-resolver opts)
                       @default-resolver)
 
-         filters (get opts :filters {})
+         environment (get opts :environment {})
 
          renderer (or (:renderer opts)
                       (->StringRenderer))
@@ -32,10 +32,9 @@
                               (get opts :pre-render {})
                               (logger/errorf "pre-render is not a map"))
          sanitizer (get opts :sanitizer nil)
-         sanitizers (get opts :sanitizers {})
          builder (if cache?
-                   (builders/->CachedBuilder pre-render-context filters sanitizers)
-                   (builders/->OneShotBuilder pre-render-context filters sanitizers))]
+                   (builders/->CachedBuilder pre-render-context environment)
+                   (builders/->OneShotBuilder pre-render-context environment))]
 
      (builder/build-renderer builder file-path resolver renderer sanitizer))))
 

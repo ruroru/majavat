@@ -118,19 +118,19 @@
     :expected         "html/expected-custom-filter.html"
     :context          context
     :splittable-keys  splittable-keys
-    :opts             {:filters filters}}
+    :opts             {:environment {:filters filters}}}
    {:label            "custom filter + html-escaped"
     :file-path        "html/index-with-custom-filter.html"
     :expected         "html/expected-escaped-custom-filter.html"
     :context          context
     :splittable-keys  splittable-keys
-    :opts             {:filters filters :sanitizer (->Html)}}
+    :opts             {:environment {:filters filters} :sanitizer (->Html)}}
    {:label            "custom sanitizer record"
     :file-path        "html/customfilters/template.html"
     :expected         "html/customfilters/expected.html"
     :context          {:value "a blast"}
     :splittable-keys  [:value]
-    :opts             {:sanitizers {:starnitizer (->StarSanitizer)}}}
+    :opts             {:environment {:sanitizers {:starnitizer (->StarSanitizer)}}}}
    {:label            "parse error"
     :file-path        "html/index-with-error.html"
     :expected         "html/expected-error.html"

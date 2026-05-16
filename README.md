@@ -32,8 +32,8 @@ Additional options can be passed with
 ```clojure
 (def render-fn (majavat/build-renderer "index.html" {:cache?     false
                                                      :pre-render {:key "value"}
-                                                     :filters    {:reverse (fn [value]
-                                                                             (string/reverse value))}
+                                                     :environment {:filters {:reverse (fn [value]
+                                                                                        (string/reverse value))}}
                                                      :renderer   (->StringRenderer)}))
 
 (render-fn {:user "jj"})
@@ -56,9 +56,15 @@ All supported options:
 | `cache?`            | `true`                                  | `true`, `false`                                     |
 | `template-resolver` | [`ResourceResolver`](#templateresolver) | [`TemplateResolver`](#templateresolver)             |
 | `pre-render`        | {}                                      | Map                                                 |
-| `filters`           | {}                                      | Map                                                 |
 | `sanitizer`         | nil                                     | Any Sanitizer implementation                        |
-| `sanitizers`        | {}                                      | Keyword -> Sanitizer Map                            |
+| `environment`       | {}                                      | Map (see [environment options](#environment))       |
+
+#### Environment
+
+| Option       | Default Value | Supported Options        |
+|--------------|---------------|--------------------------|
+| `filters`    | {}            | Map                      |
+| `sanitizers` | {}            | Keyword -> Sanitizer Map |
 
 ### Creating templates
 
@@ -428,7 +434,7 @@ Available values:
 * html
 * json
 
-or ones provided by :sanitizers
+or ones provided under `:environment :sanitizers`
 
 ### Macro
 ```

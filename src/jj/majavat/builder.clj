@@ -5,10 +5,11 @@
             [jj.majavat.protocol.renderer.render-target :as renderer]))
 
 
-(defrecord CachedBuilder [pre-render-context filters sanitizers]
+(defrecord CachedBuilder [pre-render-context environment]
   builder/Builder
   (build-renderer [this file-path template-resolver renderer sanitizer]
-    (let [pre-render? (not (empty? pre-render-context))]
+    (let [{:keys [filters sanitizers]} environment
+          pre-render? (not (empty? pre-render-context))]
       (if pre-render?
         (let [template (parser/parse file-path template-resolver filters sanitizers)
               ast-renderer (renderers/->PartialRenderer)]
@@ -19,10 +20,11 @@
             (renderer/render renderer template context sanitizer)))))))
 
 
-(defrecord OneShotBuilder [pre-render-context filters sanitizers]
+(defrecord OneShotBuilder [pre-render-context environment]
   builder/Builder
   (build-renderer [this file-path template-resolver renderer sanitizer]
-    (let [pre-render? (not (empty? pre-render-context))]
+    (let [{:keys [filters sanitizers]} environment
+          pre-render? (not (empty? pre-render-context))]
       (if pre-render?
         (fn [context]
           (let [template (parser/parse file-path template-resolver filters sanitizers)
