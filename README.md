@@ -534,12 +534,13 @@ Check if template exists at a path.
 Stress test was conducted rendering template 1000000 times using a standard web page with navigation, conditionals,
 loops, and nested data access.
 
-| Engine                | Total Time | Per Render | Throughput | vs Majavat    |
-|-----------------------|------------|------------|------------|---------------|
-| Majavat (String)      | 4.1s       | 4.1μs      | 243,902/s  | 1x (baseline) |
-| Majavat (InputStream) | 5.8s       | 5.8μs      | 172,414/s  | 1.41x slower  |
-| Selmer                | 128.6s     | 128.6μs    | 7,776/s    | 31.37x slower |
-| Hiccup                | 13.7s      | 13.7μs     | 72,993/s   | 3.34x slower  |
+| Engine                | Total Time | Per Render | Throughput | vs Majavat (String) |
+|-----------------------|------------|------------|------------|---------------------|
+| Majavat (String)      | 10.8s      | 10.8μs     | 92,395/s   | 1x (baseline)       |
+| Majavat (InputStream) | 16.3s      | 16.3μs     | 61,272/s   | 1.51x slower        |
+| Hiccup                | 22.1s      | 22.1μs     | 45,318/s   | 2.04x slower        |
+| Selmer                | 87.0s      | 87.0μs     | 11,499/s   | 8.04x slower        |
+
 
 ## Available Extensions
 
