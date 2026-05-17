@@ -405,7 +405,7 @@
     "filter/piped-empty-filter"
     ))
 
-(deftest test-parse-for-loop
+(deftest test-parse-for-only-loop
   (is (= [{:body       [{:type  :text
                          :value "hello "}
                         {:type  :value-node

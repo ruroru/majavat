@@ -337,13 +337,13 @@
     (is (= expected (lexer/tokenize nil)))))
 
 
-(deftest each-test
+(deftest for-only-test
   (is (= [{:type :block-start}
-          {:type :each-token}
+          {:type :keyword-for}
           {:type  :identifier
            :value :world}
-          {:type :each-in-token}
-          {:type  :each-identifier-token
+          {:type :only-token}
+          {:type  :identifier
            :value [:planets]}
           {:line 1
            :type :block-end}
@@ -358,7 +358,7 @@
           {:type :end-each-token}
           {:line 1
            :type :block-end}]
-         (lexer/tokenize "{% each world in planets %} hello {{ world }}{% endeach %}"))))
+         (lexer/tokenize "{%  for world only in planets %} hello {{ world }}{% endfor %}"))))
 
 
 

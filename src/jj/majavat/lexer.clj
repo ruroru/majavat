@@ -132,7 +132,28 @@
         (let [trimmed-string (string/trim current-string)]
           (cond
             (= "endfor" trimmed-string)
-            (recur (rrest my-sequence) "" (conj vector {:type :end-for} {:type :block-end :line line-number}) new-line-number)
+            (let [for-only? (loop [i (dec (count vector))
+                                   depth 0
+                                   saw-only? false]
+                              (if (neg? i)
+                                saw-only?
+                                (let [t (:type (nth vector i))]
+                                  (cond
+                                    (or (= t :end-for) (= t :end-each-token))
+                                    (recur (dec i) (inc depth) saw-only?)
+
+                                    (and (= t :only-token) (zero? depth))
+                                    (recur (dec i) depth true)
+
+                                    (or (= t :keyword-for) (= t :each-token))
+                                    (if (pos? depth)
+                                      (recur (dec i) (dec depth) saw-only?)
+                                      saw-only?)
+
+                                    :else
+                                    (recur (dec i) depth saw-only?)))))
+                  end-type (if for-only? :end-each-token :end-for)]
+              (recur (rrest my-sequence) "" (conj vector {:type end-type} {:type :block-end :line line-number}) new-line-number))
 
             (= "endeach" trimmed-string)
             (recur (rrest my-sequence) "" (conj vector {:type :end-each-token} {:type :block-end :line line-number}) new-line-number)
@@ -208,6 +229,13 @@
              (= current-char \ ))
         (recur (rest my-sequence) "" (conj vector {:type :operator :value :is}) new-line-number)
 
+        (and (= (:type (last vector)) :identifier)
+             (= (string/trim current-string) "only")
+             (= current-char \ )
+             (>= (count vector) 2)
+             (= :keyword-for (:type (nth vector (- (count vector) 2)))))
+        (recur (rest my-sequence) "" (conj vector {:type :only-token}) new-line-number)
+
         (= (:type (last vector)) :operator)
         (if (= next-char \%)
           (let [trimmed (string/trim current-string)]
@@ -221,6 +249,20 @@
 
         (every? identity [(= "in" (string/trim current-string)) (and (map? (last vector)) (= :each-token (:type (last vector))) (:value (last vector)))])
         (recur (rest my-sequence) (str "" current-char) (conj (pop vector) {:type :identifier :value (:value (last vector))} {:type :each-in-token}) new-line-number)
+
+        (= (:type (last vector)) :only-token)
+        (cond
+          (and (= (string/trim current-string) "in") (= current-char \ ))
+          (recur (rest my-sequence) "" vector new-line-number)
+
+          (= next-char \%)
+          (let [current-trimmed (string/trim current-string)]
+            (if (not (.isBlank ^String current-trimmed))
+              (recur (rest my-sequence) "" (conj vector {:type :identifier :value (parse-path current-trimmed)}) new-line-number)
+              (recur (rest my-sequence) "" (conj vector {:type :identifier}) new-line-number)))
+
+          :else
+          (recur (rest my-sequence) (str current-string current-char) vector new-line-number))
 
         (every? identity [(= (:type (last vector)) :keyword-in) (= next-char \%)])
         (let [current-trimmed (string/trim current-string)]

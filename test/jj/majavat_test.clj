@@ -84,9 +84,6 @@
   (.getAbsolutePath (io/file "test/resources")))
 
 (defn- fs-path
-  "Absolute path under test/resources/ when the file actually exists; otherwise
-   pass the original through so FsResolver hits the same 'not-found' branch
-   that ResourceResolver does, with matching path text in the error template."
   [path]
   (when path
     (let [abs (.getAbsolutePath (io/file test-resources-root path))]

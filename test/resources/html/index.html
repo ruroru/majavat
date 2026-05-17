@@ -29,7 +29,7 @@
 {% if posts %}
     <section id="blog-posts">
         <h2>Latest Posts</h2>
-{% for post in posts %}
+{% for post only in posts %}
         <article>
             <h3><a href="{{ post.url }}">{{ post.title }}</a></h3>
             <p>{{ post.excerpt }}</p>

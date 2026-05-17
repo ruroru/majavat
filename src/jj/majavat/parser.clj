@@ -304,22 +304,27 @@
          :keyword-for (let [remaining (rest lexed-list)
                             identifier-token (first remaining)]
                         (if (not (= :block-end (:type identifier-token)))
-                          (let [remaining-after-id (rest remaining)]
-                            (if (= :keyword-in (:type (first remaining-after-id)))
+                          (let [remaining-after-id (rest remaining)
+                                separator-token (first remaining-after-id)
+                                separator-type (:type separator-token)
+                                each-mode? (= :only-token separator-type)]
+                            (if (or (= :keyword-in separator-type) each-mode?)
                               (let [remaining-after-in (rest remaining-after-id)
                                     source-token (first remaining-after-in)
                                     remaining-after-source (rest remaining-after-in)
                                     block-end-token (first remaining-after-source)]
                                 (if (some? (:value source-token))
                                   (let [remaining-after-block-end (rest remaining-after-source)
-                                        new-tag-stack (push-tag tag-stack :for (:line current-item))
+                                        tag-kind (if each-mode? :each :for)
+                                        node-type (if each-mode? :each :for)
+                                        new-tag-stack (push-tag tag-stack tag-kind (:line current-item))
                                         [body remaining-after-body updated-tag-stack] (parse-ast remaining-after-block-end [] current-block true current-file-path template-resolver filter-map merged-sanitizers new-tag-stack macros)
                                         [when-empty remaining-after-empty final-tag-stack] (if (and (seq remaining-after-body)
                                                                                                     (= :keyword-empty (:type (first remaining-after-body))))
                                                                                              (let [remaining-after-empty-kw (rest (rest remaining-after-body))]
                                                                                                (parse-ast remaining-after-empty-kw [] current-block true current-file-path template-resolver filter-map merged-sanitizers updated-tag-stack macros))
                                                                                              [nil remaining-after-body updated-tag-stack])
-                                        for-node (cond-> {:type       :for
+                                        for-node (cond-> {:type       node-type
                                                           :identifier (:value identifier-token)
                                                           :source     (:value source-token)
                                                           :body       body}
@@ -328,9 +333,9 @@
                                   (throw (ex-info (format "error on line %s" (:line block-end-token))
                                                   {:type :syntax-error
                                                    :line (:line block-end-token)}))))
-                              (throw (ex-info (format "error on line %s" (:line (first remaining-after-id)))
+                              (throw (ex-info (format "error on line %s" (:line separator-token))
                                               {:type :syntax-error
-                                               :line (:line (first remaining-after-id))}))))
+                                               :line (:line separator-token)}))))
                           (throw (ex-info (format "error on line %s" (:line identifier-token))
                                           {:type :syntax-error
                                            :line (:line identifier-token)}))))

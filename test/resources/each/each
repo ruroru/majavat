@@ -1,1 +1,1 @@
-{%  each world in planets %}hello {{ world }}{% endeach %}
+{%  for world only in planets %}hello {{ world }}{% endfor %}
