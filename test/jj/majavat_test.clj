@@ -57,7 +57,10 @@
                       :excerpt "Learn how templating engines can streamline your web development workflow."
                       :date    "August 10, 2025"}]
    :about-content   "We are a team of passionate developers dedicated to sharing knowledge about modern web technologies."
-   :current-year    2025})
+   :current-year    2025
+   :empty-list      []
+   :csrf-token      "csrf-abc123"
+   :params          (sorted-map :page 1 :q "hello world")})
 
 (def ^:private renderer-axis
   [{:label "StringRenderer"      :opts {:renderer (->StringRenderer)}}

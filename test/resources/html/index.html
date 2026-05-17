@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+<!DOCTYPE html>{# top-level page template; rendered by render-test #}
 <html lang="en">
 <head>
     <meta charset="UTF-8">
@@ -15,15 +15,32 @@
             <li><a href="{{ item.url }}">{{ item.label }}</a></li>
 {% endfor %}
         </ul>
+        <small>{% each item in nav-items %}{{ item.label }} {% endeach %}</small>
     </nav>
 </header>
+
+{% macro tagline %}powered by majavat{% endmacro %}
 
 <main>
 {% if is-home-page %}
     <section id="home">
         <h2>{{ welcome-heading }}</h2>
-        <p>{{ welcome-message }}</p>
+        <p>{{ welcome-message }} ({{ tagline }})</p>
     </section>
+{% elif posts %}
+    <section id="elif-branch"><p>elif-branch</p></section>
+{% else %}
+    <section id="else-branch"><p>else-branch</p></section>
+{% endif %}
+
+{% if not is-home-page %}
+    <p>not-home content</p>
+{% endif %}
+
+{% if current-year is even %}
+    <p>year-even</p>
+{% else %}
+    <p>year-odd</p>
 {% endif %}
 
 {% if posts %}
@@ -39,10 +56,25 @@
     </section>
 {% endif %}
 
+    <section id="archive">
+{% for x in empty-list %}<p>{{ x }}</p>{% empty %}<p>no archive yet</p>{% endfor %}
+    </section>
+
     <section id="about">
         <h2>About Us</h2>
         <p>{{ about-content }}</p>
+        {% let footer-note = "footer-via-let" %}<small>{{ footer-note }}</small>{% endlet %}
     </section>
+
+    <section id="snippet">
+        <pre>{% verbatim %}{{ literal }}{% endverbatim %}</pre>
+    </section>
+
+    <section id="search">
+        <form action="/search{% query-string params %}">{% csrf-token %}<input type="submit"></form>
+    </section>
+
+    <section id="partial">{% include "../let/let-foo" %}</section>
 </main>
 
 <footer>
