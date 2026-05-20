@@ -65,16 +65,6 @@
            :type     :if}]
          (parser/parse "if-statement.txt" contentResolver empty-fn-map empty-sanitizers-map))))
 
-(deftest if-else-statement (is (= [{:type :text :value "hello "}
-                                   {:when-true  [{:type :text :value "World"}
-                                                 {:type :value-node :value [:location]}]
-                                    :when-false [{:type :text :value "jj"}
-                                                 {:type :value-node :value [:location]}]
-                                    :condition  [:some :condition]
-                                    :type       :if}]
-                                  (parser/parse "if-else-statement.txt" contentResolver empty-fn-map empty-sanitizers-map))))
-
-
 (deftest if-else-statement
   (is (= [{:type  :text
            :value "hello "}
