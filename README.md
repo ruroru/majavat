@@ -61,10 +61,11 @@ All supported options:
 
 #### Environment
 
-| Option       | Default Value | Supported Options        |
-|--------------|---------------|--------------------------|
-| `filters`    | {}            | Map                      |
-| `sanitizers` | {}            | Keyword -> Sanitizer Map |
+| Option       | Default Value | Supported Options                       |
+|--------------|---------------|-----------------------------------------|
+| `filters`    | {}            | Map                                     |
+| `sanitizers` | {}            | Keyword -> Sanitizer Map                |
+| `dictionary` | nil           | Any [`Dictionary`](#dictionary) implementation |
 
 ### Creating templates
 
@@ -436,6 +437,21 @@ Available values:
 
 or ones provided under `:environment :sanitizers`
 
+### Translation
+
+The `trans` tag translates a key using the configured [`Dictionary`](#dictionary). The language is determined by the `:locale` key in the context.
+
+```
+{% trans hello %}
+```
+
+```clojure
+(def render-fn (build-renderer "input-file" {:environment {:dictionary my-dictionary}}))
+
+(render-fn {:locale "fi"}) ;; returns the Finnish translation for :hello
+(render-fn {:locale "en"}) ;; returns the English translation for :hello
+```
+
 ### Macro
 ```
 {% macro foo %}foobar{{baz}}{% endmacro %}{{foo}}{{foo}}
@@ -529,6 +545,43 @@ Check if template exists at a path.
 - **Json** - implementation for Json
 - **None** - Implementation that does not sanitize
 
+## Dictionary
+
+The `Dictionary` protocol provides translation support for templates via the `{% trans %}` tag. The locale is read from the `:locale` key in the rendering context.
+
+### Protocol Methods
+
+#### `translate`
+
+Translates a word for the given language. Returns the translated string, or `nil` if no translation is found.
+
+```clojure
+(translate dictionary locale word)
+```
+
+### Example Implementation
+
+```clojure
+(defrecord MapDictionary [translations]
+  Dictionary
+  (translate [_ language word]
+    (get-in translations [language word])))
+
+(def my-dictionary
+  (->MapDictionary {"en" {:hello "hello" :world "world"}
+                     "fi" {:hello "hei" :world "maailma"}}))
+```
+
+Pass it via the environment when building a renderer:
+
+```clojure
+(def render-fn (build-renderer "input-file" {:environment {:dictionary my-dictionary}}))
+
+(render-fn {:locale "en"}) ;; uses English translations
+(render-fn {:locale "fi"}) ;; uses Finnish translations
+```
+
+
 ## Performance
 
 Stress test was conducted rendering template 1000000 times using a standard web page with navigation, conditionals,
@@ -550,7 +603,6 @@ loops, and nested data access.
 ## TODOS
 
 * Whitespace control using `{%- -%}` and `{{- -}}`
-* i18n support
 * Boolean `and` and `or` expressions
 
 ## License

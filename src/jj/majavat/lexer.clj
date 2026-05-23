@@ -414,7 +414,20 @@
           (= (string/trim current-string) "macro")
           (recur (rest my-sequence) "" (conj vector {:type :keyword-macro}) new-line-number)
 
+          (= (string/trim current-string) "trans")
+          (recur (rest my-sequence) (str "" current-char) (conj vector {:type :token/translation}) new-line-number)
+
           :else
+          (recur (rest my-sequence) (str current-string current-char) vector new-line-number))
+
+        (= (:type (last vector)) :token/translation)
+        (if (= next-char \%)
+          (let [trimmed (string/trim current-string)]
+            (if (string/blank? trimmed)
+              (recur (rest my-sequence) "" vector new-line-number)
+              (recur (rest my-sequence) "" (conj vector {:type  :token/translation-key
+                                                         :value (keyword trimmed)})
+                     new-line-number)))
           (recur (rest my-sequence) (str current-string current-char) vector new-line-number))
 
         (= (:type (last vector)) :token/debug)

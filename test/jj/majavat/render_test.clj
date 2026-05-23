@@ -10,11 +10,13 @@
     [jj.majavat.renderer.sanitizer :refer [->Html]]
     [jj.majavat.renderer.tests :as tests]
     [jj.majavat.resolver.fs :as fcr]
-    [jj.majavat.resolver.resource :as rcr])
+    [jj.majavat.resolver.resource :as rcr]
+    [jj.majavat.protocol.dictionary :as dictionary])
   (:import (java.io InputStream Writer)
            (java.net URI)
            (java.time LocalDate LocalDateTime LocalTime ZoneId ZonedDateTime)
-           (java.util UUID)))
+           (java.util UUID)
+           (jj.majavat.protocol.dictionary Dictionary)))
 
 
 (defn- crlf->lf [s]
@@ -657,3 +659,18 @@ this is a  footer"
                             (parser/parse input-file contentResolver empty-fn-map empty-sanitizers-map)
                             {:baz "baz"}
                             (->Html))))))
+
+(defrecord MockDictionary []
+  Dictionary
+  (translate [_ language word]
+    (get-in {"en" {:hello "hello" :world "world"}
+             "fi" {:hello "hei" :world "maailma"}}
+            [language word])))
+
+(deftest trans-test
+  (let [mock-dictionary (->MockDictionary)
+        template (parser/parse "trans/trans" contentResolver empty-fn-map empty-sanitizers-map mock-dictionary)
+        fi-context {:locale "fi"}
+        en-context {:locale "en"}]
+    (assert-render template en-context "hello")
+    (assert-render template fi-context "hei")))

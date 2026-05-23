@@ -3,7 +3,8 @@
             [jj.majavat.renderer.filters :as filters]
             [jj.majavat.renderer.tests :as tests]
             [jj.majavat.renderer.sanitizer :as sanitizer]
-            [jj.majavat.protocol.resolver :as resolver])
+            [jj.majavat.protocol.resolver :as resolver]
+            [jj.majavat.protocol.dictionary :as dictionary])
   (:import (clojure.lang ExceptionInfo)
            (java.io PushbackReader StringWriter)
            (java.nio.file Paths)
@@ -124,9 +125,9 @@
        (rest remaining-after-condition)])))
 
 (defn- parse-ast
-  ([lexed-list list current-block template-resolver filter-map merged-sanitizers macros]
-   (parse-ast lexed-list list current-block false nil template-resolver filter-map merged-sanitizers [] macros))
-  ([lexed-list list current-block parsing-for-body current-file-path template-resolver filter-map merged-sanitizers tag-stack macros]
+  ([lexed-list list current-block template-resolver filter-map merged-sanitizers macros dictionary]
+   (parse-ast lexed-list list current-block false nil template-resolver filter-map merged-sanitizers [] macros dictionary))
+  ([lexed-list list current-block parsing-for-body current-file-path template-resolver filter-map merged-sanitizers tag-stack macros dictionary]
    (if (empty? lexed-list)
      (if parsing-for-body
        [list lexed-list tag-stack]
@@ -135,7 +136,7 @@
          list))
      (let [current-item (first lexed-list)]
        (case (:type current-item)
-         :text (recur (rest lexed-list) (conj list current-item) current-block parsing-for-body current-file-path template-resolver filter-map merged-sanitizers tag-stack macros)
+         :text (recur (rest lexed-list) (conj list current-item) current-block parsing-for-body current-file-path template-resolver filter-map merged-sanitizers tag-stack macros dictionary)
 
          :expression (let [remaining (rest lexed-list)
                            [filters remaining-after-filters] (loop [remaining remaining
@@ -169,12 +170,12 @@
                                                   (= 1 (count (:value current-item))))
                                          (get @macros (first (:value current-item))))]
                        (if macro-match
-                         (recur remaining-after-filters (into list macro-match) current-block parsing-for-body current-file-path template-resolver filter-map merged-sanitizers tag-stack macros)
-                         (recur remaining-after-filters (conj list value-node) current-block parsing-for-body current-file-path template-resolver filter-map merged-sanitizers tag-stack macros)))
+                         (recur remaining-after-filters (into list macro-match) current-block parsing-for-body current-file-path template-resolver filter-map merged-sanitizers tag-stack macros dictionary)
+                         (recur remaining-after-filters (conj list value-node) current-block parsing-for-body current-file-path template-resolver filter-map merged-sanitizers tag-stack macros dictionary)))
 
-         :opening-bracket (recur (rest lexed-list) list current-block parsing-for-body current-file-path template-resolver filter-map merged-sanitizers tag-stack macros)
+         :opening-bracket (recur (rest lexed-list) list current-block parsing-for-body current-file-path template-resolver filter-map merged-sanitizers tag-stack macros dictionary)
          :closing-bracket (if (not (nil? (:value (last list))))
-                            (recur (rest lexed-list) list current-block parsing-for-body current-file-path template-resolver filter-map merged-sanitizers tag-stack macros)
+                            (recur (rest lexed-list) list current-block parsing-for-body current-file-path template-resolver filter-map merged-sanitizers tag-stack macros dictionary)
                             (throw (ex-info (format "error on line %s" (:line current-item))
                                             {:type :syntax-error
                                              :line (:line current-item)})))
@@ -182,9 +183,9 @@
          :block-start (let [remaining (rest lexed-list)]
                         (if (and (seq remaining) (= :block-end (:type (first remaining))))
                           (let [remaining-after-block-end (rest remaining)]
-                            (recur remaining-after-block-end list current-block parsing-for-body current-file-path template-resolver filter-map merged-sanitizers tag-stack macros))
-                          (recur remaining list current-block parsing-for-body current-file-path template-resolver filter-map merged-sanitizers tag-stack macros)))
-         :block-end (recur (rest lexed-list) list current-block parsing-for-body current-file-path template-resolver filter-map merged-sanitizers tag-stack macros)
+                            (recur remaining-after-block-end list current-block parsing-for-body current-file-path template-resolver filter-map merged-sanitizers tag-stack macros dictionary))
+                          (recur remaining list current-block parsing-for-body current-file-path template-resolver filter-map merged-sanitizers tag-stack macros dictionary)))
+         :block-end (recur (rest lexed-list) list current-block parsing-for-body current-file-path template-resolver filter-map merged-sanitizers tag-stack macros dictionary)
 
          :now (let [remaining (rest lexed-list)
                     [now-node final-remaining] (loop [remaining remaining
@@ -202,12 +203,12 @@
                                                      [{:type      :keyword-now
                                                        :format    format
                                                        :time-zone timezone} remaining])))]
-                (recur final-remaining (conj list now-node) current-block parsing-for-body current-file-path template-resolver filter-map merged-sanitizers tag-stack macros))
+                (recur final-remaining (conj list now-node) current-block parsing-for-body current-file-path template-resolver filter-map merged-sanitizers tag-stack macros dictionary))
 
          :keyword-csrf-token (recur (rest lexed-list) (apply conj list '({:type :text :value "<input type=\"hidden\" name=\"csrf_token\" value=\""}
                                                                          {:type :value-node :value [:csrf-token]}
                                                                          {:type :text :value "\">"}))
-                                    current-block parsing-for-body current-file-path template-resolver filter-map merged-sanitizers tag-stack macros)
+                                    current-block parsing-for-body current-file-path template-resolver filter-map merged-sanitizers tag-stack macros dictionary)
 
          :keyword-query-string (let [remaining (rest lexed-list)
                                      query-string-decl-token (first remaining)
@@ -218,7 +219,7 @@
                                        (let [remaining-after-block-end (rest remaining-after-decl)
                                              query-string-node {:type  :query-string
                                                                 :value (:variable-value query-string-decl-token)}]
-                                         (recur remaining-after-block-end (conj list query-string-node) current-block parsing-for-body current-file-path template-resolver filter-map merged-sanitizers tag-stack macros))
+                                         (recur remaining-after-block-end (conj list query-string-node) current-block parsing-for-body current-file-path template-resolver filter-map merged-sanitizers tag-stack macros dictionary))
                                        (throw (ex-info (format "error on line %s" (:line (or block-end-token query-string-decl-token)))
                                                        {:type :syntax-error
                                                         :line (:line (or block-end-token query-string-decl-token))}))))
@@ -237,8 +238,8 @@
                                 (if (resolver/template-exists? template-resolver resolved-filename)
                                   (let [file-content (read-content-as-string template-resolver resolved-filename)
                                         included-lexed (lexer/tokenize file-content)
-                                        included-content (parse-ast included-lexed [] {} false resolved-filename template-resolver filter-map merged-sanitizers [] macros)]
-                                    (recur remaining-after-filename (into list included-content) current-block parsing-for-body current-file-path template-resolver filter-map merged-sanitizers tag-stack macros))
+                                        included-content (parse-ast included-lexed [] {} false resolved-filename template-resolver filter-map merged-sanitizers [] macros dictionary)]
+                                    (recur remaining-after-filename (into list included-content) current-block parsing-for-body current-file-path template-resolver filter-map merged-sanitizers tag-stack macros dictionary))
                                   (throw (ex-info (format "Template not found: %s" filename)
                                                   {:type     :template-not-found-error
                                                    :template filename}))))
@@ -257,9 +258,9 @@
                                 (if (resolver/template-exists? template-resolver resolved-file-path)
                                   (let [parent-content-str (read-content-as-string template-resolver resolved-file-path)
                                         parent-lexed (lexer/tokenize parent-content-str)
-                                        [block-content remaining-after-block new-tag-stack] (parse-ast remaining-after-file-path [] current-block true current-file-path template-resolver filter-map merged-sanitizers tag-stack macros)
-                                        parent-content (parse-ast parent-lexed [] {:content block-content} false resolved-file-path template-resolver filter-map merged-sanitizers [] macros)]
-                                    (recur remaining-after-block (into parent-content list) current-block parsing-for-body current-file-path template-resolver filter-map merged-sanitizers new-tag-stack macros))
+                                        [block-content remaining-after-block new-tag-stack] (parse-ast remaining-after-file-path [] current-block true current-file-path template-resolver filter-map merged-sanitizers tag-stack macros dictionary)
+                                        parent-content (parse-ast parent-lexed [] {:content block-content} false resolved-file-path template-resolver filter-map merged-sanitizers [] macros dictionary)]
+                                    (recur remaining-after-block (into parent-content list) current-block parsing-for-body current-file-path template-resolver filter-map merged-sanitizers new-tag-stack macros dictionary))
                                   (throw (ex-info (format "Template not found: %s" file-path)
                                                   {:type     :template-not-found-error
                                                    :template file-path}))))
@@ -273,9 +274,9 @@
                               remaining-after-block-name (rest remaining)
                               replacement-content (get current-block block-name)]
                           (if replacement-content
-                            (recur remaining-after-block-name (into list replacement-content) current-block parsing-for-body current-file-path template-resolver filter-map merged-sanitizers tag-stack macros)
-                            (let [[block-content remaining-after-block _] (parse-ast remaining-after-block-name [] current-block true current-file-path template-resolver filter-map merged-sanitizers tag-stack macros)]
-                              (recur remaining-after-block (into list block-content) current-block parsing-for-body current-file-path template-resolver filter-map merged-sanitizers tag-stack macros))))
+                            (recur remaining-after-block-name (into list replacement-content) current-block parsing-for-body current-file-path template-resolver filter-map merged-sanitizers tag-stack macros dictionary)
+                            (let [[block-content remaining-after-block _] (parse-ast remaining-after-block-name [] current-block true current-file-path template-resolver filter-map merged-sanitizers tag-stack macros dictionary)]
+                              (recur remaining-after-block (into list block-content) current-block parsing-for-body current-file-path template-resolver filter-map merged-sanitizers tag-stack macros dictionary))))
 
          :keyword-let (let [remaining (rest lexed-list)
                             var-decl-token (first remaining)]
@@ -285,7 +286,7 @@
                             (if (and block-end-token (= :block-end (:type block-end-token)))
                               (let [remaining-after-block-end (rest remaining-after-var-decl)
                                     new-tag-stack (push-tag tag-stack :let (:line current-item))
-                                    [body remaining-after-body updated-tag-stack] (parse-ast remaining-after-block-end [] current-block true current-file-path template-resolver filter-map merged-sanitizers new-tag-stack macros)
+                                    [body remaining-after-body updated-tag-stack] (parse-ast remaining-after-block-end [] current-block true current-file-path template-resolver filter-map merged-sanitizers new-tag-stack macros dictionary)
                                     node-type (if (string? (:variable-value var-decl-token))
                                                 :variable-declaration
                                                 :variable-assignment)
@@ -293,7 +294,7 @@
                                               :variable-name  (:variable-name var-decl-token)
                                               :variable-value (:variable-value var-decl-token)
                                               :body           body}]
-                                (recur remaining-after-body (conj list let-node) current-block parsing-for-body current-file-path template-resolver filter-map merged-sanitizers updated-tag-stack macros))
+                                (recur remaining-after-body (conj list let-node) current-block parsing-for-body current-file-path template-resolver filter-map merged-sanitizers updated-tag-stack macros dictionary))
                               (throw (ex-info (format "error on line %s" (:line (or block-end-token var-decl-token)))
                                               {:type :syntax-error
                                                :line (:line (or block-end-token var-decl-token))}))))
@@ -318,18 +319,18 @@
                                         tag-kind (if each-mode? :each :for)
                                         node-type (if each-mode? :each :for)
                                         new-tag-stack (push-tag tag-stack tag-kind (:line current-item))
-                                        [body remaining-after-body updated-tag-stack] (parse-ast remaining-after-block-end [] current-block true current-file-path template-resolver filter-map merged-sanitizers new-tag-stack macros)
+                                        [body remaining-after-body updated-tag-stack] (parse-ast remaining-after-block-end [] current-block true current-file-path template-resolver filter-map merged-sanitizers new-tag-stack macros dictionary)
                                         [when-empty remaining-after-empty final-tag-stack] (if (and (seq remaining-after-body)
                                                                                                     (= :keyword-empty (:type (first remaining-after-body))))
                                                                                              (let [remaining-after-empty-kw (rest (rest remaining-after-body))]
-                                                                                               (parse-ast remaining-after-empty-kw [] current-block true current-file-path template-resolver filter-map merged-sanitizers updated-tag-stack macros))
+                                                                                               (parse-ast remaining-after-empty-kw [] current-block true current-file-path template-resolver filter-map merged-sanitizers updated-tag-stack macros dictionary))
                                                                                              [nil remaining-after-body updated-tag-stack])
                                         for-node (cond-> {:type       node-type
                                                           :identifier (:value identifier-token)
                                                           :source     (:value source-token)
                                                           :body       body}
                                                          when-empty (assoc :when-empty when-empty))]
-                                    (recur remaining-after-empty (conj list for-node) current-block parsing-for-body current-file-path template-resolver filter-map merged-sanitizers final-tag-stack macros))
+                                    (recur remaining-after-empty (conj list for-node) current-block parsing-for-body current-file-path template-resolver filter-map merged-sanitizers final-tag-stack macros dictionary))
                                   (throw (ex-info (format "error on line %s" (:line block-end-token))
                                                   {:type :syntax-error
                                                    :line (:line block-end-token)}))))
@@ -352,18 +353,18 @@
                                (if (some? (:value source-token))
                                  (let [remaining-after-block-end (rest remaining-after-source)
                                        new-tag-stack (push-tag tag-stack :each (:line current-item))
-                                       [body remaining-after-body updated-tag-stack] (parse-ast remaining-after-block-end [] current-block true current-file-path template-resolver filter-map merged-sanitizers new-tag-stack macros)
+                                       [body remaining-after-body updated-tag-stack] (parse-ast remaining-after-block-end [] current-block true current-file-path template-resolver filter-map merged-sanitizers new-tag-stack macros dictionary)
                                        [when-empty remaining-after-empty final-tag-stack] (if (and (seq remaining-after-body)
                                                                                                    (= :keyword-empty (:type (first remaining-after-body))))
                                                                                             (let [remaining-after-empty-kw (rest (rest remaining-after-body))]
-                                                                                              (parse-ast remaining-after-empty-kw [] current-block true current-file-path template-resolver filter-map merged-sanitizers updated-tag-stack macros))
+                                                                                              (parse-ast remaining-after-empty-kw [] current-block true current-file-path template-resolver filter-map merged-sanitizers updated-tag-stack macros dictionary))
                                                                                             [nil remaining-after-body updated-tag-stack])
                                        each-node (cond-> {:type       :each
                                                           :identifier (:value identifier-token)
                                                           :source     (:value source-token)
                                                           :body       body}
                                                          when-empty (assoc :when-empty when-empty))]
-                                   (recur remaining-after-empty (conj list each-node) current-block parsing-for-body current-file-path template-resolver filter-map merged-sanitizers final-tag-stack macros))
+                                   (recur remaining-after-empty (conj list each-node) current-block parsing-for-body current-file-path template-resolver filter-map merged-sanitizers final-tag-stack macros dictionary))
                                  (throw (ex-info (format "error on line %s" (:line block-end-token))
                                                  {:type :syntax-error
                                                   :line (:line block-end-token)}))))
@@ -386,7 +387,7 @@
                                                          :evaluation-function eval-fn}
                                       remaining remaining-after-block-end
                                       ts new-tag-stack]
-                                 (let [[body remaining-after-body updated-ts] (parse-ast remaining [] current-block true current-file-path template-resolver filter-map merged-sanitizers ts macros)
+                                 (let [[body remaining-after-body updated-ts] (parse-ast remaining [] current-block true current-file-path template-resolver filter-map merged-sanitizers ts macros dictionary)
                                        next-token (first remaining-after-body)]
                                    (cond
                                      (and next-token (or (= :keyword-elif (:type next-token))
@@ -406,7 +407,7 @@
 
                                      (and next-token (= :keyword-else (:type next-token)))
                                      (let [remaining-after-else (rest (rest remaining-after-body))
-                                           [else-body remaining-after-else-body final-ts] (parse-ast remaining-after-else [] current-block true current-file-path template-resolver filter-map merged-sanitizers updated-ts macros)]
+                                           [else-body remaining-after-else-body final-ts] (parse-ast remaining-after-else [] current-block true current-file-path template-resolver filter-map merged-sanitizers updated-ts macros dictionary)]
                                        [(conj branches [current-condition body]) else-body remaining-after-else-body final-ts])
 
                                      :else
@@ -414,7 +415,7 @@
                                if-node {:type     :if
                                         :branches branches
                                         :else     else-body}]
-                           (recur remaining-final (conj list if-node) current-block parsing-for-body current-file-path template-resolver filter-map merged-sanitizers final-tag-stack macros))
+                           (recur remaining-final (conj list if-node) current-block parsing-for-body current-file-path template-resolver filter-map merged-sanitizers final-tag-stack macros dictionary))
                          (throw (ex-info (format "error on line %s" (:line condition-token))
                                          {:type :syntax-error
                                           :line (:line condition-token)}))))
@@ -432,7 +433,7 @@
                                                              :evaluation-function (:default evalaution-functions)}
                                           remaining remaining-after-block-end
                                           ts new-tag-stack]
-                                     (let [[body remaining-after-body updated-ts] (parse-ast remaining [] current-block true current-file-path template-resolver filter-map merged-sanitizers ts macros)
+                                     (let [[body remaining-after-body updated-ts] (parse-ast remaining [] current-block true current-file-path template-resolver filter-map merged-sanitizers ts macros dictionary)
                                            next-token (first remaining-after-body)]
                                        (cond
                                          (and next-token (or (= :keyword-elif (:type next-token))
@@ -452,7 +453,7 @@
 
                                          (and next-token (= :keyword-else (:type next-token)))
                                          (let [remaining-after-else (rest (rest remaining-after-body))
-                                               [else-body remaining-after-else-body final-ts] (parse-ast remaining-after-else [] current-block true current-file-path template-resolver filter-map merged-sanitizers updated-ts macros)]
+                                               [else-body remaining-after-else-body final-ts] (parse-ast remaining-after-else [] current-block true current-file-path template-resolver filter-map merged-sanitizers updated-ts macros dictionary)]
                                            [(conj branches [current-condition body]) else-body remaining-after-else-body final-ts])
 
                                          :else
@@ -460,7 +461,7 @@
                                    if-node {:type     :if
                                             :branches branches
                                             :else     else-body}]
-                               (recur remaining-final (conj list if-node) current-block parsing-for-body current-file-path template-resolver filter-map merged-sanitizers final-tag-stack macros))
+                               (recur remaining-final (conj list if-node) current-block parsing-for-body current-file-path template-resolver filter-map merged-sanitizers final-tag-stack macros dictionary))
                              (throw (ex-info (format "error on line %s" (:line condition-token))
                                              {:type :syntax-error
                                               :line (:line condition-token)}))))
@@ -468,7 +469,7 @@
          :end-for (if parsing-for-body
                     (let [updated-tag-stack (pop-tag tag-stack :for (or (:line current-item) 1))]
                       [list (rest lexed-list) updated-tag-stack])
-                    (recur (rest lexed-list) list current-block parsing-for-body current-file-path template-resolver filter-map merged-sanitizers tag-stack macros))
+                    (recur (rest lexed-list) list current-block parsing-for-body current-file-path template-resolver filter-map merged-sanitizers tag-stack macros dictionary))
 
          :keyword-escape (let [remaining (rest lexed-list)
                                name-token (first remaining)
@@ -478,11 +479,11 @@
                                     (= :block-end (:type block-end-token)))
                              (let [remaining-after-block-end (rest remaining-after-name)
                                    new-tag-stack (push-tag tag-stack :sanitizer (:line current-item))
-                                   [body remaining-after-body updated-tag-stack] (parse-ast remaining-after-block-end [] current-block true current-file-path template-resolver filter-map merged-sanitizers new-tag-stack macros)
+                                   [body remaining-after-body updated-tag-stack] (parse-ast remaining-after-block-end [] current-block true current-file-path template-resolver filter-map merged-sanitizers new-tag-stack macros dictionary)
                                    sanitizer-node {:type      :escape-block
                                                    :sanitizer (get merged-sanitizers (:value name-token))
                                                    :body      body}]
-                               (recur remaining-after-body (conj list sanitizer-node) current-block parsing-for-body current-file-path template-resolver filter-map merged-sanitizers updated-tag-stack macros))
+                               (recur remaining-after-body (conj list sanitizer-node) current-block parsing-for-body current-file-path template-resolver filter-map merged-sanitizers updated-tag-stack macros dictionary))
                              (throw (ex-info (format "error on line %s" (:line (or block-end-token name-token current-item)))
                                              {:type :syntax-error
                                               :line (:line (or block-end-token name-token current-item))}))))
@@ -490,39 +491,39 @@
          :keyword-end-escape (if parsing-for-body
                                (let [updated-tag-stack (pop-tag tag-stack :sanitizer (or (:line current-item) 1))]
                                  [list (rest lexed-list) updated-tag-stack])
-                               (recur (rest lexed-list) list current-block parsing-for-body current-file-path template-resolver filter-map merged-sanitizers tag-stack macros))
+                               (recur (rest lexed-list) list current-block parsing-for-body current-file-path template-resolver filter-map merged-sanitizers tag-stack macros dictionary))
 
-         :escape-name (recur (rest lexed-list) list current-block parsing-for-body current-file-path template-resolver filter-map merged-sanitizers tag-stack macros)
+         :escape-name (recur (rest lexed-list) list current-block parsing-for-body current-file-path template-resolver filter-map merged-sanitizers tag-stack macros dictionary)
          :end-each-token (if parsing-for-body
                            (let [updated-tag-stack (pop-tag tag-stack :each (or (:line current-item) 1))]
                              [list (rest lexed-list) updated-tag-stack])
-                           (recur (rest lexed-list) list current-block parsing-for-body current-file-path template-resolver filter-map merged-sanitizers tag-stack macros))
+                           (recur (rest lexed-list) list current-block parsing-for-body current-file-path template-resolver filter-map merged-sanitizers tag-stack macros dictionary))
 
          :keyword-else (if parsing-for-body
                          [list lexed-list tag-stack]
-                         (recur (rest lexed-list) list current-block parsing-for-body current-file-path template-resolver filter-map merged-sanitizers tag-stack macros))
+                         (recur (rest lexed-list) list current-block parsing-for-body current-file-path template-resolver filter-map merged-sanitizers tag-stack macros dictionary))
 
          :keyword-elif (if parsing-for-body
                          [list lexed-list tag-stack]
-                         (recur (rest lexed-list) list current-block parsing-for-body current-file-path template-resolver filter-map merged-sanitizers tag-stack macros))
+                         (recur (rest lexed-list) list current-block parsing-for-body current-file-path template-resolver filter-map merged-sanitizers tag-stack macros dictionary))
 
          :keyword-elif-not (if parsing-for-body
                              [list lexed-list tag-stack]
-                             (recur (rest lexed-list) list current-block parsing-for-body current-file-path template-resolver filter-map merged-sanitizers tag-stack macros))
+                             (recur (rest lexed-list) list current-block parsing-for-body current-file-path template-resolver filter-map merged-sanitizers tag-stack macros dictionary))
 
          :keyword-empty (if parsing-for-body
                           [list lexed-list tag-stack]
-                          (recur (rest lexed-list) list current-block parsing-for-body current-file-path template-resolver filter-map merged-sanitizers tag-stack macros))
+                          (recur (rest lexed-list) list current-block parsing-for-body current-file-path template-resolver filter-map merged-sanitizers tag-stack macros dictionary))
 
          :keyword-endif (if parsing-for-body
                           (let [updated-tag-stack (pop-tag tag-stack :if (or (:line current-item) 1))]
                             [list (rest lexed-list) updated-tag-stack])
-                          (recur (rest lexed-list) list current-block parsing-for-body current-file-path template-resolver filter-map merged-sanitizers tag-stack macros))
+                          (recur (rest lexed-list) list current-block parsing-for-body current-file-path template-resolver filter-map merged-sanitizers tag-stack macros dictionary))
 
          :keyword-end-let (if parsing-for-body
                             (let [updated-tag-stack (pop-tag tag-stack :let (or (:line current-item) 1))]
                               [list (rest lexed-list) updated-tag-stack])
-                            (recur (rest lexed-list) list current-block parsing-for-body current-file-path template-resolver filter-map merged-sanitizers tag-stack macros))
+                            (recur (rest lexed-list) list current-block parsing-for-body current-file-path template-resolver filter-map merged-sanitizers tag-stack macros dictionary))
 
          :keyword-macro (let [remaining (rest lexed-list)
                                  name-token (first remaining)
@@ -532,9 +533,9 @@
                                       block-end-token (= :block-end (:type block-end-token)))
                                (let [remaining-after-block-end (rest remaining-after-name)
                                      new-tag-stack (push-tag tag-stack :macro (:line current-item))
-                                     [body remaining-after-body updated-tag-stack] (parse-ast remaining-after-block-end [] current-block true current-file-path template-resolver filter-map merged-sanitizers new-tag-stack macros)]
+                                     [body remaining-after-body updated-tag-stack] (parse-ast remaining-after-block-end [] current-block true current-file-path template-resolver filter-map merged-sanitizers new-tag-stack macros dictionary)]
                                  (swap! macros assoc (:value name-token) body)
-                                 (recur remaining-after-body list current-block parsing-for-body current-file-path template-resolver filter-map merged-sanitizers updated-tag-stack macros))
+                                 (recur remaining-after-body list current-block parsing-for-body current-file-path template-resolver filter-map merged-sanitizers updated-tag-stack macros dictionary))
                                (throw (ex-info (format "error on line %s" (:line (or block-end-token name-token current-item)))
                                                {:type :syntax-error
                                                 :line (:line (or block-end-token name-token current-item))}))))
@@ -542,37 +543,51 @@
          :keyword-end-macro (if parsing-for-body
                                  (let [updated-tag-stack (pop-tag tag-stack :macro (or (:line current-item) 1))]
                                    [list (rest lexed-list) updated-tag-stack])
-                                 (recur (rest lexed-list) list current-block parsing-for-body current-file-path template-resolver filter-map merged-sanitizers tag-stack macros))
+                                 (recur (rest lexed-list) list current-block parsing-for-body current-file-path template-resolver filter-map merged-sanitizers tag-stack macros dictionary))
 
-         :macro-name (recur (rest lexed-list) list current-block parsing-for-body current-file-path template-resolver filter-map merged-sanitizers tag-stack macros)
+         :macro-name (recur (rest lexed-list) list current-block parsing-for-body current-file-path template-resolver filter-map merged-sanitizers tag-stack macros dictionary)
 
-         :keyword-in (recur (rest lexed-list) list current-block parsing-for-body current-file-path template-resolver filter-map merged-sanitizers tag-stack macros)
-         :each-in-token (recur (rest lexed-list) list current-block parsing-for-body current-file-path template-resolver filter-map merged-sanitizers tag-stack macros)
-         :each-identifier-token (recur (rest lexed-list) list current-block parsing-for-body current-file-path template-resolver filter-map merged-sanitizers tag-stack macros)
-         :variable-declaration (recur (rest lexed-list) list current-block parsing-for-body current-file-path template-resolver filter-map merged-sanitizers tag-stack macros)
-         :identifier (recur (rest lexed-list) list current-block parsing-for-body current-file-path template-resolver filter-map merged-sanitizers tag-stack macros)
+         :keyword-in (recur (rest lexed-list) list current-block parsing-for-body current-file-path template-resolver filter-map merged-sanitizers tag-stack macros dictionary)
+         :each-in-token (recur (rest lexed-list) list current-block parsing-for-body current-file-path template-resolver filter-map merged-sanitizers tag-stack macros dictionary)
+         :each-identifier-token (recur (rest lexed-list) list current-block parsing-for-body current-file-path template-resolver filter-map merged-sanitizers tag-stack macros dictionary)
+         :variable-declaration (recur (rest lexed-list) list current-block parsing-for-body current-file-path template-resolver filter-map merged-sanitizers tag-stack macros dictionary)
+         :identifier (recur (rest lexed-list) list current-block parsing-for-body current-file-path template-resolver filter-map merged-sanitizers tag-stack macros dictionary)
+
+         :token/translation (let [remaining (rest lexed-list)
+                                  next-token (first remaining)]
+                              (if (= :token/translation-key (:type next-token))
+                                (let [key (:value next-token)
+                                      trans-fn (if dictionary
+                                                (fn [locale] (dictionary/translate dictionary locale key))
+                                                (constantly nil))]
+                                  (recur (rest remaining) (conj list {:type :translation :trans-fn trans-fn}) current-block parsing-for-body current-file-path template-resolver filter-map merged-sanitizers tag-stack macros dictionary))
+                                (recur remaining list current-block parsing-for-body current-file-path template-resolver filter-map merged-sanitizers tag-stack macros dictionary)))
+
+         :token/translation-key (recur (rest lexed-list) list current-block parsing-for-body current-file-path template-resolver filter-map merged-sanitizers tag-stack macros dictionary)
 
          :token/debug (let [remaining (rest lexed-list)
                             next-token (first remaining)]
                         (if (= :token/debug-target (:type next-token))
-                          (recur (rest remaining) (conj list {:type :debug :target (:value next-token)}) current-block parsing-for-body current-file-path template-resolver filter-map merged-sanitizers tag-stack macros)
-                          (recur remaining (conj list {:type :debug :target :default}) current-block parsing-for-body current-file-path template-resolver filter-map merged-sanitizers tag-stack macros)))
+                          (recur (rest remaining) (conj list {:type :debug :target (:value next-token)}) current-block parsing-for-body current-file-path template-resolver filter-map merged-sanitizers tag-stack macros dictionary)
+                          (recur remaining (conj list {:type :debug :target :default}) current-block parsing-for-body current-file-path template-resolver filter-map merged-sanitizers tag-stack macros dictionary)))
 
-         :token/debug-target (recur (rest lexed-list) list current-block parsing-for-body current-file-path template-resolver filter-map merged-sanitizers tag-stack macros)
+         :token/debug-target (recur (rest lexed-list) list current-block parsing-for-body current-file-path template-resolver filter-map merged-sanitizers tag-stack macros dictionary)
 
-         :file-path (recur (rest lexed-list) list current-block parsing-for-body current-file-path template-resolver filter-map merged-sanitizers tag-stack macros)
-         :block-name (recur (rest lexed-list) list current-block parsing-for-body current-file-path template-resolver filter-map merged-sanitizers tag-stack macros)
-         :query-string-declaration (recur (rest lexed-list) list current-block parsing-for-body current-file-path template-resolver filter-map merged-sanitizers tag-stack macros)
-         :filter-tag (recur (rest lexed-list) list current-block parsing-for-body current-file-path template-resolver filter-map merged-sanitizers tag-stack macros)
-         :filter-function (recur (rest lexed-list) list current-block parsing-for-body current-file-path template-resolver filter-map merged-sanitizers tag-stack macros)
-         :filter-arg (recur (rest lexed-list) list current-block parsing-for-body current-file-path template-resolver filter-map merged-sanitizers tag-stack macros)
-         :operator (recur (rest lexed-list) list current-block parsing-for-body current-file-path template-resolver filter-map merged-sanitizers tag-stack macros)
-         :operator-test (recur (rest lexed-list) list current-block parsing-for-body current-file-path template-resolver filter-map merged-sanitizers tag-stack macros)
+         :file-path (recur (rest lexed-list) list current-block parsing-for-body current-file-path template-resolver filter-map merged-sanitizers tag-stack macros dictionary)
+         :block-name (recur (rest lexed-list) list current-block parsing-for-body current-file-path template-resolver filter-map merged-sanitizers tag-stack macros dictionary)
+         :query-string-declaration (recur (rest lexed-list) list current-block parsing-for-body current-file-path template-resolver filter-map merged-sanitizers tag-stack macros dictionary)
+         :filter-tag (recur (rest lexed-list) list current-block parsing-for-body current-file-path template-resolver filter-map merged-sanitizers tag-stack macros dictionary)
+         :filter-function (recur (rest lexed-list) list current-block parsing-for-body current-file-path template-resolver filter-map merged-sanitizers tag-stack macros dictionary)
+         :filter-arg (recur (rest lexed-list) list current-block parsing-for-body current-file-path template-resolver filter-map merged-sanitizers tag-stack macros dictionary)
+         :operator (recur (rest lexed-list) list current-block parsing-for-body current-file-path template-resolver filter-map merged-sanitizers tag-stack macros dictionary)
+         :operator-test (recur (rest lexed-list) list current-block parsing-for-body current-file-path template-resolver filter-map merged-sanitizers tag-stack macros dictionary)
 
-         (recur (rest lexed-list) list current-block parsing-for-body current-file-path template-resolver filter-map merged-sanitizers tag-stack macros))))))
+         (recur (rest lexed-list) list current-block parsing-for-body current-file-path template-resolver filter-map merged-sanitizers tag-stack macros dictionary))))))
 
 (defn parse
-  [resource-path template-resolver user-filters user-sanitizers]
+  ([resource-path template-resolver user-filters user-sanitizers]
+   (parse resource-path template-resolver user-filters user-sanitizers nil))
+  ([resource-path template-resolver user-filters user-sanitizers dictionary]
   (if (resolver/template-exists? template-resolver resource-path)
     (let [file-content (read-content-as-string template-resolver resource-path)
           lexed-value (lexer/tokenize file-content)
@@ -580,7 +595,7 @@
           merged-sanitizers (merge user-sanitizers sanitizers)
           macros (atom {})]
       (try
-        (parse-ast lexed-value [] {} false resource-path template-resolver filter-map merged-sanitizers [] macros)
+        (parse-ast lexed-value [] {} false resource-path template-resolver filter-map merged-sanitizers [] macros dictionary)
         (catch ExceptionInfo e
           (let [data (ex-data e)]
             (case (:type data)
@@ -599,4 +614,4 @@
           {:type          "error"
            :error-message (.getMessage e)})))
     {:type          "template-not-found-error"
-     :error-message (format "%s can not be found." resource-path)}))
+     :error-message (format "%s can not be found." resource-path)})))

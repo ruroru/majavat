@@ -5,9 +5,11 @@
             [clojure.pprint :as pprint]
             [jj.majavat.renderer.tests :as tests]
             [jj.majavat.resolver.fs :as fcr]
+            [jj.majavat.protocol.dictionary :as dictionary]
             [jj.majavat.resolver.resource :as rcr])
   (:import (java.io File)
-           (java.time ZoneId)))
+           (java.time ZoneId)
+           (jj.majavat.protocol.dictionary Dictionary)))
 
 (def contentResolver (rcr/->ResourceResolver))
 (def empty-fn-map {})
@@ -503,3 +505,24 @@
     (is (= expected-ast (parser/parse input-file (rcr/->ResourceResolver) empty-fn-map empty-sanitizers-map)))
     )
   )
+
+(defrecord MockDictionary [translations]
+  Dictionary
+  (translate [_ language word]
+    (get-in translations [language word])))
+
+(defn create-mock-dictionary []
+  (->MockDictionary {"en" {:hello "hello" :world "world" :key "key"}
+                     "fi" {:hello "hei" :world "maailma" :key "avain"}}))
+
+
+(deftest trans-test
+  (let [mock-dictionary (create-mock-dictionary)
+        input-file "trans/trans"
+        result (parser/parse input-file (rcr/->ResourceResolver) empty-fn-map empty-sanitizers-map mock-dictionary)
+        trans-fn (:trans-fn (first result))]
+
+    (is (= 1 (count result)))
+    (is (fn? trans-fn))
+    (is (= "hei" (trans-fn "fi")))
+    (is (= "hello" (trans-fn "en")))))

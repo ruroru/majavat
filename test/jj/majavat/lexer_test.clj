@@ -444,3 +444,10 @@
           {:type :expression :value [:foo]}
           {:line 1 :type :closing-bracket}]
          (lexer/tokenize "{% macro foo %}bar{{baz}}{% endmacro %}{{foo}}"))))
+
+(deftest trans-test
+  (is (= [{:type :block-start}
+          {:type :token/translation}
+          {:type :token/translation-key :value :key}
+          {:line 1 :type :block-end}]
+         (lexer/tokenize "{% trans key %}"))))

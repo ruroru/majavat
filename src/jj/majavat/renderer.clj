@@ -210,6 +210,12 @@
             (when (seq else-body)
               (render-nodes else-body context sb sanitizer))))
 
+      :translation
+      (let [trans-fn (node :trans-fn)
+            locale (get context :locale)]
+        (when-let [result (trans-fn locale)]
+          (.append sb (->str result))))
+
       :debug
       (debug-output node context)
 
@@ -311,6 +317,14 @@
                          branches)
                    (when (seq else-body)
                      (render-nodes-to-bytes-vec else-body context charset sanitizer result))))
+             (recur rest-nodes))
+
+           :translation
+           (do
+             (let [trans-fn (node :trans-fn)
+                   locale (get context :locale)]
+               (when-let [translated (trans-fn locale)]
+                 (.add result (.getBytes ^String (->str translated) charset))))
              (recur rest-nodes))
 
            :debug
@@ -451,6 +465,13 @@
                                           [condition (partial-render-nodes body context sanitizer)])
                                         branches)
                         :else (partial-render-nodes else-body context sanitizer)))))
+
+        :translation
+        (let [trans-fn (node :trans-fn)
+              locale (get context :locale)]
+          (if-let [translated (trans-fn locale)]
+            (conj acc {:type :text :value (->str translated)})
+            (conj acc node)))
 
         :debug
         (do
