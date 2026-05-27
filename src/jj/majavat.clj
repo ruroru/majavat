@@ -31,7 +31,7 @@
          pre-render-context (if (map? (get opts :pre-render {}))
                               (get opts :pre-render {})
                               (logger/errorf "pre-render is not a map"))
-         sanitizer (get opts :sanitizer nil)
+         sanitizer (get opts :sanitizer (sanitizer/->None))
          builder (if cache?
                    (builders/->CachedBuilder pre-render-context environment)
                    (builders/->OneShotBuilder pre-render-context environment))]
