@@ -230,6 +230,11 @@
         (recur (rest my-sequence) "" (conj vector {:type :operator :value :is}) new-line-number)
 
         (and (= (:type (last vector)) :identifier)
+             (= (string/trim current-string) "==")
+             (= current-char \ ))
+        (recur (rest my-sequence) "" (conj vector {:type :operator :value :is} {:type :operator-test :value :equals}) new-line-number)
+
+        (and (= (:type (last vector)) :identifier)
              (= (string/trim current-string) "only")
              (= current-char \ )
              (>= (count vector) 2)
@@ -242,6 +247,26 @@
             (if (not (string/blank? trimmed))
               (recur (rest my-sequence) "" (conj vector {:type :operator-test :value (keyword trimmed)}) new-line-number)
               (recur (rest my-sequence) "" vector new-line-number)))
+          (recur (rest my-sequence) (str current-string current-char) vector new-line-number))
+
+        (and (= (:type (last vector)) :operator-test) (= (:value (last vector)) :equals))
+        (cond
+          (and (= current-char \ ) (string/blank? current-string))
+          (recur (rest my-sequence) "" vector new-line-number)
+
+          (and (= current-char \") (string/blank? current-string))
+          (recur (rest my-sequence) "\"" vector new-line-number)
+
+          (and (= current-char \") (string/starts-with? current-string "\""))
+          (recur (rest my-sequence) "" (conj vector {:type :reference-objet :value (subs current-string 1)}) new-line-number)
+
+          (and (= next-char \%) (not (string/starts-with? current-string "\"")))
+          (let [trimmed (string/trim (str current-string current-char))]
+            (if (not (string/blank? trimmed))
+              (recur (rest my-sequence) "" (conj vector {:type :comparative :value (Long/parseLong trimmed)}) new-line-number)
+              (recur (rest my-sequence) "" vector new-line-number)))
+
+          :else
           (recur (rest my-sequence) (str current-string current-char) vector new-line-number))
 
         (every? identity [(= "in" (string/trim current-string)) (= (:type (last vector)) :identifier)])

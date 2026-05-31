@@ -451,3 +451,42 @@
           {:type :token/translation-key :value :key}
           {:line 1 :type :block-end}]
          (lexer/tokenize "{% trans key %}"))))
+
+
+(deftest if-equals-string
+  (is (= [{:type :block-start}
+          {:type :keyword-if}
+          {:type  :identifier
+           :value [:some :condition]}
+          {:type  :operator
+           :value :is}
+          {:type :operator-test :value :equals}
+          {:type :reference-objet :value "value"}
+          {:line 1 :type :block-end}
+          {:type  :text
+           :value "yes"}
+          {:type :block-start}
+          {:type :keyword-endif}
+          {:line 1
+           :type :block-end}]
+         (lexer/tokenize "{% if some.condition == \"value\" %}yes{% endif %}"))))
+
+
+
+(deftest if-equals-invalid-string
+  (is (= [{:type :block-start}
+          {:type :keyword-if}
+          {:type  :identifier
+           :value [:some :condition]}
+          {:type  :operator
+           :value :is}
+          {:type :operator-test :value :equals}
+          {:type :comparative :value 6}
+          {:line 1 :type :block-end}
+          {:type  :text
+           :value "yes"}
+          {:type :block-start}
+          {:type :keyword-endif}
+          {:line 1
+           :type :block-end}]
+         (lexer/tokenize "{% if some.condition == 6 %}yes{% endif %}"))))

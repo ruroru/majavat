@@ -526,3 +526,29 @@
     (is (fn? trans-fn))
     (is (= "hei" (trans-fn "fi")))
     (is (= "hello" (trans-fn "en")))))
+
+
+(deftest if-is-equals-string
+  (let [result (parser/parse "if/if-equals-string" (rcr/->ResourceResolver) empty-fn-map empty-sanitizers-map)
+        if-node (first result)
+        [condition body] (first (:branches if-node))
+        eval-fn (:evaluation-function condition)]
+    (is (= :if (:type if-node)))
+    (is (= [:some :condition] (:condition condition)))
+    (is (= [{:type :text :value "yes"}] body))
+    (is (= [] (:else if-node)))
+    (is (true? (eval-fn "string")))
+    (is (false? (eval-fn "other")))))
+
+
+(deftest if-is-equals-string
+  (let [result (parser/parse "if/if-equals-1" (rcr/->ResourceResolver) empty-fn-map empty-sanitizers-map)
+        if-node (first result)
+        [condition body] (first (:branches if-node))
+        eval-fn (:evaluation-function condition)]
+    (is (= :if (:type if-node)))
+    (is (= [:some :condition] (:condition condition)))
+    (is (= [{:type :text :value "yes"}] body))
+    (is (= [] (:else if-node)))
+    (is (true? (eval-fn 1)))
+    (is (false? (eval-fn "other")))))

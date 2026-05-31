@@ -119,8 +119,14 @@
       (let [remaining-after-op (rest remaining-after-condition)
             test-token (first remaining-after-op)
             remaining-after-test (rest remaining-after-op)]
-        [(get evalaution-functions (:value test-token) (:default evalaution-functions))
-         (rest remaining-after-test)])
+        (if (= :equals (:value test-token))
+          (let [ref-token (first remaining-after-test)
+                ref-value (:value ref-token)
+                remaining-after-ref (rest remaining-after-test)]
+            [(fn [v] (= ref-value v))
+             (rest remaining-after-ref)])
+          [(get evalaution-functions (:value test-token) (:default evalaution-functions))
+           (rest remaining-after-test)]))
       [(:default evalaution-functions)
        (rest remaining-after-condition)])))
 
@@ -581,6 +587,8 @@
          :filter-arg (recur (rest lexed-list) list current-block parsing-for-body current-file-path template-resolver filter-map merged-sanitizers tag-stack macros dictionary)
          :operator (recur (rest lexed-list) list current-block parsing-for-body current-file-path template-resolver filter-map merged-sanitizers tag-stack macros dictionary)
          :operator-test (recur (rest lexed-list) list current-block parsing-for-body current-file-path template-resolver filter-map merged-sanitizers tag-stack macros dictionary)
+         :reference-objet (recur (rest lexed-list) list current-block parsing-for-body current-file-path template-resolver filter-map merged-sanitizers tag-stack macros dictionary)
+         :comparative (recur (rest lexed-list) list current-block parsing-for-body current-file-path template-resolver filter-map merged-sanitizers tag-stack macros dictionary)
 
          (recur (rest lexed-list) list current-block parsing-for-body current-file-path template-resolver filter-map merged-sanitizers tag-stack macros dictionary))))))
 

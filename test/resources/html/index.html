@@ -43,6 +43,14 @@
     <p>year-odd</p>
 {% endif %}
 
+{% if current-year == 2025 %}
+    <p>year-2025</p>
+{% endif %}
+
+{% if site-name == "My Awesome Blog" %}
+    <p>site-name-matches</p>
+{% endif %}
+
 {% if posts %}
     <section id="blog-posts">
         <h2>Latest Posts</h2>

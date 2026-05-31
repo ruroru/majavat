@@ -13,7 +13,9 @@ Add majavat to dependency list
 ## Usage
 
 ### Rendering templates
+
 #### Direct rendering
+
 ```clojure
 (:require
   [jj.majavat :as majavat]
@@ -30,16 +32,17 @@ Add majavat to dependency list
 Additional options can be passed with
 
 ```clojure
-(def render-fn (majavat/build-renderer "index.html" {:cache?     false
-                                                     :pre-render {:key "value"}
+(def render-fn (majavat/build-renderer "index.html" {:cache?      false
+                                                     :pre-render  {:key "value"}
                                                      :environment {:filters {:reverse (fn [value]
                                                                                         (string/reverse value))}}
-                                                     :renderer   (->StringRenderer)}))
+                                                     :renderer    (->StringRenderer)}))
 
 (render-fn {:user "jj"})
 ```
 
 #### Indirect rendering
+
 It will cache all render-functions for user
 
 ```clojure
@@ -61,10 +64,10 @@ All supported options:
 
 #### Environment
 
-| Option       | Default Value | Supported Options                       |
-|--------------|---------------|-----------------------------------------|
-| `filters`    | {}            | Map                                     |
-| `sanitizers` | {}            | Keyword -> Sanitizer Map                |
+| Option       | Default Value | Supported Options                              |
+|--------------|---------------|------------------------------------------------|
+| `filters`    | {}            | Map                                            |
+| `sanitizers` | {}            | Keyword -> Sanitizer Map                       |
 | `dictionary` | nil           | Any [`Dictionary`](#dictionary) implementation |
 
 ### Creating templates
@@ -172,6 +175,7 @@ or with tests
 
 ```
 "Hello {% if value is even %}even{% else %}not even{% endif %}!"
+"Hello {% if value is even %}even{% else %}not even{% endif %}!"
 ```
 
 ```clojure
@@ -181,10 +185,11 @@ or with tests
 
 Available tests:
 
-| test name |
-|-----------|
-| even      |
-| odd       |
+| test name | args        | example                                          |
+|-----------|-------------|--------------------------------------------------|
+| even      | -           | {% if value is even %}                           |
+| odd       | -           | {% if value is odd %}                            |
+| ==        | comparative | {% if value == 0 %} or {% if value == "value" %} |
 
 #### Looping
 
@@ -439,7 +444,8 @@ or ones provided under `:environment :sanitizers`
 
 ### Translation
 
-The `trans` tag translates a key using the configured [`Dictionary`](#dictionary). The language is determined by the `:locale` key in the context.
+The `trans` tag translates a key using the configured [`Dictionary`](#dictionary). The language is determined by the
+`:locale` key in the context.
 
 ```
 {% trans hello %}
@@ -453,6 +459,7 @@ The `trans` tag translates a key using the configured [`Dictionary`](#dictionary
 ```
 
 ### Macro
+
 ```
 {% macro foo %}foobar{{baz}}{% endmacro %}{{foo}}{{foo}}
 ```
@@ -547,7 +554,8 @@ Check if template exists at a path.
 
 ## Dictionary
 
-The `Dictionary` protocol provides translation support for templates via the `{% trans %}` tag. The locale is read from the `:locale` key in the rendering context.
+The `Dictionary` protocol provides translation support for templates via the `{% trans %}` tag. The locale is read from
+the `:locale` key in the rendering context.
 
 ### Protocol Methods
 
@@ -569,7 +577,7 @@ Translates a word for the given language. Returns the translated string, or `nil
 
 (def my-dictionary
   (->MapDictionary {"en" {:hello "hello" :world "world"}
-                     "fi" {:hello "hei" :world "maailma"}}))
+                    "fi" {:hello "hei" :world "maailma"}}))
 ```
 
 Pass it via the environment when building a renderer:
@@ -580,7 +588,6 @@ Pass it via the environment when building a renderer:
 (render-fn {:locale "en"}) ;; uses English translations
 (render-fn {:locale "fi"}) ;; uses Finnish translations
 ```
-
 
 ## Performance
 
@@ -593,7 +600,6 @@ loops, and nested data access.
 | Majavat (InputStream) | 16.3s      | 16.3μs     | 61,272/s   | 1.51x slower        |
 | Hiccup                | 22.1s      | 22.1μs     | 45,318/s   | 2.04x slower        |
 | Selmer                | 87.0s      | 87.0μs     | 11,499/s   | 8.04x slower        |
-
 
 ## Available Extensions
 
