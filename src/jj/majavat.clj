@@ -1,6 +1,7 @@
 (ns jj.majavat
   (:require
     [clojure.tools.logging :as logger]
+    [jj.majavat.error-handler.reporting :as reporting]
     [jj.majavat.protocol.builder :as builder]
     [jj.majavat.renderer :refer [->StringRenderer]]
     [jj.majavat.renderer.sanitizer :as sanitizer]
@@ -32,11 +33,13 @@
                               (get opts :pre-render {})
                               (logger/errorf "pre-render is not a map"))
          sanitizer (get opts :sanitizer (sanitizer/->None))
+         error-handler (or (:error-handler opts)
+                           (reporting/->Reporting))
          builder (if cache?
                    (builders/->CachedBuilder pre-render-context environment)
                    (builders/->OneShotBuilder pre-render-context environment))]
 
-     (builder/build-renderer builder file-path resolver renderer sanitizer))))
+     (builder/build-renderer builder file-path resolver renderer sanitizer error-handler))))
 
 (defn build-html-renderer
   ([file-path]

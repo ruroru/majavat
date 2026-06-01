@@ -1,23 +1,14 @@
 (ns jj.majavat.renderer
-  (:require [clojure.edn :as edn]
-            [clojure.java.io :as io]
-            [clojure.pprint :as pprint]
-            [jj.majavat.renderer.filters :as filters]
+  (:require [clojure.pprint :as pprint]
+            [jj.majavat.protocol.error-handler :as error]
+            [jj.majavat.protocol.renderer.render-target :as render-target]
             [jj.majavat.protocol.renderer.sanitizer :refer [sanitize]]
-            [jj.majavat.protocol.renderer.render-target :as render-target])
-  (:import (java.io PushbackReader)
-           (java.net URLEncoder)
+            [jj.majavat.renderer.filters :as filters])
+  (:import (java.net URLEncoder)
            (java.nio.charset Charset StandardCharsets)
            (java.time Instant)
            (java.util ArrayList)
            (jj.majavat.stream SequentialByteArrayInputStream)))
-
-(defn- read-edn-resource [resource-path]
-  (when-let [resource (io/resource resource-path)]
-    (with-open [stream (.openStream resource)
-                reader (io/reader stream)
-                pushback-reader (PushbackReader. reader)]
-      (edn/read pushback-reader))))
 
 (defmacro ^:private reverse-call [a m]
   `(when-let [m# ~m]
@@ -504,23 +495,23 @@
 
 (defrecord StringRenderer []
   render-target/RenderTarget
-  (render [this template context sanitizer]
+  (render [this template context sanitizer error-handler]
     (if-not (map? template)
       (.toString ^StringBuilder (render-nodes template context (StringBuilder.) sanitizer))
-      (render-target/render (->StringRenderer) (read-edn-resource "jj/majavat/error-template.edn") template sanitizer))))
+      (error/handle-error error-handler this template sanitizer))))
 
 (defrecord InputStreamRenderer []
   render-target/RenderTarget
-  (render [this template context sanitizer]
+  (render [this template context sanitizer error-handler]
     (if-not (map? template)
       (let [byte-arrays (render-nodes-to-bytes-vec template context StandardCharsets/UTF_8 sanitizer)]
         (SequentialByteArrayInputStream. byte-arrays))
-      (render-target/render (->InputStreamRenderer) (read-edn-resource "jj/majavat/error-template.edn") template sanitizer))))
+      (error/handle-error error-handler this template sanitizer))))
 
 (defrecord PartialRenderer []
   render-target/RenderTarget
-  (render [this template context sanitizer]
+  (render [this template context sanitizer error-handler]
     (if-not (map? template)
       (-> (partial-render-nodes template context sanitizer)
           optimize-ast)
-      (render-target/render (->PartialRenderer) (read-edn-resource "jj/majavat/error-template.edn") template sanitizer))))
+      (error/handle-error error-handler this template sanitizer))))

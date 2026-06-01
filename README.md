@@ -61,6 +61,7 @@ All supported options:
 | `pre-render`        | {}                                      | Map                                                 |
 | `sanitizer`         | nil                                     | Any Sanitizer implementation                        |
 | `environment`       | {}                                      | Map (see [environment options](#environment))       |
+| `error-handler`     | Reporting                               | Any ErrorHandler Implementation                     |
 
 #### Environment
 
@@ -175,21 +176,26 @@ or with tests
 
 ```
 "Hello {% if value is even %}even{% else %}not even{% endif %}!"
-"Hello {% if value is even %}even{% else %}not even{% endif %}!"
 ```
 
 ```clojure
-(render-fn {:value 2}) ;; returns "even"
-(render-fn {:value 1}) ;; returns "not even"
+(render-fn {:value 2}) ;; returns "Hello even!"
+(render-fn {:value 1}) ;; returns "Hello not even!"
 ```
 
-Available tests:
+Available `is` tests:
 
-| test name | args        | example                                          |
-|-----------|-------------|--------------------------------------------------|
-| even      | -           | {% if value is even %}                           |
-| odd       | -           | {% if value is odd %}                            |
-| ==        | comparative | {% if value == 0 %} or {% if value == "value" %} |
+| test name | args | example                |
+|-----------|------|------------------------|
+| even      | -    | {% if value is even %} |
+| odd       | -    | {% if value is odd %}  |
+
+#### Comparison operators
+
+| operator | example                   |
+|----------|---------------------------|
+| ==       | {% if value == 0 %}       |
+|          | {% if value == "value" %} |
 
 #### Looping
 
@@ -587,6 +593,41 @@ Pass it via the environment when building a renderer:
 
 (render-fn {:locale "en"}) ;; uses English translations
 (render-fn {:locale "fi"}) ;; uses Finnish translations
+```
+
+## ErrorHandler
+
+The `ErrorHandler` protocol determines how template errors (syntax errors, missing files, unsupported filters) are
+handled
+during rendering.
+
+### Protocol Methods
+
+#### `handle-error`
+
+Handles a template error. Called when the parser returns an error map instead of a valid AST.
+
+- renderer - The renderer that encountered the error
+- template - A map containing error details (`:type`, `:error-message`, and optionally `:line`)
+- sanitizer - The sanitizer in use
+
+```clojure
+(handle-error error-handler renderer template sanitizer)
+```
+
+### Built-in Implementations
+
+- **Reporting** (default) - Renders the error as an HTML page showing the error type, message, and line number
+- **FailFast** - Throws an `ExceptionInfo` with the error details
+
+### Usage
+
+```clojure
+(:require [jj.majavat.error-handler.fail-fast :refer [->FailFast]]
+  [jj.majavat.error-handler.reporting :refer [->Reporting]])
+
+(def render-fn (build-renderer "input-file" {:error-handler (->FailFast)}))
+(def render-fn (build-renderer "input-file" {:error-handler (->Reporting)}))
 ```
 
 ## Performance
