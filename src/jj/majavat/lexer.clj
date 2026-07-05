@@ -322,9 +322,6 @@
                                                     {:type :closing-bracket :line line-number}) new-line-number))
               (recur (rrest my-sequence) "" (conj vector {:type :closing-bracket :line line-number}) new-line-number))
 
-            (= last-type :close-paren)
-            (recur (rrest my-sequence) "" (conj vector {:type :closing-bracket :line line-number}) new-line-number)
-
             (string/blank? trimmed-string)
             (recur (rrest my-sequence) "" (conj vector {:type :expression}
                                                 {:type :closing-bracket :line line-number}) new-line-number)
@@ -340,17 +337,35 @@
           (let [trimmed-string (string/trim current-string)]
             (recur (rest my-sequence) "" (conj vector {:type :expression :value (parse-path trimmed-string)} {:type :filter-tag}) new-line-number))
 
-          (and (= current-char \() (not (string/blank? (string/trim current-string))))
-          (let [trimmed-string (string/trim current-string)]
-            (recur (rest my-sequence) "" (conj vector {:type :expression :value (parse-path trimmed-string)} {:type :open-paren :kind :macro}) new-line-number))
-
           :else
           (recur (rest my-sequence) (str current-string current-char) vector new-line-number))
 
         (= (:type (last vector)) :open-paren)
         (cond
           (= current-char \))
-          (recur (rest my-sequence) "" (conj vector {:type :close-paren :kind :macro}) new-line-number)
+          (let [kind (:kind (last vector))
+                trimmed-string (string/trim current-string)]
+            (cond
+              (string/blank? trimmed-string)
+              (recur (rest my-sequence) "" (conj vector {:type :close-paren :kind kind}) new-line-number)
+
+              (= kind :macro-def)
+              (recur (rest my-sequence) "" (conj vector {:type :macro-param :value (keyword trimmed-string)}
+                                                  {:type :close-paren :kind kind}) new-line-number)
+
+              (and (string/starts-with? trimmed-string "\"")
+                   (string/ends-with? trimmed-string "\"")
+                   (> (count trimmed-string) 1))
+              (recur (rest my-sequence) "" (conj vector {:type :macro-arg :value (subs trimmed-string 1 (dec (count trimmed-string)))}
+                                                  {:type :close-paren :kind kind}) new-line-number)
+
+              (re-matches #"-?\d+(\.\d+)?" trimmed-string)
+              (recur (rest my-sequence) "" (conj vector {:type :macro-arg :value trimmed-string}
+                                                  {:type :close-paren :kind kind}) new-line-number)
+
+              :else
+              (recur (rest my-sequence) "" (conj vector {:type :macro-arg :value (parse-path trimmed-string)}
+                                                  {:type :close-paren :kind kind}) new-line-number)))
           :else
           (recur (rest my-sequence) (str current-string current-char) vector new-line-number))
 
@@ -408,7 +423,13 @@
           (recur (rest my-sequence) current-string vector new-line-number))
 
         (= (:type (last vector)) :block-start)
-        (cond
+        (if-not (or (= current-char \ )
+                    (= current-char \()
+                    (= current-char \newline)
+                    (= current-char \tab)
+                    (= current-char \return))
+          (recur (rest my-sequence) (str current-string current-char) vector new-line-number)
+          (cond
           (= (string/trim current-string) "for")
           (recur (rest my-sequence) "" (conj vector {:type :keyword-for}) new-line-number)
 
@@ -457,8 +478,12 @@
           (= (string/trim current-string) "trans")
           (recur (rest my-sequence) (str "" current-char) (conj vector {:type :token/translation}) new-line-number)
 
+          (and (= current-char \() (not (string/blank? (string/trim current-string))))
+          (recur (rest my-sequence) "" (conj vector {:type :macro-call :value (keyword (string/trim current-string)) :line line-number}
+                                              {:type :open-paren :kind :macro}) new-line-number)
+
           :else
-          (recur (rest my-sequence) (str current-string current-char) vector new-line-number))
+          (recur (rest my-sequence) (str current-string current-char) vector new-line-number)))
 
         (= (:type (last vector)) :token/translation)
         (if (= next-char \%)
@@ -546,6 +571,11 @@
 
         (= (:type (last vector)) :keyword-macro)
         (cond
+          (and (not (string/blank? current-string))
+               (= current-char \())
+          (recur (rest my-sequence) "" (conj vector {:type :macro-name :value (keyword (string/trim current-string))}
+                                              {:type :open-paren :kind :macro-def}) new-line-number)
+
           (and (not (string/blank? current-string))
                (or (= current-char \ ) (= next-char \%)))
           (recur (rest my-sequence) (str "" current-char) (conj vector {:type :macro-name :value (keyword (string/trim current-string))}) new-line-number)

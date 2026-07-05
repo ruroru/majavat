@@ -25,7 +25,7 @@
 {% if is-home-page %}
     <section id="home">
         <h2>{{ welcome-heading }}</h2>
-        <p>{{ welcome-message }} ({{ tagline }})</p>
+        <p>{{ welcome-message }} ({% tagline() %})</p>
     </section>
 {% elif posts %}
     <section id="elif-branch"><p>elif-branch</p></section>

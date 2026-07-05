@@ -467,13 +467,15 @@ The `trans` tag translates a key using the configured [`Dictionary`](#dictionary
 ### Macro
 
 ```
-{% macro foo %}foobar{{baz}}{% endmacro %}{{foo}}{{foo}}
+{% macro foo %}foobar{{baz}}{% endmacro %}{% foo() %}{% foo() %}
+{% macro greet(who) %}hello {{who}}!{% endmacro %}{% greet(user.name) %}
 ```
 
 ```clojure
 (def render-fn (build-renderer "input-file"))
 
 (render-fn {:baz "baz"}) ;; returns "foobarbazfoobarbaz"
+(render-fn {:user {:name "alice"}}) ;; returns "hello alice!"
 ```
 
 ## RenderTarget Protocol

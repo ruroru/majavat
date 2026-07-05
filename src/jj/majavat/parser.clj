@@ -1,5 +1,6 @@
 (ns jj.majavat.parser
-  (:require [jj.majavat.lexer :as lexer]
+  (:require [clojure.walk :as walk]
+            [jj.majavat.lexer :as lexer]
             [jj.majavat.renderer.filters :as filters]
             [jj.majavat.renderer.tests :as tests]
             [jj.majavat.renderer.sanitizer :as sanitizer]
@@ -58,6 +59,29 @@
   (if (empty? filter-specs)
     identity
     (apply comp (reverse (map #(create-filter-fn % filter-map) filter-specs)))))
+
+(defn- substitute-macro-arg [body param arg]
+  (walk/postwalk
+    (fn [node]
+      (if (map? node)
+        (cond
+          (and (string? arg)
+               (= :value-node (:type node))
+               (= [param] (:value node)))
+          {:type :text :value (str ((or (:filter-fn node) identity) arg))}
+
+          (vector? arg)
+          (reduce (fn [n k]
+                    (let [v (get n k)]
+                      (if (and (vector? v) (= param (first v)))
+                        (assoc n k (into arg (subvec v 1)))
+                        n)))
+                  node
+                  [:value :source :condition])
+
+          :else node)
+        node))
+    body))
 
 (defn- resolve-path [base-path relative-path]
   (let [base-path-obj (Paths/get base-path (make-array String 0))
@@ -170,14 +194,8 @@
                                                                  [filters remaining]))
                            value-node (if (empty? filters)
                                         (assoc current-item :type :value-node)
-                                        (assoc current-item :type :value-node :filter-fn (build-filter-fn filters filter-map)))
-                           macro-match (when (and (empty? filters)
-                                                  (vector? (:value current-item))
-                                                  (= 1 (count (:value current-item))))
-                                         (get @macros (first (:value current-item))))]
-                       (if macro-match
-                         (recur remaining-after-filters (into list macro-match) current-block parsing-for-body current-file-path template-resolver filter-map merged-sanitizers tag-stack macros dictionary)
-                         (recur remaining-after-filters (conj list value-node) current-block parsing-for-body current-file-path template-resolver filter-map merged-sanitizers tag-stack macros dictionary)))
+                                        (assoc current-item :type :value-node :filter-fn (build-filter-fn filters filter-map)))]
+                       (recur remaining-after-filters (conj list value-node) current-block parsing-for-body current-file-path template-resolver filter-map merged-sanitizers tag-stack macros dictionary))
 
          :opening-bracket (recur (rest lexed-list) list current-block parsing-for-body current-file-path template-resolver filter-map merged-sanitizers tag-stack macros dictionary)
          :closing-bracket (if (not (nil? (:value (last list))))
@@ -534,13 +552,20 @@
          :keyword-macro (let [remaining (rest lexed-list)
                                  name-token (first remaining)
                                  remaining-after-name (rest remaining)
-                                 block-end-token (first remaining-after-name)]
+                                 [param-token remaining-after-signature]
+                                 (if (= :open-paren (:type (first remaining-after-name)))
+                                   (let [after-open (rest remaining-after-name)]
+                                     (if (= :macro-param (:type (first after-open)))
+                                       [(first after-open) (rest (rest after-open))]
+                                       [nil (rest after-open)]))
+                                   [nil remaining-after-name])
+                                 block-end-token (first remaining-after-signature)]
                              (if (and name-token (= :macro-name (:type name-token))
                                       block-end-token (= :block-end (:type block-end-token)))
-                               (let [remaining-after-block-end (rest remaining-after-name)
+                               (let [remaining-after-block-end (rest remaining-after-signature)
                                      new-tag-stack (push-tag tag-stack :macro (:line current-item))
                                      [body remaining-after-body updated-tag-stack] (parse-ast remaining-after-block-end [] current-block true current-file-path template-resolver filter-map merged-sanitizers new-tag-stack macros dictionary)]
-                                 (swap! macros assoc (:value name-token) body)
+                                 (swap! macros assoc (:value name-token) {:param (:value param-token) :body body})
                                  (recur remaining-after-body list current-block parsing-for-body current-file-path template-resolver filter-map merged-sanitizers updated-tag-stack macros dictionary))
                                (throw (ex-info (format "error on line %s" (:line (or block-end-token name-token current-item)))
                                                {:type :syntax-error
@@ -552,6 +577,22 @@
                                  (recur (rest lexed-list) list current-block parsing-for-body current-file-path template-resolver filter-map merged-sanitizers tag-stack macros dictionary))
 
          :macro-name (recur (rest lexed-list) list current-block parsing-for-body current-file-path template-resolver filter-map merged-sanitizers tag-stack macros dictionary)
+
+         :macro-call (let [macro-def (get @macros (:value current-item))
+                           after-open (rest (rest lexed-list))
+                           [arg-token remaining-after-call]
+                           (if (= :macro-arg (:type (first after-open)))
+                             [(first after-open) (rest (rest after-open))]
+                             [nil (rest after-open)])]
+                       (if macro-def
+                         (let [expanded-body (if (and (:param macro-def) arg-token)
+                                               (substitute-macro-arg (:body macro-def) (:param macro-def) (:value arg-token))
+                                               (:body macro-def))]
+                           (recur remaining-after-call (into list expanded-body) current-block parsing-for-body current-file-path template-resolver filter-map merged-sanitizers tag-stack macros dictionary))
+                         (throw (ex-info (format "unknown tag or macro '%s' on line %s" (name (:value current-item)) (:line current-item 1))
+                                         {:type :syntax-error
+                                          :line (:line current-item 1)}))))
+
 
          :keyword-in (recur (rest lexed-list) list current-block parsing-for-body current-file-path template-resolver filter-map merged-sanitizers tag-stack macros dictionary)
          :each-in-token (recur (rest lexed-list) list current-block parsing-for-body current-file-path template-resolver filter-map merged-sanitizers tag-stack macros dictionary)

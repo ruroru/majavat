@@ -440,52 +440,58 @@
           {:type :block-start}
           {:type :keyword-end-macro}
           {:line 1 :type :block-end}
-          {:type :opening-bracket}
-          {:type :expression :value [:foo]}
-          {:line 1 :type :closing-bracket}]
-         (lexer/tokenize "{% macro foo %}bar{{baz}}{% endmacro %}{{foo}}"))))
-
-
-
-(deftest macro-empty-paren
-  (is (= [{:type :block-start}
-          {:type :keyword-macro}
-          {:type :macro-name :value :foo}
-          {:line 1 :type :block-end}
-          {:type :text :value "bar"}
-          {:type :opening-bracket}
-          {:type :expression :value [:baz]}
-          {:line 1 :type :closing-bracket}
           {:type :block-start}
-          {:type :keyword-end-macro}
-          {:line 1 :type :block-end}
-          {:type :opening-bracket}
-          {:type :expression :value [:foo]}
+          {:type :macro-call :value :foo :line 1}
           {:type :open-paren :kind :macro}
           {:type :close-paren :kind :macro}
-          {:line 1 :type :closing-bracket}]
-         (lexer/tokenize "{% macro foo %}bar{{baz}}{% endmacro %}{{foo()}}"))))
+          {:line 1 :type :block-end}]
+         (lexer/tokenize "{% macro foo %}bar{{baz}}{% endmacro %}{% foo() %}"))))
 
 
-(deftest macro-open-paren
+(deftest macro-with-param
   (is (= [{:type :block-start}
           {:type :keyword-macro}
-          {:type :macro-name :value :foo}
+          {:type :macro-name :value :greet}
+          {:type :open-paren :kind :macro-def}
+          {:type :macro-param :value :who}
+          {:type :close-paren :kind :macro-def}
           {:line 1 :type :block-end}
-          {:type :text :value "bar"}
+          {:type :text :value "hello "}
           {:type :opening-bracket}
-          {:type :expression :value [:baz]}
+          {:type :expression :value [:who]}
           {:line 1 :type :closing-bracket}
           {:type :block-start}
           {:type :keyword-end-macro}
           {:line 1 :type :block-end}
+          {:type :block-start}
+          {:type :macro-call :value :greet :line 1}
+          {:type :open-paren :kind :macro}
+          {:type :macro-arg :value [:name]}
+          {:type :close-paren :kind :macro}
+          {:line 1 :type :block-end}]
+         (lexer/tokenize "{% macro greet(who) %}hello {{who}}{% endmacro %}{% greet(name) %}"))))
+
+(deftest macro-with-literal-arg
+  (is (= [{:type :block-start}
+          {:type :keyword-macro}
+          {:type :macro-name :value :greet}
+          {:type :open-paren :kind :macro-def}
+          {:type :macro-param :value :who}
+          {:type :close-paren :kind :macro-def}
+          {:line 1 :type :block-end}
           {:type :opening-bracket}
-          {:type :expression :value [:foo]}
-          {:type :expression :value [:foo]}
-          {:type :open-bracket :kind :macro}
-          {:type :close-bracket :kind :macro}
-          {:line 1 :type :closing-bracket}]
-         (lexer/tokenize "{% macro foo %}bar{{baz}}{% endmacro %}{{foo()}}"))))
+          {:type :expression :value [:who]}
+          {:line 1 :type :closing-bracket}
+          {:type :block-start}
+          {:type :keyword-end-macro}
+          {:line 1 :type :block-end}
+          {:type :block-start}
+          {:type :macro-call :value :greet :line 1}
+          {:type :open-paren :kind :macro}
+          {:type :macro-arg :value "world"}
+          {:type :close-paren :kind :macro}
+          {:line 1 :type :block-end}]
+         (lexer/tokenize "{% macro greet(who) %}{{who}}{% endmacro %}{% greet(\"world\") %}"))))
 
 (deftest trans-test
   (is (= [{:type :block-start}

@@ -715,6 +715,36 @@ this is a  footer"
                             (->Html)
                             default-error-handler)))))
 
+(deftest macro-with-argument
+  (let [expected "hello bob!hello alice!"
+        input-file "macro/macro-with-arg"]
+    (is (= expected
+           (renderer/render (->StringRenderer)
+                            (parser/parse input-file contentResolver empty-fn-map empty-sanitizers-map)
+                            {:name "bob" :user {:name "alice"}}
+                            (->Html)
+                            default-error-handler)))))
+
+(deftest macro-with-readme-literal-arguments
+  (let [expected "foobarltbazfoobar1baz"
+        input-file "macro/macro-literal-args"]
+    (is (= expected
+           (renderer/render (->StringRenderer)
+                            (parser/parse input-file contentResolver empty-fn-map empty-sanitizers-map)
+                            {:baz "baz"}
+                            (->Html)
+                            default-error-handler)))))
+
+(deftest macro-with-literal-argument
+  (let [expected "hello world!"
+        input-file "macro/macro-with-literal-arg"]
+    (is (= expected
+           (renderer/render (->StringRenderer)
+                            (parser/parse input-file contentResolver empty-fn-map empty-sanitizers-map)
+                            {}
+                            (->Html)
+                            default-error-handler)))))
+
 (deftest fail-fast-throws-on-template-not-found
   (let [template (parser/parse "not-existing-file" contentResolver empty-fn-map empty-sanitizers-map)]
     (is (thrown-with-msg? clojure.lang.ExceptionInfo

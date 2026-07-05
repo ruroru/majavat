@@ -495,8 +495,6 @@
 
 
 (deftest macro
-  (pprint/pprint (lexer/tokenize "{% macro foo %}bar{{baz}}{% endmacro %}{{foo}}"))
-
   (let [expected-ast [{:type :text :value "bar"}
                       {:type :value-node :value [:baz]}
                       {:type :text :value "bar"}
@@ -505,13 +503,33 @@
     (is (= expected-ast (parser/parse input-file (rcr/->ResourceResolver) empty-fn-map empty-sanitizers-map)))))
 
 (deftest macro-open-paren
-  (pprint/pprint (lexer/tokenize "{% macro foo %}bar{{baz}}{% endmacro %}{{foo()}}"))
-
   (let [expected-ast [{:type :text :value "bar"}
                       {:type :value-node :value [:baz]}
                       {:type :text :value "bar"}
                       {:type :value-node :value [:baz]}]
         input-file "macro/macro-open-paren"]
+    (is (= expected-ast (parser/parse input-file (rcr/->ResourceResolver) empty-fn-map empty-sanitizers-map)))))
+
+(deftest unknown-block-tag-is-error
+  (let [result (parser/parse "macro/macro-unknown" (rcr/->ResourceResolver) empty-fn-map empty-sanitizers-map)]
+    (is (= "syntax-error" (:type result)))
+    (is (= "unknown tag or macro 'bogus' on line 1" (:error-message result)))))
+
+(deftest macro-with-argument
+  (let [expected-ast [{:type :text :value "hello "}
+                      {:type :value-node :value [:name]}
+                      {:type :text :value "!"}
+                      {:type :text :value "hello "}
+                      {:type :value-node :value [:user :name]}
+                      {:type :text :value "!"}]
+        input-file "macro/macro-with-arg"]
+    (is (= expected-ast (parser/parse input-file (rcr/->ResourceResolver) empty-fn-map empty-sanitizers-map)))))
+
+(deftest macro-with-literal-argument
+  (let [expected-ast [{:type :text :value "hello "}
+                      {:type :text :value "world"}
+                      {:type :text :value "!"}]
+        input-file "macro/macro-with-literal-arg"]
     (is (= expected-ast (parser/parse input-file (rcr/->ResourceResolver) empty-fn-map empty-sanitizers-map)))))
 
 
