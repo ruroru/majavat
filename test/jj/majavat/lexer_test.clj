@@ -445,6 +445,48 @@
           {:line 1 :type :closing-bracket}]
          (lexer/tokenize "{% macro foo %}bar{{baz}}{% endmacro %}{{foo}}"))))
 
+
+
+(deftest macro-empty-paren
+  (is (= [{:type :block-start}
+          {:type :keyword-macro}
+          {:type :macro-name :value :foo}
+          {:line 1 :type :block-end}
+          {:type :text :value "bar"}
+          {:type :opening-bracket}
+          {:type :expression :value [:baz]}
+          {:line 1 :type :closing-bracket}
+          {:type :block-start}
+          {:type :keyword-end-macro}
+          {:line 1 :type :block-end}
+          {:type :opening-bracket}
+          {:type :expression :value [:foo]}
+          {:type :open-paren :kind :macro}
+          {:type :close-paren :kind :macro}
+          {:line 1 :type :closing-bracket}]
+         (lexer/tokenize "{% macro foo %}bar{{baz}}{% endmacro %}{{foo()}}"))))
+
+
+(deftest macro-open-paren
+  (is (= [{:type :block-start}
+          {:type :keyword-macro}
+          {:type :macro-name :value :foo}
+          {:line 1 :type :block-end}
+          {:type :text :value "bar"}
+          {:type :opening-bracket}
+          {:type :expression :value [:baz]}
+          {:line 1 :type :closing-bracket}
+          {:type :block-start}
+          {:type :keyword-end-macro}
+          {:line 1 :type :block-end}
+          {:type :opening-bracket}
+          {:type :expression :value [:foo]}
+          {:type :expression :value [:foo]}
+          {:type :open-bracket :kind :macro}
+          {:type :close-bracket :kind :macro}
+          {:line 1 :type :closing-bracket}]
+         (lexer/tokenize "{% macro foo %}bar{{baz}}{% endmacro %}{{foo()}}"))))
+
 (deftest trans-test
   (is (= [{:type :block-start}
           {:type :token/translation}

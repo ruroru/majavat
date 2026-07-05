@@ -502,9 +502,19 @@
                       {:type :text :value "bar"}
                       {:type :value-node :value [:baz]}]
         input-file "macro/macro"]
-    (is (= expected-ast (parser/parse input-file (rcr/->ResourceResolver) empty-fn-map empty-sanitizers-map)))
-    )
-  )
+    (is (= expected-ast (parser/parse input-file (rcr/->ResourceResolver) empty-fn-map empty-sanitizers-map)))))
+
+(deftest macro-open-paren
+  (pprint/pprint (lexer/tokenize "{% macro foo %}bar{{baz}}{% endmacro %}{{foo()}}"))
+
+  (let [expected-ast [{:type :text :value "bar"}
+                      {:type :value-node :value [:baz]}
+                      {:type :text :value "bar"}
+                      {:type :value-node :value [:baz]}]
+        input-file "macro/macro-open-paren"]
+    (is (= expected-ast (parser/parse input-file (rcr/->ResourceResolver) empty-fn-map empty-sanitizers-map)))))
+
+
 
 (defrecord MockDictionary [translations]
   Dictionary

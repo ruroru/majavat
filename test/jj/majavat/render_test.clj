@@ -704,6 +704,17 @@ this is a  footer"
                             (->Html)
                             default-error-handler)))))
 
+
+(deftest macro-open-paren
+  (let [expected "barbazbarbaz"
+        input-file "macro/macro-open-paren"]
+    (is (= expected
+           (renderer/render (->StringRenderer)
+                            (parser/parse input-file contentResolver empty-fn-map empty-sanitizers-map)
+                            {:baz "baz"}
+                            (->Html)
+                            default-error-handler)))))
+
 (deftest fail-fast-throws-on-template-not-found
   (let [template (parser/parse "not-existing-file" contentResolver empty-fn-map empty-sanitizers-map)]
     (is (thrown-with-msg? clojure.lang.ExceptionInfo
