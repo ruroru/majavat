@@ -486,7 +486,7 @@ Renders a template using the provided context.
 
 - template - template AST
 - context - Map of variables for template interpolation
-- sanitizer - A record that implements `Sanitizer` protocol
+- error-handler - A record that implements `ErrorHandler` protocol
 
 **Returns** - Rendered output
 
@@ -611,10 +611,9 @@ Handles a template error. Called when the parser returns an error map instead of
 
 - renderer - The renderer that encountered the error
 - template - A map containing error details (`:type`, `:error-message`, and optionally `:line`)
-- sanitizer - The sanitizer in use
 
 ```clojure
-(handle-error error-handler renderer template sanitizer)
+(handle-error error-handler renderer template)
 ```
 
 ### Built-in Implementations

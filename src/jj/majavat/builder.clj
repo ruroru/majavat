@@ -11,13 +11,13 @@
     (let [{:keys [filters sanitizers dictionary]} environment
           pre-render? (not (empty? pre-render-context))]
       (if pre-render?
-        (let [template (parser/parse file-path template-resolver filters sanitizers dictionary)
+        (let [template (parser/parse file-path template-resolver filters sanitizers dictionary sanitizer)
               ast-renderer (renderers/->PartialRenderer)]
           (fn [context]
-            (renderer/render renderer (renderer/render ast-renderer template pre-render-context sanitizer error-handler) context sanitizer error-handler)))
-        (let [template (parser/parse file-path template-resolver filters sanitizers dictionary)]
+            (renderer/render renderer (renderer/render ast-renderer template pre-render-context error-handler) context error-handler)))
+        (let [template (parser/parse file-path template-resolver filters sanitizers dictionary sanitizer)]
           (fn [context]
-            (renderer/render renderer template context sanitizer error-handler)))))))
+            (renderer/render renderer template context error-handler)))))))
 
 
 (defrecord OneShotBuilder [pre-render-context environment]
@@ -27,9 +27,9 @@
           pre-render? (not (empty? pre-render-context))]
       (if pre-render?
         (fn [context]
-          (let [template (parser/parse file-path template-resolver filters sanitizers dictionary)
+          (let [template (parser/parse file-path template-resolver filters sanitizers dictionary sanitizer)
                 merged-context (merge context pre-render-context)]
-            (renderer/render renderer template merged-context sanitizer error-handler)))
+            (renderer/render renderer template merged-context error-handler)))
         (fn [context]
-          (let [template (parser/parse file-path template-resolver filters sanitizers dictionary)]
-            (renderer/render renderer template context sanitizer error-handler)))))))
+          (let [template (parser/parse file-path template-resolver filters sanitizers dictionary sanitizer)]
+            (renderer/render renderer template context error-handler)))))))

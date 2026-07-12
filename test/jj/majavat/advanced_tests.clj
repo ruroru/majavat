@@ -1,5 +1,6 @@
 (ns jj.majavat.advanced-tests
   (:require [clojure.test :refer [deftest is testing]]
+            [clojure.walk :as walk]
             [jj.majavat.lexer :as lexer]
             [jj.majavat.parser :as parser]
             [jj.majavat.renderer.tests :as tests]
@@ -9,6 +10,9 @@
 (def empty-fn-map {})
 (def empty-sanitizers-map {})
 
+(defn- parse [& args]
+  (walk/postwalk #(if (map? %) (dissoc % :render-fn) %) (apply parser/parse args)))
+
 (deftest test-deeply-nested-conditionals
   (is (= [{:branches [[{:condition           [:user :is_admin]
                         :evaluation-function tests/default-test}
@@ -17,9 +21,7 @@
                                       :evaluation-function tests/default-test}
                                      [{:type  :text
                                        :value "Admin Panel: "}
-                                      {:type  :value-node
-                                       :value [:user
-                                               :name]}]]]
+                                      {:type :value-node}]]]
                          :else     [{:type  :text
                                      :value "Access Denied - No Permissions"}]
                          :type     :if}]]]
@@ -28,9 +30,7 @@
                                     :evaluation-function tests/default-test}
                                    [{:type  :text
                                      :value "Welcome "}
-                                    {:type  :value-node
-                                     :value [:user
-                                             :name]}
+                                    {:type :value-node}
                                     {:type  :text
                                      :value "!"}]]]
                        :else     [{:type  :text
@@ -38,19 +38,15 @@
                        :type     :if}]
            :type     :if}]
 
-         (parser/parse "deeply-nested-conditionals.txt" contentResolver empty-fn-map empty-sanitizers-map))))
+         (parse "deeply-nested-conditionals.txt" contentResolver empty-fn-map empty-sanitizers-map))))
 
 (deftest test-for-loop-with-nested-everything
   (is (= [{:body       [{:type  :text
                          :value "Department: "}
-                        {:type  :value-node
-                         :value [:department
-                                 :name]}
+                        {:type :value-node}
                         {:type  :text
                          :value " (Budget: "}
-                        {:type  :value-node
-                         :value [:department
-                                 :budget]}
+                        {:type :value-node}
                         {:type  :text
                          :value ")"}
                         {:body       [{:branches [[{:condition           [:employeew
@@ -58,22 +54,14 @@
                                                     :evaluation-function tests/default-test}
                                                    [{:type  :text
                                                      :value "👔 MANAGER: "}
-                                                    {:type  :value-node
-                                                     :value [:employee
-                                                             :name]}
+                                                    {:type :value-node}
                                                     {:type  :text
                                                      :value " - "}
-                                                    {:type  :value-node
-                                                     :value [:employee
-                                                             :title]}
-                                                    {:body       [{:type  :value-node
-                                                                   :value [:report
-                                                                           :name]}
+                                                    {:type :value-node}
+                                                    {:body       [{:type :value-node}
                                                                   {:type  :text
                                                                    :value " ("}
-                                                                  {:type  :value-node
-                                                                   :value [:report
-                                                                           :role]}
+                                                                  {:type :value-node}
                                                                   {:type  :text
                                                                    :value ")"}]
                                                      :identifier :report
@@ -82,14 +70,10 @@
                                                      :type       :for}]]]
                                        :else     [{:type  :text
                                                    :value "👤 "}
-                                                  {:type  :value-node
-                                                   :value [:employee
-                                                           :name]}
+                                                  {:type :value-node}
                                                   {:type  :text
                                                    :value " - "}
-                                                  {:type  :value-node
-                                                   :value [:employee
-                                                           :title]}]
+                                                  {:type :value-node}]
                                        :type     :if}]
                          :identifier :employee
                          :source     [:department
@@ -100,7 +84,7 @@
                         :departments]
            :type       :for}]
 
-         (parser/parse "nested-for-loops.txt" contentResolver empty-fn-map empty-sanitizers-map))))
+         (parse "nested-for-loops.txt" contentResolver empty-fn-map empty-sanitizers-map))))
 
 
 (deftest test-simple-text

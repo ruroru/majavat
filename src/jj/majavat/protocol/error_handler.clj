@@ -1,4 +1,4 @@
 (ns jj.majavat.protocol.error-handler)
 
 (defprotocol ErrorHandler
-  (handle-error [this renderer template sanitizer]))
+  (handle-error [this renderer template]))

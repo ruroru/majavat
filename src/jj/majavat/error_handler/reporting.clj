@@ -15,5 +15,5 @@
 
 (defrecord Reporting []
   error-handler/ErrorHandler
-  (handle-error [this renderer template sanitizer]
-    (render-target/render renderer (read-edn-resource "jj/majavat/error-template.edn") template sanitizer (fail-fast/->FailFast))))
+  (handle-error [this renderer template]
+    (render-target/render renderer (read-edn-resource "jj/majavat/error-template.edn") template (fail-fast/->FailFast))))

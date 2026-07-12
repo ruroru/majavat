@@ -3,7 +3,7 @@
 
 (defrecord FailFast []
   error-handler/ErrorHandler
-  (handle-error [this renderer template sanitizer]
+  (handle-error [this renderer template]
     (throw (ex-info (format "Failed to render template: %s"
                             (:error-message template))
                     template))))
