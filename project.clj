@@ -19,7 +19,7 @@
                          :dependencies   [[selmer "1.13.4"]
                                           [hiccup "2.0.0"]]}
              :test      {:global-vars    {*warn-on-reflection* true}
-                         :dependencies   [[ch.qos.logback/logback-classic "1.5.37"]
+                         :dependencies   [[ch.qos.logback/logback-classic "1.5.38"]
                                           [criterium "0.4.6"]
                                           [mock-clj "0.2.1"]
                                           [org.clojure/math.combinatorics "0.3.2"]]
