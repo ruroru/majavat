@@ -79,7 +79,7 @@ Rendering `file.txt` with content
 
 ```
 Hello {{ user.name }}!
-ID is: {{ user.[namespaced/user.id] }}!
+ID is: {{ user.`namespaced/user.id` }}!
 ```
 
 ```clojure

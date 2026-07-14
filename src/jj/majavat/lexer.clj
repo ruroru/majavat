@@ -16,8 +16,8 @@
             (conj result (keyword remaining))))
         (let [c (.charAt s i)]
           (cond
-            (= c \[)
-            (let [close (.indexOf s "]" (int i))]
+            (= c \`)
+            (let [close (.indexOf s "`" (int (inc i)))]
               (if (pos? close)
                 (let [content (subs s (inc i) close)
                       next-i (if (and (< (inc close) len) (= (.charAt s (inc close)) \.))

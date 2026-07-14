@@ -391,7 +391,7 @@
                    :corge.grault]}
           {:line 1
            :type :closing-bracket}]
-         (lexer/tokenize "{{foo.bar.[baz/qux.quux].[corge.grault]}}"))))
+         (lexer/tokenize "{{foo.bar.`baz/qux.quux`.`corge.grault`}}"))))
 
 (deftest if-with-operator-statement
   (is (= [{:type :block-start}
