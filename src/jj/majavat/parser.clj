@@ -281,9 +281,9 @@
                        (recur remaining-after-filters (conj list value-node) current-block parsing-for-body current-file-path template-resolver filter-map merged-sanitizers tag-stack macros dictionary current-sanitizer macro-param))
 
          :opening-bracket (recur (rest lexed-list) list current-block parsing-for-body current-file-path template-resolver filter-map merged-sanitizers tag-stack macros dictionary current-sanitizer macro-param)
-         :closing-bracket (if (or (:render-fn (last list))
-                                  (:builder (last list))
-                                  (not (nil? (:value (last list)))))
+         :closing-bracket (if (or (:render-fn (peek list))
+                                  (:builder (peek list))
+                                  (not (nil? (:value (peek list)))))
                             (recur (rest lexed-list) list current-block parsing-for-body current-file-path template-resolver filter-map merged-sanitizers tag-stack macros dictionary current-sanitizer macro-param)
                             (throw (ex-info (format "error on line %s" (:line current-item))
                                             {:type :syntax-error
