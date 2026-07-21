@@ -1,1 +1,1 @@
-foo {{ value | default "baz" }}
+foo {{ value | default("baz") }}

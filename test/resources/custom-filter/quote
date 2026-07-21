@@ -1,1 +1,1 @@
-{{ value | quote "Sun Tzu" }}
+{{ value | quote("Sun Tzu") }}

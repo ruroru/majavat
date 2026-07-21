@@ -153,16 +153,21 @@
                          {:type :expression :value [:value]}
                          {:type :filter-tag}
                          {:type :filter-function :value :function1}
+                         {:type :open-paren :kind :filter}
                          {:type :filter-arg :value "arg1"}
+                         {:type :close-paren :kind :filter}
                          {:type :filter-tag}
                          {:type :filter-function :value :function2}
+                         {:type :open-paren :kind :filter}
                          {:type :filter-arg :value "arg2"}
+                         {:type :comma :kind :filter-arg}
                          {:type :filter-arg :value "arg3"}
+                         {:type :close-paren :kind :filter}
                          {:type :filter-tag}
                          {:type :filter-function :value :function}
                          {:line 1 :type :closing-bracket}]
 
-                        "testing {{ value |function1 \"arg1\" |           function2         \"arg2\"      \"arg3\"|       function}}"))
+                        "testing {{ value |function1(\"arg1\") |           function2(\"arg2\", \"arg3\")|       function}}"))
 
 
 (deftest tokenize-let
@@ -305,18 +310,27 @@
                   {:type :expression :value [:value]}
                   {:type :filter-tag}
                   {:type :filter-function :value :function1}
+                  {:type :open-paren :kind :filter}
                   {:type :filter-arg :value :arg}
+                  {:type :close-paren :kind :filter}
                   {:type :filter-tag}
                   {:type :filter-function :value :function2}
+                  {:type :open-paren :kind :filter}
                   {:type :filter-arg :value :foo}
+                  {:type :comma :kind :filter-arg}
                   {:type :filter-arg :value :bar}
+                  {:type :comma :kind :filter-arg}
                   {:type :filter-arg :value :baz}
+                  {:type :close-paren :kind :filter}
                   {:type :filter-tag}
                   {:type :filter-function :value :func3}
+                  {:type :open-paren :kind :filter}
                   {:type :filter-arg :value :qaz}
+                  {:type :comma :kind :filter-arg}
                   {:type :filter-arg :value :quux}
+                  {:type :close-paren :kind :filter}
                   {:line 1 :type :closing-bracket}]
-        input "testing {{ value |function1 arg |     function2   foo bar baz|func3 qaz   quux   }}"]
+        input "testing {{ value |function1(arg) |     function2(foo, bar, baz)|func3(qaz, quux)   }}"]
     (is (= expected (lexer/tokenize input)))))
 
 (deftest tokenize-keyword-arguments-with-space
@@ -326,10 +340,13 @@
                   {:type :expression :value [:value]}
                   {:type :filter-tag}
                   {:type :filter-function :value :function}
+                  {:type :open-paren :kind :filter}
                   {:type :filter-arg :value "foo bar"}
+                  {:type :comma :kind :filter-arg}
                   {:type :filter-arg :value :baz}
+                  {:type :close-paren :kind :filter}
                   {:line 1 :type :closing-bracket}]
-        input "testing {{ value | function   \"foo bar\" baz}}"]
+        input "testing {{ value | function(\"foo bar\", baz)}}"]
     (is (= expected (lexer/tokenize input)))))
 
 (deftest tokenize-nil

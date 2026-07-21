@@ -56,6 +56,23 @@
                      :filter-name filter-name
                      :line        1}))))
 
+(defn- parse-filter-args [after-open]
+  (let [arg-tokens (take-while #(not= :close-paren (:type %)) after-open)
+        close-and-rest (drop-while #(not= :close-paren (:type %)) after-open)
+        remaining (rest close-and-rest)
+        types (map :type arg-tokens)
+        line (or (:line (first remaining)) (some :line arg-tokens) 1)]
+    (when-not (and (seq close-and-rest)
+                   (or (empty? types)
+                       (and (= :filter-arg (first types))
+                            (= :filter-arg (last types))
+                            (not-any? #(apply = %) (partition 2 1 types)))))
+      (throw (ex-info (format "error on line %s" line)
+                      {:type :syntax-error
+                       :line line})))
+    [(into [] (comp (filter #(= :filter-arg (:type %))) (map :value)) arg-tokens)
+     remaining]))
+
 (defn- build-filter-fn [filter-specs filter-map]
   (if (empty? filter-specs)
     identity
@@ -238,13 +255,11 @@
                                                                      (let [filter-function (first remaining-after-tag)
                                                                            remaining-after-function (rest remaining-after-tag)
                                                                            has-paren (and (seq remaining-after-function)
-                                                                                          (= :filter-paren-open (:type (first remaining-after-function))))
-                                                                           remaining-after-paren (if has-paren (rest remaining-after-function) remaining-after-function)
-                                                                           [args remaining-after-args] (loop [remaining remaining-after-paren
-                                                                                                              args []]
-                                                                                                         (if (and (seq remaining) (= :filter-arg (:type (first remaining))))
-                                                                                                           (recur (rest remaining) (conj args (:value (first remaining))))
-                                                                                                           [args remaining]))
+                                                                                          (= :open-paren (:type (first remaining-after-function)))
+                                                                                          (= :filter (:kind (first remaining-after-function))))
+                                                                           [args remaining-after-args] (if has-paren
+                                                                                                         (parse-filter-args (rest remaining-after-function))
+                                                                                                         [[] remaining-after-function])
                                                                            parsed-filter {:filter-name (:value filter-function) :args args}]
                                                                        (recur remaining-after-args (conj filters parsed-filter)))
                                                                      (throw (ex-info (format "error on line %s" (:line (first remaining-after-tag)))

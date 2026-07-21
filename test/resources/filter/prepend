@@ -1,1 +1,1 @@
-foo{{ value | prepend "baz" }}
+foo{{ value | prepend("baz") }}

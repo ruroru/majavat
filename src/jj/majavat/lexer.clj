@@ -57,8 +57,18 @@
       (parse-path trimmed))))
 
 (defn- macro-value-token [kind trimmed-string]
-  (if (= kind :macro-def)
+  (cond
+    (= kind :macro-def)
     {:type :macro-param :value (keyword trimmed-string)}
+
+    (= kind :filter)
+    (if (and (string/starts-with? trimmed-string "\"")
+             (string/ends-with? trimmed-string "\"")
+             (> (count trimmed-string) 1))
+      {:type :filter-arg :value (subs trimmed-string 1 (dec (count trimmed-string)))}
+      {:type :filter-arg :value (keyword trimmed-string)})
+
+    :else
     (cond
       (and (string/starts-with? trimmed-string "\"")
            (string/ends-with? trimmed-string "\"")
@@ -325,16 +335,14 @@
         (let [trimmed-string (string/trim current-string)
               last-type (:type (peek stack))]
           (cond
-            (or (= last-type :filter-tag)
-                (= last-type :filter-function)
-                (= last-type :filter-arg))
+            (= last-type :filter-tag)
             (if (not (string/blank? trimmed-string))
-              (let [token-type (if (= last-type :filter-tag)
-                                 :filter-function
-                                 :filter-arg)]
-                (recur (rrest my-sequence) "" (conj stack {:type token-type :value (keyword trimmed-string)}
-                                                    {:type :closing-bracket :line line-number}) new-line-number))
+              (recur (rrest my-sequence) "" (conj stack {:type :filter-function :value (keyword trimmed-string)}
+                                                  {:type :closing-bracket :line line-number}) new-line-number)
               (recur (rrest my-sequence) "" (conj stack {:type :closing-bracket :line line-number}) new-line-number))
+
+            (and (= last-type :close-paren) (= :filter (:kind (peek stack))))
+            (recur (rrest my-sequence) "" (conj stack {:type :closing-bracket :line line-number}) new-line-number)
 
             (string/blank? trimmed-string)
             (recur (rrest my-sequence) "" (conj stack {:type :expression}
@@ -358,7 +366,10 @@
             (= (:type (peek stack)) :comma))
         (let [kind (if (= (:type (peek stack)) :open-paren)
                      (:kind (peek stack))
-                     (if (= (:kind (peek stack)) :macro-param) :macro-def :macro))]
+                     (case (:kind (peek stack))
+                       :macro-param :macro-def
+                       :filter-arg :filter
+                       :macro))]
           (cond
             (= current-char \))
             (let [trimmed-string (string/trim current-string)]
@@ -370,7 +381,10 @@
             (and (= current-char \,)
                  (even? (count (filter #(= \" %) current-string))))
             (let [trimmed-string (string/trim current-string)
-                  comma-kind (if (= kind :macro-def) :macro-param :macro-arg)]
+                  comma-kind (case kind
+                               :macro-def :macro-param
+                               :filter :filter-arg
+                               :macro-arg)]
               (if (string/blank? trimmed-string)
                 (recur (rest my-sequence) "" (conj stack {:type :comma :kind comma-kind}) new-line-number)
                 (recur (rest my-sequence) "" (conj stack (macro-value-token kind trimmed-string)
@@ -379,57 +393,24 @@
             :else
             (recur (rest my-sequence) (str current-string current-char) stack new-line-number)))
 
-        (or (= (:type (peek stack)) :filter-tag)
-            (= (:type (peek stack)) :filter-function)
-            (= (:type (peek stack)) :filter-arg))
+        (= (:type (peek stack)) :filter-tag)
         (cond
-          (and (= current-char \") (string/blank? (string/trim current-string)))
-          (recur (rest my-sequence) "\"" stack new-line-number)
+          (= current-char \()
+          (recur (rest my-sequence) "" (conj stack {:type :filter-function :value (keyword (string/trim current-string))}
+                                              {:type :open-paren :kind :filter}) new-line-number)
 
-          (and (= current-char \") (string/starts-with? current-string "\""))
-          (recur (rest my-sequence) "" (conj stack {:type :filter-arg :value (subs current-string 1)}) new-line-number)
-
-          (and (= current-char \|)
-               (not (string/blank? (string/trim current-string)))
-               (= (:type (peek stack)) :filter-tag))
-          (let [trimmed-string (string/trim current-string)]
-            (recur (rest my-sequence) "" (conj stack {:type :filter-function :value (keyword trimmed-string)} {:type :filter-tag}) new-line-number))
-
-          (and (= current-char \|)
-               (not (string/blank? (string/trim current-string)))
-               (or (= (:type (peek stack)) :filter-function)
-                   (= (:type (peek stack)) :filter-arg)))
-          (let [trimmed-string (string/trim current-string)]
-            (recur (rest my-sequence) "" (conj stack {:type :filter-arg :value (keyword trimmed-string)} {:type :filter-tag}) new-line-number))
-
-          (and (= current-char \|) (string/blank? (string/trim current-string)))
-          (recur (rest my-sequence) "" (conj stack {:type :filter-tag}) new-line-number)
-
-          (and (= current-char \ )
-               (not (string/blank? (string/trim current-string)))
-               (not (string/starts-with? current-string "\""))
-               (= (:type (peek stack)) :filter-tag))
-          (let [trimmed-string (string/trim current-string)]
-            (recur (rest my-sequence) "" (conj stack {:type :filter-function :value (keyword trimmed-string)}) new-line-number))
-
-          (and (= current-char \ )
-               (not (string/blank? (string/trim current-string)))
-               (not (string/starts-with? current-string "\""))
-               (or (= (:type (peek stack)) :filter-function)
-                   (= (:type (peek stack)) :filter-arg)))
-          (let [trimmed-string (string/trim current-string)]
-            (recur (rest my-sequence) "" (conj stack {:type :filter-arg :value (keyword trimmed-string)}) new-line-number))
-
-          (and (= current-char \ ) (string/blank? (string/trim current-string)))
-          (recur (rest my-sequence) "" stack new-line-number)
-
-          (and (= current-char \ ) (string/starts-with? current-string "\""))
-          (recur (rest my-sequence) (str current-string current-char) stack new-line-number)
-
-          (and (not= current-char \") (not= current-char \|) (not= current-char \ ))
-          (recur (rest my-sequence) (str current-string current-char) stack new-line-number)
+          (= current-char \|)
+          (if (string/blank? current-string)
+            (recur (rest my-sequence) "" stack new-line-number)
+            (recur (rest my-sequence) "" (conj stack {:type :filter-function :value (keyword (string/trim current-string))}
+                                                {:type :filter-tag}) new-line-number))
 
           :else
+          (recur (rest my-sequence) (str current-string current-char) stack new-line-number))
+
+        (and (= (:type (peek stack)) :close-paren) (= :filter (:kind (peek stack))))
+        (if (= current-char \|)
+          (recur (rest my-sequence) "" (conj stack {:type :filter-tag}) new-line-number)
           (recur (rest my-sequence) current-string stack new-line-number))
 
         (= (:type (peek stack)) :block-start)

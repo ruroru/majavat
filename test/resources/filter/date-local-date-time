@@ -1,1 +1,1 @@
-default: {{value | date }}, format one is {{value | date "dd/MM/yyyy HH:mm" }}
+default: {{value | date }}, format one is {{value | date("dd/MM/yyyy HH:mm") }}
