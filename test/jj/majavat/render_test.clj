@@ -701,6 +701,24 @@ this is a  footer"
                             {}
                             default-error-handler)))))
 
+(deftest macro-with-two-arguments
+  (let [expected "hello alice and carol!hello bob and carol!"
+        input-file "macro/two-param-macro-args"]
+    (is (= expected
+           (renderer/render (->StringRenderer)
+                            (parser/parse input-file contentResolver empty-fn-map empty-sanitizers-map)
+                            {:name "alice" :user {:name "carol"}}
+                            default-error-handler)))))
+
+(deftest macro-with-five-arguments
+  (let [expected "one-TWO-THREE-4-five"
+        input-file "macro/five-param-macro"]
+    (is (= expected
+           (renderer/render (->StringRenderer)
+                            (parser/parse input-file contentResolver empty-fn-map empty-sanitizers-map)
+                            {:two "TWO" :three {:nested "THREE"}}
+                            default-error-handler)))))
+
 (deftest fail-fast-throws-on-template-not-found
   (let [template (parser/parse "not-existing-file" contentResolver empty-fn-map empty-sanitizers-map)]
     (is (thrown-with-msg? clojure.lang.ExceptionInfo

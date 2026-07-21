@@ -575,3 +575,27 @@
     (is (= [] (:else if-node)))
     (is (true? (eval-fn 1)))
     (is (false? (eval-fn "other")))))
+
+
+(deftest macro-definition-ends-with-comma
+  (let [expected-ast {:error-message "error on line 1"
+                      :line          "1"
+                      :type          "syntax-error"}
+        input-file "macro/definition-ends-with-comma"]
+    (is (= expected-ast (parse input-file (rcr/->ResourceResolver) empty-fn-map empty-sanitizers-map)))))
+
+
+(deftest macro-with-two-params
+  (let [expected-ast [{:type :text :value "hello"}
+                      {:type :text :value "foo"}
+                      {:type :text :value "bar"}]
+        input-file "macro/two-param-macro"]
+    (is (= expected-ast (parse input-file (rcr/->ResourceResolver) empty-fn-map empty-sanitizers-map)))))
+
+
+(deftest macro-called-with-not-enough-args
+  (let [expected-ast {:error-message "error on line 1"
+                      :line          "1"
+                      :type          "syntax-error"}
+        input-file "macro/two-param-macro-not-enough-args"]
+    (is (= expected-ast (parse input-file (rcr/->ResourceResolver) empty-fn-map empty-sanitizers-map)))))

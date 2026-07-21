@@ -1,0 +1,1 @@
+{% macro fmt(a,b,c,d,e) %}{{a}}-{{b}}-{{c}}-{{d}}-{{e}}{% endmacro %}{% fmt("one", two, three.nested, 4, "five") %}

@@ -1,0 +1,1 @@
+{% macro macro-name(argument1,argument2) %}hello{{argument1}}{{argument2}}{% endmacro %}{% macro-name("foo", "bar") %}

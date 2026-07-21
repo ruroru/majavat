@@ -126,26 +126,23 @@
       ([context] (finish (resolve-path context value)))
       ([context _raw] (resolve-path context value)))))
 
-(defn- expand-macro [body param arg]
-  (walk/postwalk
-    (fn [node]
-      (if (map? node)
-        (cond
-          (= :macro-param-node (:type node))
-          ((:builder node) arg)
-
-          (vector? arg)
-          (reduce (fn [n k]
-                    (let [v (get n k)]
-                      (if (and (vector? v) (= param (first v)))
-                        (assoc n k (into arg (subvec v 1)))
-                        n)))
-                  node
-                  [:value :source :condition])
-
-          :else node)
-        node))
-    body))
+(defn- expand-macro [body params args]
+  (let [param->arg (zipmap params args)]
+    (walk/postwalk
+      (fn [node]
+        (if (map? node)
+          (if (= :macro-param-node (:type node))
+            ((:builder node) (get param->arg (:param node)))
+            (reduce (fn [n k]
+                      (let [v (get n k)
+                            arg (when (vector? v) (get param->arg (first v)))]
+                        (if (vector? arg)
+                          (assoc n k (into arg (subvec v 1)))
+                          n)))
+                    node
+                    [:value :source :condition]))
+          node))
+      body)))
 
 (defn- resolve-file-path [base-path relative-path]
   (let [base-path-obj (Paths/get base-path (make-array String 0))
@@ -260,11 +257,12 @@
                                           (nil? path)
                                           (assoc current-item :type :value-node)
 
-                                          (and macro-param (= macro-param (first path)))
+                                          (and macro-param (some #{(first path)} macro-param))
                                           {:type    :macro-param-node
+                                           :param   (first path)
                                            :builder (fn [arg]
                                                       (cond
-                                                        (and (string? arg) (= [macro-param] path))
+                                                        (and (string? arg) (= 1 (count path)))
                                                         {:type :text :value (let [s (->str (filter-fn arg))]
                                                                               (if current-sanitizer
                                                                                 (sanitize current-sanitizer s)
@@ -634,20 +632,27 @@
          :keyword-macro (let [remaining (rest lexed-list)
                                  name-token (first remaining)
                                  remaining-after-name (rest remaining)
-                                 [param-token remaining-after-signature]
+                                 [params signature-valid? remaining-after-signature]
                                  (if (= :open-paren (:type (first remaining-after-name)))
-                                   (let [after-open (rest remaining-after-name)]
-                                     (if (= :macro-param (:type (first after-open)))
-                                       [(first after-open) (rest (rest after-open))]
-                                       [nil (rest after-open)]))
-                                   [nil remaining-after-name])
+                                   (let [after-open (rest remaining-after-name)
+                                         signature (take-while #(not= :close-paren (:type %)) after-open)
+                                         types (map :type signature)]
+                                     [(into [] (comp (filter #(= :macro-param (:type %))) (map :value)) signature)
+                                      (or (empty? types)
+                                          (and (= :macro-param (first types))
+                                               (= :macro-param (last types))
+                                               (not-any? #(apply = %) (partition 2 1 types))))
+                                      (rest (drop-while #(not= :close-paren (:type %)) after-open))])
+                                   [[] true remaining-after-name])
                                  block-end-token (first remaining-after-signature)]
                              (if (and name-token (= :macro-name (:type name-token))
+                                      signature-valid?
                                       block-end-token (= :block-end (:type block-end-token)))
                                (let [remaining-after-block-end (rest remaining-after-signature)
                                      new-tag-stack (push-tag tag-stack :macro (:line current-item))
-                                     [body remaining-after-body updated-tag-stack] (parse-ast remaining-after-block-end [] current-block true current-file-path template-resolver filter-map merged-sanitizers new-tag-stack macros dictionary current-sanitizer (:value param-token))]
-                                 (swap! macros assoc (:value name-token) (fn [arg] (expand-macro body (:value param-token) arg)))
+                                     [body remaining-after-body updated-tag-stack] (parse-ast remaining-after-block-end [] current-block true current-file-path template-resolver filter-map merged-sanitizers new-tag-stack macros dictionary current-sanitizer (not-empty params))]
+                                 (swap! macros assoc (:value name-token) (with-meta (fn [args] (expand-macro body params args))
+                                                                                    {:param-count (count params)}))
                                  (recur remaining-after-body list current-block parsing-for-body current-file-path template-resolver filter-map merged-sanitizers updated-tag-stack macros dictionary current-sanitizer macro-param))
                                (throw (ex-info (format "error on line %s" (:line (or block-end-token name-token current-item)))
                                                {:type :syntax-error
@@ -662,12 +667,17 @@
 
          :macro-call (let [macro-def (get @macros (:value current-item))
                            after-open (rest (rest lexed-list))
-                           [arg-token remaining-after-call]
-                           (if (= :macro-arg (:type (first after-open)))
-                             [(first after-open) (rest (rest after-open))]
-                             [nil (rest after-open)])]
+                           arg-values (into [] (comp (take-while #(not= :close-paren (:type %)))
+                                                     (filter #(= :macro-arg (:type %)))
+                                                     (map :value))
+                                            after-open)
+                           remaining-after-call (rest (drop-while #(not= :close-paren (:type %)) after-open))]
                        (if macro-def
-                         (recur remaining-after-call (into list (macro-def (:value arg-token))) current-block parsing-for-body current-file-path template-resolver filter-map merged-sanitizers tag-stack macros dictionary current-sanitizer macro-param)
+                         (if (not= (count arg-values) (:param-count (meta macro-def)))
+                           (throw (ex-info (format "error on line %s" (:line current-item 1))
+                                           {:type :syntax-error
+                                            :line (:line current-item 1)}))
+                           (recur remaining-after-call (into list (macro-def arg-values)) current-block parsing-for-body current-file-path template-resolver filter-map merged-sanitizers tag-stack macros dictionary current-sanitizer macro-param))
                          (throw (ex-info (format "unknown tag or macro '%s' on line %s" (name (:value current-item)) (:line current-item 1))
                                          {:type :syntax-error
                                           :line (:line current-item 1)}))))

@@ -538,3 +538,61 @@
           {:line 1
            :type :block-end}]
          (lexer/tokenize "{% if some.condition == 6 %}yes{% endif %}"))))
+
+(deftest macro-definition-ends-with-comma
+  (is (= (list {:type :block-start}
+               {:type :keyword-macro}
+               {:type  :macro-name
+                :value :macro-name}
+               {:kind :macro-def
+                :type :open-paren}
+               {:type  :macro-param
+                :value :argument}
+               {:type :comma
+                :kind :macro-param}
+               {:kind :macro-def
+                :type :close-paren}
+               {:line 1
+                :type :block-end}
+               {:type  :text
+                :value "hello "}
+               {:type :opening-bracket}
+               {:type  :expression
+                :value [:argument]}
+               {:line 1
+                :type :closing-bracket}
+               {:type :block-start}
+               {:type :keyword-end-macro}
+               {:line 1
+                :type :block-end})
+         (lexer/tokenize "{% macro macro-name(argument,) %}hello {{argument}}{% endmacro %}"))))
+
+(deftest macro-multi-params
+  (is (= (list {:type :block-start}
+               {:type :keyword-macro}
+               {:type  :macro-name
+                :value :macro-name}
+               {:kind :macro-def
+                :type :open-paren}
+               {:type  :macro-param
+                :value :argument1}
+               {:kind :macro-param
+                :type :comma}
+               {:type  :macro-param
+                :value :argument2}
+               {:kind :macro-def
+                :type :close-paren}
+               {:line 1
+                :type :block-end}
+               {:type  :text
+                :value "hello "}
+               {:type :opening-bracket}
+               {:type  :expression
+                :value [:argument]}
+               {:line 1
+                :type :closing-bracket}
+               {:type :block-start}
+               {:type :keyword-end-macro}
+               {:line 1
+                :type :block-end})
+         (lexer/tokenize "{% macro macro-name(argument1,argument2) %}hello {{argument}}{% endmacro %}"))))

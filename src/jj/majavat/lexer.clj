@@ -56,6 +56,21 @@
       (subs trimmed 1 (dec (count trimmed)))
       (parse-path trimmed))))
 
+(defn- macro-value-token [kind trimmed-string]
+  (if (= kind :macro-def)
+    {:type :macro-param :value (keyword trimmed-string)}
+    (cond
+      (and (string/starts-with? trimmed-string "\"")
+           (string/ends-with? trimmed-string "\"")
+           (> (count trimmed-string) 1))
+      {:type :macro-arg :value (subs trimmed-string 1 (dec (count trimmed-string)))}
+
+      (re-matches #"-?\d+(\.\d+)?" trimmed-string)
+      {:type :macro-arg :value trimmed-string}
+
+      :else
+      {:type :macro-arg :value (parse-path trimmed-string)})))
+
 (defn- skip-comment [my-sequence line-number]
   (loop [seq-rest my-sequence
          current-line line-number]
@@ -339,34 +354,30 @@
           :else
           (recur (rest my-sequence) (str current-string current-char) stack new-line-number))
 
-        (= (:type (peek stack)) :open-paren)
-        (cond
-          (= current-char \))
-          (let [kind (:kind (peek stack))
-                trimmed-string (string/trim current-string)]
-            (cond
-              (string/blank? trimmed-string)
-              (recur (rest my-sequence) "" (conj stack {:type :close-paren :kind kind}) new-line-number)
+        (or (= (:type (peek stack)) :open-paren)
+            (= (:type (peek stack)) :comma))
+        (let [kind (if (= (:type (peek stack)) :open-paren)
+                     (:kind (peek stack))
+                     (if (= (:kind (peek stack)) :macro-param) :macro-def :macro))]
+          (cond
+            (= current-char \))
+            (let [trimmed-string (string/trim current-string)]
+              (if (string/blank? trimmed-string)
+                (recur (rest my-sequence) "" (conj stack {:type :close-paren :kind kind}) new-line-number)
+                (recur (rest my-sequence) "" (conj stack (macro-value-token kind trimmed-string)
+                                                    {:type :close-paren :kind kind}) new-line-number)))
 
-              (= kind :macro-def)
-              (recur (rest my-sequence) "" (conj stack {:type :macro-param :value (keyword trimmed-string)}
-                                                  {:type :close-paren :kind kind}) new-line-number)
+            (and (= current-char \,)
+                 (even? (count (filter #(= \" %) current-string))))
+            (let [trimmed-string (string/trim current-string)
+                  comma-kind (if (= kind :macro-def) :macro-param :macro-arg)]
+              (if (string/blank? trimmed-string)
+                (recur (rest my-sequence) "" (conj stack {:type :comma :kind comma-kind}) new-line-number)
+                (recur (rest my-sequence) "" (conj stack (macro-value-token kind trimmed-string)
+                                                    {:type :comma :kind comma-kind}) new-line-number)))
 
-              (and (string/starts-with? trimmed-string "\"")
-                   (string/ends-with? trimmed-string "\"")
-                   (> (count trimmed-string) 1))
-              (recur (rest my-sequence) "" (conj stack {:type :macro-arg :value (subs trimmed-string 1 (dec (count trimmed-string)))}
-                                                  {:type :close-paren :kind kind}) new-line-number)
-
-              (re-matches #"-?\d+(\.\d+)?" trimmed-string)
-              (recur (rest my-sequence) "" (conj stack {:type :macro-arg :value trimmed-string}
-                                                  {:type :close-paren :kind kind}) new-line-number)
-
-              :else
-              (recur (rest my-sequence) "" (conj stack {:type :macro-arg :value (parse-path trimmed-string)}
-                                                  {:type :close-paren :kind kind}) new-line-number)))
-          :else
-          (recur (rest my-sequence) (str current-string current-char) stack new-line-number))
+            :else
+            (recur (rest my-sequence) (str current-string current-char) stack new-line-number)))
 
         (or (= (:type (peek stack)) :filter-tag)
             (= (:type (peek stack)) :filter-function)
