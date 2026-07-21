@@ -127,10 +127,11 @@ Hello {{ name | upper-case }}!
 | rest                        | Sequential    | (list :foo :bar :baz) -> (list :bar :baz)      |
 | first                       | Map           | {:foo :a :bar :b :baz :c} -> [:foo :a]         |
 | rest                        | Map           | {:foo :a :bar :b :baz :c} -> {:bar :b :baz :c} |
+| trans                       | keyword       | translates keyword with a dictionary           |
 | default("foo")              | nil           | nil → "foo"                                    |
 | default("foo")              | not nil       | "bar" → "bar"                                  |
-| date("yyyy")                | LocalDate     | Instance of LocalDate → "2025"                 | 
-| date("yyyy")                | LocalDateTime | Instance of LocalDateTime → "2025"             | 
+| date("yyyy")                | LocalDate     | Instance of LocalDate → "2025"                 |
+| date("yyyy")                | LocalDateTime | Instance of LocalDateTime → "2025"             |
 | date("hh/mm")               | LocalTime     | Instance of LocalTime →  "11/11"               |
 | date("hh/mm", "Asia/Tokyo") | Instant       | Instance of Instant →  "11/11"                 |
 | date("hh/mm", "Asia/Tokyo") | ZonedDateTime | Instance of ZonedDateTime →  "11/11"           |

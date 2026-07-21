@@ -767,3 +767,10 @@ this is a  footer"
         en-context {:locale "en"}]
     (assert-render template en-context "hello")
     (assert-render template fi-context "hei")))
+
+(deftest trans-filter-test
+  (let [mock-dictionary (->MockDictionary)
+        template (parser/parse "trans/trans-filter" contentResolver empty-fn-map empty-sanitizers-map mock-dictionary)]
+    (assert-render template {:locale "en" :k "hello"} "hello")
+    (assert-render template {:locale "fi" :k "hello"} "hei")
+    (assert-render template {:locale "fi" :k "world"} "maailma")))

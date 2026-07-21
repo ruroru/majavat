@@ -12,7 +12,7 @@
            (java.nio.file Paths)
            (java.time ZoneId)))
 
-(def ^:private default-filter-map
+(defn create-filter-map [dictionary]
   {:trim             filters/trim-string
    :upper-case       filters/upper-case-string
    :lower-case       filters/lower-case-string
@@ -37,7 +37,12 @@
    :where            filters/->handle-where
    :first            filters/get-first
    :rest             filters/get-rest
-   :str              filters/handle-str})
+   :str              filters/handle-str
+   :trans            (with-meta
+                       (fn [v locale]
+                         (dictionary/translate dictionary locale (if (keyword? v) v (keyword v))))
+                       {:locale-aware true})
+   })
 
 (def ^:private ^:const sanitizers {:html (sanitizer/->Html)
                                    :json (sanitizer/->Json)
@@ -50,7 +55,11 @@
 
 (defn- create-filter-fn [{:keys [filter-name args]} filter-map]
   (if-let [f (get filter-map filter-name)]
-    (fn [input] (apply f input args))
+    (if (:locale-aware (meta f))
+      (with-meta (fn [input locale]
+                   (apply f input locale args))
+                 {:locale-aware true})
+      (fn [input] (apply f input args)))
     (throw (ex-info (format "Unsupported filter: %s" (name filter-name))
                     {:type        :syntax-error
                      :filter-name filter-name
@@ -75,8 +84,15 @@
 
 (defn- build-filter-fn [filter-specs filter-map]
   (if (empty? filter-specs)
-    identity
-    (apply comp (reverse (map #(create-filter-fn % filter-map) filter-specs)))))
+    (fn [input _locale] input)
+    (let [fns (mapv #(create-filter-fn % filter-map) filter-specs)]
+      (fn [input locale]
+        (reduce (fn [acc f]
+                  (if (:locale-aware (meta f))
+                    (f acc locale)
+                    (f acc)))
+                input
+                fns)))))
 
 (defn- ->str [v]
   (if (string? v)
@@ -135,12 +151,12 @@
             (get-in context path))))
 
 (defn- bake-render-fn [{:keys [value filter-fn sanitizer]}]
-  (let [filter-fn (or filter-fn identity)
+  (let [filter-fn (or filter-fn (fn [v _locale] v))
         finish (if sanitizer
-                 (fn [v] (sanitize sanitizer (->str (filter-fn v))))
-                 (fn [v] (->str (filter-fn v))))]
+                 (fn [v locale] (sanitize sanitizer (->str (filter-fn v locale))))
+                 (fn [v locale] (->str (filter-fn v locale))))]
     (fn
-      ([context] (finish (resolve-path context value)))
+      ([context] (finish (resolve-path context value) (get context :locale)))
       ([context _raw] (resolve-path context value)))))
 
 (defn- expand-macro [body params args]
@@ -278,7 +294,7 @@
                                            :builder (fn [arg]
                                                       (cond
                                                         (and (string? arg) (= 1 (count path)))
-                                                        {:type :text :value (let [s (->str (filter-fn arg))]
+                                                        {:type :text :value (let [s (->str (filter-fn arg nil))]
                                                                               (if current-sanitizer
                                                                                 (sanitize current-sanitizer s)
                                                                                 s))}
@@ -665,42 +681,42 @@
                             (recur (rest lexed-list) list current-block parsing-for-body current-file-path template-resolver filter-map merged-sanitizers tag-stack macros dictionary current-sanitizer macro-param))
 
          :keyword-macro (let [remaining (rest lexed-list)
-                                 name-token (first remaining)
-                                 remaining-after-name (rest remaining)
-                                 [params signature-valid? remaining-after-signature]
-                                 (if (= :open-paren (:type (first remaining-after-name)))
-                                   (let [after-open (rest remaining-after-name)
-                                         signature (take-while #(not= :close-paren (:type %)) after-open)
-                                         types (map :type signature)]
-                                     [(into [] (comp (filter #(= :macro-param (:type %))) (map :value)) signature)
-                                      (or (empty? types)
-                                          (and (= :macro-param (first types))
-                                               (= :macro-param (last types))
-                                               (not-any? #(apply = %) (partition 2 1 types))))
-                                      (rest (drop-while #(not= :close-paren (:type %)) after-open))])
-                                   [[] true remaining-after-name])
-                                 block-end-token (first remaining-after-signature)]
-                             (if (and name-token (= :macro-name (:type name-token))
-                                      signature-valid?
-                                      block-end-token (= :block-end (:type block-end-token)))
-                               (let [remaining-after-block-end (rest remaining-after-signature)
-                                     new-tag-stack (push-tag tag-stack :macro (:line current-item))
-                                     [body remaining-after-body updated-tag-stack] (parse-ast remaining-after-block-end [] current-block true current-file-path template-resolver filter-map merged-sanitizers new-tag-stack macros dictionary current-sanitizer (not-empty params))]
-                                 (when (contains? @macros (:value name-token))
-                                   (throw (ex-info (format "macro '%s' is already defined" (name (:value name-token)))
-                                                   {:type :syntax-error
-                                                    :line (:line block-end-token)})))
-                                 (swap! macros assoc (:value name-token) (with-meta (fn [args] (expand-macro body params args))
-                                                                                    {:param-count (count params)}))
-                                 (recur remaining-after-body list current-block parsing-for-body current-file-path template-resolver filter-map merged-sanitizers updated-tag-stack macros dictionary current-sanitizer macro-param))
-                               (throw (ex-info (format "error on line %s" (:line (or block-end-token name-token current-item)))
-                                               {:type :syntax-error
-                                                :line (:line (or block-end-token name-token current-item))}))))
+                              name-token (first remaining)
+                              remaining-after-name (rest remaining)
+                              [params signature-valid? remaining-after-signature]
+                              (if (= :open-paren (:type (first remaining-after-name)))
+                                (let [after-open (rest remaining-after-name)
+                                      signature (take-while #(not= :close-paren (:type %)) after-open)
+                                      types (map :type signature)]
+                                  [(into [] (comp (filter #(= :macro-param (:type %))) (map :value)) signature)
+                                   (or (empty? types)
+                                       (and (= :macro-param (first types))
+                                            (= :macro-param (last types))
+                                            (not-any? #(apply = %) (partition 2 1 types))))
+                                   (rest (drop-while #(not= :close-paren (:type %)) after-open))])
+                                [[] true remaining-after-name])
+                              block-end-token (first remaining-after-signature)]
+                          (if (and name-token (= :macro-name (:type name-token))
+                                   signature-valid?
+                                   block-end-token (= :block-end (:type block-end-token)))
+                            (let [remaining-after-block-end (rest remaining-after-signature)
+                                  new-tag-stack (push-tag tag-stack :macro (:line current-item))
+                                  [body remaining-after-body updated-tag-stack] (parse-ast remaining-after-block-end [] current-block true current-file-path template-resolver filter-map merged-sanitizers new-tag-stack macros dictionary current-sanitizer (not-empty params))]
+                              (when (contains? @macros (:value name-token))
+                                (throw (ex-info (format "macro '%s' is already defined" (name (:value name-token)))
+                                                {:type :syntax-error
+                                                 :line (:line block-end-token)})))
+                              (swap! macros assoc (:value name-token) (with-meta (fn [args] (expand-macro body params args))
+                                                                                 {:param-count (count params)}))
+                              (recur remaining-after-body list current-block parsing-for-body current-file-path template-resolver filter-map merged-sanitizers updated-tag-stack macros dictionary current-sanitizer macro-param))
+                            (throw (ex-info (format "error on line %s" (:line (or block-end-token name-token current-item)))
+                                            {:type :syntax-error
+                                             :line (:line (or block-end-token name-token current-item))}))))
 
          :keyword-end-macro (if parsing-for-body
-                                 (let [updated-tag-stack (pop-tag tag-stack :macro (or (:line current-item) 1))]
-                                   [list (rest lexed-list) updated-tag-stack])
-                                 (recur (rest lexed-list) list current-block parsing-for-body current-file-path template-resolver filter-map merged-sanitizers tag-stack macros dictionary current-sanitizer macro-param))
+                              (let [updated-tag-stack (pop-tag tag-stack :macro (or (:line current-item) 1))]
+                                [list (rest lexed-list) updated-tag-stack])
+                              (recur (rest lexed-list) list current-block parsing-for-body current-file-path template-resolver filter-map merged-sanitizers tag-stack macros dictionary current-sanitizer macro-param))
 
          :macro-name (recur (rest lexed-list) list current-block parsing-for-body current-file-path template-resolver filter-map merged-sanitizers tag-stack macros dictionary current-sanitizer macro-param)
 
@@ -733,8 +749,8 @@
                               (if (= :token/translation-key (:type next-token))
                                 (let [key (:value next-token)
                                       trans-fn (if dictionary
-                                                (fn [locale] (dictionary/translate dictionary locale key))
-                                                (constantly nil))]
+                                                 (fn [locale] (dictionary/translate dictionary locale key))
+                                                 (constantly nil))]
                                   (recur (rest remaining) (conj list {:type :translation :trans-fn trans-fn}) current-block parsing-for-body current-file-path template-resolver filter-map merged-sanitizers tag-stack macros dictionary current-sanitizer macro-param))
                                 (recur remaining list current-block parsing-for-body current-file-path template-resolver filter-map merged-sanitizers tag-stack macros dictionary current-sanitizer macro-param)))
 
@@ -767,30 +783,30 @@
   ([resource-path template-resolver user-filters user-sanitizers dictionary]
    (parse resource-path template-resolver user-filters user-sanitizers dictionary nil))
   ([resource-path template-resolver user-filters user-sanitizers dictionary current-sanitizer]
-  (if (resolver/template-exists? template-resolver resource-path)
-    (let [file-content (read-content-as-string template-resolver resource-path)
-          lexed-value (lexer/tokenize file-content)
-          filter-map (merge default-filter-map user-filters)
-          merged-sanitizers (merge user-sanitizers sanitizers)
-          macros (atom {})]
-      (try
-        (parse-ast lexed-value [] {} false resource-path template-resolver filter-map merged-sanitizers [] macros dictionary current-sanitizer nil)
-        (catch ExceptionInfo e
-          (let [data (ex-data e)]
-            (case (:type data)
-              :template-not-found-error
-              {:type          "template-not-found-error"
-               :error-message (format "%s template can not be found" (:template data))}
+   (if (resolver/template-exists? template-resolver resource-path)
+     (let [file-content (read-content-as-string template-resolver resource-path)
+           lexed-value (lexer/tokenize file-content)
+           filter-map (merge (create-filter-map dictionary) user-filters)
+           merged-sanitizers (merge user-sanitizers sanitizers)
+           macros (atom {})]
+       (try
+         (parse-ast lexed-value [] {} false resource-path template-resolver filter-map merged-sanitizers [] macros dictionary current-sanitizer nil)
+         (catch ExceptionInfo e
+           (let [data (ex-data e)]
+             (case (:type data)
+               :template-not-found-error
+               {:type          "template-not-found-error"
+                :error-message (format "%s template can not be found" (:template data))}
 
-              :syntax-error
-              {:type          "syntax-error"
-               :error-message (.getMessage e)
-               :line          (str (get data :line 1))}
+               :syntax-error
+               {:type          "syntax-error"
+                :error-message (.getMessage e)
+                :line          (str (get data :line 1))}
 
-              {:type          "error"
-               :error-message (.getMessage e)})))
-        (catch Exception e
-          {:type          "error"
-           :error-message (.getMessage e)})))
-    {:type          "template-not-found-error"
-     :error-message (format "%s can not be found." resource-path)})))
+               {:type          "error"
+                :error-message (.getMessage e)})))
+         (catch Exception e
+           {:type          "error"
+            :error-message (.getMessage e)})))
+     {:type          "template-not-found-error"
+      :error-message (format "%s can not be found." resource-path)})))
