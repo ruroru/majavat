@@ -481,6 +481,27 @@ The `trans` tag translates a key using the configured [`Dictionary`](#dictionary
 (render-fn {:user {:name "alice"}}) ;; returns "hi alice!"
 ```
 
+### Importing macros
+
+Macros defined in another file can be imported with `{% import "macros/macros.mjvt" %}`:
+
+```
+{% macro greet(who) %}hello {{who}}!{% endmacro %}
+```
+
+```
+{% import "macros/macros.mjvt" %}{% greet(user.name) %}
+```
+
+```clojure
+(def render-fn (build-renderer "input-file"))
+
+(render-fn {:user {:name "alice"}}) ;; returns "hello alice!"
+```
+
+Defining a macro with a name that already exists — whether imported or defined
+in the current file — is a syntax error.
+
 ## RenderTarget Protocol
 
 ### render

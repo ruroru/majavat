@@ -1,0 +1,1 @@
+{% import "shared-lib" %}{% greet("alice") %}{% include "reimport-child" %}

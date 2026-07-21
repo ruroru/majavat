@@ -1,0 +1,3 @@
+THIS TEXT MUST NOT LEAK
+{% macro greet(who) %}hello {{who}}!{% endmacro %}
+{% macro shout(what) %}{{what}}!!{% endmacro %}

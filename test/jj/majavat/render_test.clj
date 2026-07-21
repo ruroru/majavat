@@ -719,6 +719,24 @@ this is a  footer"
                             {:two "TWO" :three {:nested "THREE"}}
                             default-error-handler)))))
 
+(deftest import-macros-from-another-file
+  (let [expected "hello bob!hey!!"
+        input-file "import/imports-and-calls"]
+    (is (= expected
+           (renderer/render (->StringRenderer)
+                            (parser/parse input-file contentResolver empty-fn-map empty-sanitizers-map)
+                            {}
+                            default-error-handler)))))
+
+(deftest import-same-macro-across-included-files
+  (let [expected "hi alice!hi bob!"
+        input-file "import/reimport-parent"]
+    (is (= expected
+           (renderer/render (->StringRenderer)
+                            (parser/parse input-file contentResolver empty-fn-map empty-sanitizers-map)
+                            {}
+                            default-error-handler)))))
+
 (deftest fail-fast-throws-on-template-not-found
   (let [template (parser/parse "not-existing-file" contentResolver empty-fn-map empty-sanitizers-map)]
     (is (thrown-with-msg? clojure.lang.ExceptionInfo

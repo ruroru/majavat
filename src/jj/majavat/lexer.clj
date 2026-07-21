@@ -448,6 +448,9 @@
           (= (string/trim current-string) "include")
           (recur (rest my-sequence) "" (conj stack {:type :keyword-include}) new-line-number)
 
+          (= (string/trim current-string) "import")
+          (recur (rest my-sequence) "" (conj stack {:type :keyword-import}) new-line-number)
+
           (= (string/trim current-string) "endif")
           (recur (rest my-sequence) "" (conj stack {:type :keyword-endif}) new-line-number)
 
@@ -589,7 +592,8 @@
           :else
           (recur (rest my-sequence) (str current-string current-char) stack new-line-number))
 
-        (= (:type (peek stack)) :keyword-include)
+        (or (= (:type (peek stack)) :keyword-include)
+            (= (:type (peek stack)) :keyword-import))
         (cond
           (and (string/blank? current-string) (= current-char \ ))
           (recur (rest my-sequence) current-string stack new-line-number)

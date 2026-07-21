@@ -104,6 +104,17 @@
            :type :block-end}]
          (lexer/tokenize "testing {% include \"file.txt\" %}"))))
 
+(deftest import-test
+  (is (= [{:type  :text
+           :value "testing "}
+          {:type :block-start}
+          {:type :keyword-import}
+          {:type  :file-path
+           :value "macros/library"}
+          {:line 1
+           :type :block-end}]
+         (lexer/tokenize "testing {% import \"macros/library\" %}"))))
+
 (deftest block-extends-test
   (is (= [{:type  :text
            :value "hello world "}

@@ -360,7 +360,7 @@
                                 (if (resolver/template-exists? template-resolver resolved-filename)
                                   (let [file-content (read-content-as-string template-resolver resolved-filename)
                                         included-lexed (lexer/tokenize file-content)
-                                        included-content (parse-ast included-lexed [] {} false resolved-filename template-resolver filter-map merged-sanitizers [] macros dictionary current-sanitizer macro-param)]
+                                        included-content (parse-ast included-lexed [] {} false resolved-filename template-resolver filter-map merged-sanitizers [] (atom {}) dictionary current-sanitizer macro-param)]
                                     (recur remaining-after-filename (into list included-content) current-block parsing-for-body current-file-path template-resolver filter-map merged-sanitizers tag-stack macros dictionary current-sanitizer macro-param))
                                   (throw (ex-info (format "Template not found: %s" filename)
                                                   {:type     :template-not-found-error
@@ -368,6 +368,26 @@
                               (throw (ex-info (format "error on line %s" (:line file-name-token))
                                               {:type :syntax-error
                                                :line (:line file-name-token)}))))
+
+         :keyword-import (let [remaining (rest lexed-list)
+                               file-name-token (first remaining)
+                               remaining-after-filename (rest remaining)]
+                           (if (not (= :block-end (:type file-name-token)))
+                             (let [filename (:value file-name-token)
+                                   resolved-filename (if current-file-path
+                                                       (resolve-file-path current-file-path filename)
+                                                       filename)]
+                               (if (resolver/template-exists? template-resolver resolved-filename)
+                                 (let [file-content (read-content-as-string template-resolver resolved-filename)
+                                       imported-lexed (lexer/tokenize file-content)]
+                                   (parse-ast imported-lexed [] {} false resolved-filename template-resolver filter-map merged-sanitizers [] macros dictionary current-sanitizer macro-param)
+                                   (recur remaining-after-filename list current-block parsing-for-body current-file-path template-resolver filter-map merged-sanitizers tag-stack macros dictionary current-sanitizer macro-param))
+                                 (throw (ex-info (format "Template not found: %s" filename)
+                                                 {:type     :template-not-found-error
+                                                  :template filename}))))
+                             (throw (ex-info (format "error on line %s" (:line file-name-token))
+                                             {:type :syntax-error
+                                              :line (:line file-name-token)}))))
 
          :keyword-extends (let [remaining (rest lexed-list)
                                 file-path-token (first remaining)
@@ -666,6 +686,10 @@
                                (let [remaining-after-block-end (rest remaining-after-signature)
                                      new-tag-stack (push-tag tag-stack :macro (:line current-item))
                                      [body remaining-after-body updated-tag-stack] (parse-ast remaining-after-block-end [] current-block true current-file-path template-resolver filter-map merged-sanitizers new-tag-stack macros dictionary current-sanitizer (not-empty params))]
+                                 (when (contains? @macros (:value name-token))
+                                   (throw (ex-info (format "macro '%s' is already defined" (name (:value name-token)))
+                                                   {:type :syntax-error
+                                                    :line (:line block-end-token)})))
                                  (swap! macros assoc (:value name-token) (with-meta (fn [args] (expand-macro body params args))
                                                                                     {:param-count (count params)}))
                                  (recur remaining-after-body list current-block parsing-for-body current-file-path template-resolver filter-map merged-sanitizers updated-tag-stack macros dictionary current-sanitizer macro-param))

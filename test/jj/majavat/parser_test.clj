@@ -593,6 +593,21 @@
     (is (= expected-ast (parse input-file (rcr/->ResourceResolver) empty-fn-map empty-sanitizers-map)))))
 
 
+(deftest import-macro-collision
+  (let [expected-ast {:error-message "macro 'greet' is already defined"
+                      :line          "2"
+                      :type          "syntax-error"}
+        input-file "import/collision"]
+    (is (= expected-ast (parse input-file (rcr/->ResourceResolver) empty-fn-map empty-sanitizers-map)))))
+
+
+(deftest import-not-existing-file
+  (let [expected-ast {:error-message "does-not-exist template can not be found"
+                      :type          "template-not-found-error"}
+        input-file "import/not-existing-file"]
+    (is (= expected-ast (parse input-file (rcr/->ResourceResolver) empty-fn-map empty-sanitizers-map)))))
+
+
 (deftest macro-called-with-not-enough-args
   (let [expected-ast {:error-message "error on line 1"
                       :line          "1"
