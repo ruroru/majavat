@@ -312,6 +312,16 @@ this is a  footer"
                           default-error-handler))
       "\"Foo Bar Baz\" - Sun Tzu" "custom-filter/quote" {:value "Foo Bar Baz"})))
 
+(deftest render-context-aware-filter
+  (let [filter-map {:quote ^{:context-aware true}
+                    (fn [value context author]
+                      (format "\"%s\" - %s (%s/%s)" value author (:locale context) (:source context)))}]
+    (is (= "\"Foo Bar Baz\" - Sun Tzu (fi/book)"
+           (renderer/render (->StringRenderer)
+                            (parser/parse "custom-filter/quote" contentResolver filter-map empty-sanitizers-map)
+                            {:value "Foo Bar Baz" :locale "fi" :source "book"}
+                            default-error-handler)))))
+
 
 (deftest unsupported-filter
   (are [expected-file-path template-path context]

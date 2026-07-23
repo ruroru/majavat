@@ -102,53 +102,50 @@ Hello {{ name | upper-case }}!
 
 ##### Built In Filters
 
-| Filter                      | Type          | Example                                        |
-|-----------------------------|---------------|------------------------------------------------|
-| append                      | String        | "hello" \| append(" world") → "hello world"    |
-| capitalize                  | String        | "hello world" → "Hello world"                  |
-| int                         | String        | "123" → 123                                    |
-| long                        | String        | "123" → 123L                                   |
-| lower-case                  | String        | "HELLO WORLD" → "hello world"                  |
-| prepend                     | String        | "hello" \| prepend(" world") → "world hello"   |                                      
-| slugify                     | String        | "Foo Bar" → "foo-bar"                          |
-| title-case                  | String        | "hello world" → "Hello World"                  |
-| trim                        | String        | "  hello  " → "hello"                          |
-| upper-case                  | String        | "hello world" → "HELLO WORLD"                  |
-| upper-roman                 | String        | "iv" → "IV"                                    |
-| name                        | Keyword       | :name → "name"                                 |
-| abs                         | Number        | -1 → 1.0                                       |
-| ceil                        | Number        | 1.99 → 2                                       |
-| dec                         | Number        | 5 → 4                                          |
-| file-size                   | Number        | 2048 → "2 KB"                                  |
-| floor                       | Number        | 1.4 → 1.0                                      |
-| inc                         | Number        | 5 → 6                                          |
-| round                       | Number        | 1.99 → 2                                       |
-| first                       | Sequential    | (list :foo :bar :baz) -> :foo                  |
-| rest                        | Sequential    | (list :foo :bar :baz) -> (list :bar :baz)      |
-| first                       | Map           | {:foo :a :bar :b :baz :c} -> [:foo :a]         |
-| rest                        | Map           | {:foo :a :bar :b :baz :c} -> {:bar :b :baz :c} |
-| join                        | Sequential    | [1 2 3] \| join → "1, 2, 3" (default sep ", ") |
-| join("-")                   | Sequential    | [1 2 3] \| join("-") → "1-2-3"                 |
-| length                      | String        | "hello" → 5                                    |
-| length                      | Sequential    | [1 2 3] → 3                                    |
-| length                      | Map           | {:a 1 :b 2} → 2                                |
-| indent(width, first, blank) | String        | "a\nb" \| indent(2) → "a\n  b" (width required) |
-| replace("a", "b")           | String        | "banana" \| replace("a", "o") → "bonono"       |
-| replace("a", "b", 2)        | String        | "banana" \| replace("a", "o", 2) → "bonona"    |
+| Filter                      | Type          | Example                                                |
+|-----------------------------|---------------|--------------------------------------------------------|
+| append                      | String        | "hello" \| append(" world") → "hello world"            |
+| capitalize                  | String        | "hello world" → "Hello world"                          |
+| int                         | String        | "123" → 123                                            |
+| long                        | String        | "123" → 123L                                           |
+| lower-case                  | String        | "HELLO WORLD" → "hello world"                          |
+| prepend                     | String        | "hello" \| prepend(" world") → "world hello"           |                                      
+| slugify                     | String        | "Foo Bar" → "foo-bar"                                  |
+| title-case                  | String        | "hello world" → "Hello World"                          |
+| trim                        | String        | "  hello  " → "hello"                                  |
+| upper-case                  | String        | "hello world" → "HELLO WORLD"                          |
+| upper-roman                 | String        | "iv" → "IV"                                            |
+| name                        | Keyword       | :name → "name"                                         |
+| abs                         | Number        | -1 → 1.0                                               |
+| ceil                        | Number        | 1.99 → 2                                               |
+| dec                         | Number        | 5 → 4                                                  |
+| file-size                   | Number        | 2048 → "2 KB"                                          |
+| floor                       | Number        | 1.4 → 1.0                                              |
+| inc                         | Number        | 5 → 6                                                  |
+| round                       | Number        | 1.99 → 2                                               |
+| first                       | Sequential    | (list :foo :bar :baz) -> :foo                          |
+| rest                        | Sequential    | (list :foo :bar :baz) -> (list :bar :baz)              |
+| first                       | Map           | {:foo :a :bar :b :baz :c} -> [:foo :a]                 |
+| rest                        | Map           | {:foo :a :bar :b :baz :c} -> {:bar :b :baz :c}         |
+| join                        | Sequential    | [1 2 3] \| join → "1, 2, 3" (default sep ", ")         |
+| join("-")                   | Sequential    | [1 2 3] \| join("-") → "1-2-3"                         |
+| length                      | String        | "hello" → 5                                            |
+| length                      | Sequential    | [1 2 3] → 3                                            |
+| length                      | Map           | {:a 1 :b 2} → 2                                        |
+| indent(width, first, blank) | String        | "a\nb" \| indent(2) → "a\n  b" (width required)        |
+| replace("a", "b")           | String        | "banana" \| replace("a", "o") → "bonono"               |
+| replace("a", "b", 2)        | String        | "banana" \| replace("a", "o", 2) → "bonona"            |
 | truncate(len, kill, end)    | String        | "The quick brown fox" \| truncate(14) → "The quick..." |
-| json                        | Any           | {:a 1} \| json → {"a":1}                        |
-| json(2)                     | Any           | {:a 1} \| json(2) → pretty-printed, 2-sp indent |
-
-The `json` filter uses a built-in serializer by default; you can plug in your own via the
-[`Json`](#json) protocol.
-| trans                       | keyword       | translates keyword with a dictionary           |
-| default("foo")              | nil           | nil → "foo"                                    |
-| default("foo")              | not nil       | "bar" → "bar"                                  |
-| date("yyyy")                | LocalDate     | Instance of LocalDate → "2025"                 |
-| date("yyyy")                | LocalDateTime | Instance of LocalDateTime → "2025"             |
-| date("hh/mm")               | LocalTime     | Instance of LocalTime →  "11/11"               |
-| date("hh/mm", "Asia/Tokyo") | Instant       | Instance of Instant →  "11/11"                 |
-| date("hh/mm", "Asia/Tokyo") | ZonedDateTime | Instance of ZonedDateTime →  "11/11"           |
+| json                        | Any           | {:a 1} \| json → {"a":1}                               |
+| json(2)                     | Any           | {:a 1} \| json(2) → pretty-printed, 2-sp indent        |
+| trans                       | keyword       | translates keyword with a dictionary                   |
+| default("foo")              | nil           | nil → "foo"                                            |
+| default("foo")              | not nil       | "bar" → "bar"                                          |
+| date("yyyy")                | LocalDate     | Instance of LocalDate → "2025"                         |
+| date("yyyy")                | LocalDateTime | Instance of LocalDateTime → "2025"                     |
+| date("hh/mm")               | LocalTime     | Instance of LocalTime →  "11/11"                       |
+| date("hh/mm", "Asia/Tokyo") | Instant       | Instance of Instant →  "11/11"                         |
+| date("hh/mm", "Asia/Tokyo") | ZonedDateTime | Instance of ZonedDateTime →  "11/11"                   |
 
 ##### User Provided filters Filters
 
@@ -158,6 +155,15 @@ Assoc :filter to option map, when building renderer, with this value
 {:quote (fn [value author]
           (format "\"%s\" - %s" value author))}
 ```
+
+> **Note:** Tag a filter with `^{:context-aware true}` to receive the full render context
+> as the **second argument**, before any template arguments:
+>
+> ```clojure
+> {:quote ^{:context-aware true}
+>         (fn [value context author]
+>           (format "\"%s\" - %s (%s)" value author (:locale context)))}
+> ```
 
 #### Conditionals
 
