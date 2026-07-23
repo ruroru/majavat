@@ -57,10 +57,16 @@
                                    :json (sanitizer/->Json)
                                    :none (sanitizer/->None)})
 
-(def ^:private evalaution-functions {:default tests/default-test
+(def ^:private evaluation-functions {:default tests/default-test
                                      :even    tests/is-even?
                                      :odd     tests/is-odd?
-                                     :empty   tests/is-empty?})
+                                     :empty   tests/is-empty?
+                                     :equals  tests/is-equal?
+                                     :greater tests/is-gt?
+                                     :lower tests/is-lt?
+                                     :greater-or-equal tests/is-ge?
+                                     :lower-or-equal tests/is-le?
+                                     })
 
 (defn- create-filter-fn [{:keys [filter-name args]} filter-map]
   (if-let [f (get filter-map filter-name)]
@@ -237,6 +243,9 @@
                        :tag  (:tag unclosed-tag)
                        :line (or (:line unclosed-tag) 1)})))))
 
+(def ^:private comparison-tests
+  #{:equals :greater :lower :greater-or-equal :lower-or-equal})
+
 (defn- parse-operator-test
   [remaining-after-condition]
   (let [next-token (first remaining-after-condition)]
@@ -245,16 +254,18 @@
              (= :is (:value next-token)))
       (let [remaining-after-op (rest remaining-after-condition)
             test-token (first remaining-after-op)
-            remaining-after-test (rest remaining-after-op)]
-        (if (= :equals (:value test-token))
+            remaining-after-test (rest remaining-after-op)
+            test-value (:value test-token)]
+        (if (comparison-tests test-value)
           (let [ref-token (first remaining-after-test)
                 ref-value (:value ref-token)
-                remaining-after-ref (rest remaining-after-test)]
-            [(fn [v] (= ref-value v))
+                remaining-after-ref (rest remaining-after-test)
+                compare-fn (get evaluation-functions test-value)]
+            [(fn [v] (compare-fn v ref-value))
              (rest remaining-after-ref)])
-          [(get evalaution-functions (:value test-token) (:default evalaution-functions))
+          [(get evaluation-functions test-value (:default evaluation-functions))
            (rest remaining-after-test)]))
-      [(:default evalaution-functions)
+      [(:default evaluation-functions)
        (rest remaining-after-condition)])))
 
 (defn- parse-ast
@@ -562,10 +573,10 @@
                                      (let [elif-remaining (rest remaining-after-body)
                                            elif-condition-token (first elif-remaining)
                                            elif-remaining-after-condition (rest elif-remaining)
-                                           elif-remaining-after-block-end (rest elif-remaining-after-condition)
+                                           [elif-eval-fn elif-remaining-after-block-end] (parse-operator-test elif-remaining-after-condition)
                                            negate? (= :keyword-elif-not (:type next-token))
                                            elif-cond (cond-> {:condition           (:value elif-condition-token)
-                                                              :evaluation-function (:default evalaution-functions)}
+                                                              :evaluation-function elif-eval-fn}
                                                              negate? (assoc :negate true))]
                                        (recur (conj branches [current-condition body])
                                               elif-cond
@@ -597,7 +608,7 @@
                                    (loop [branches []
                                           current-condition {:condition           (:value condition-token)
                                                              :negate              true
-                                                             :evaluation-function (:default evalaution-functions)}
+                                                             :evaluation-function (:default evaluation-functions)}
                                           remaining remaining-after-block-end
                                           ts new-tag-stack]
                                      (let [[body remaining-after-body updated-ts] (parse-ast remaining [] current-block true current-file-path template-resolver filter-map merged-sanitizers ts macros dictionary current-sanitizer macro-param)
@@ -608,10 +619,10 @@
                                          (let [elif-remaining (rest remaining-after-body)
                                                elif-condition-token (first elif-remaining)
                                                elif-remaining-after-condition (rest elif-remaining)
-                                               elif-remaining-after-block-end (rest elif-remaining-after-condition)
+                                               [elif-eval-fn elif-remaining-after-block-end] (parse-operator-test elif-remaining-after-condition)
                                                negate? (= :keyword-elif-not (:type next-token))
                                                elif-cond (cond-> {:condition           (:value elif-condition-token)
-                                                                  :evaluation-function (:default evalaution-functions)}
+                                                                  :evaluation-function elif-eval-fn}
                                                                  negate? (assoc :negate true))]
                                            (recur (conj branches [current-condition body])
                                                   elif-cond

@@ -260,6 +260,16 @@
         (recur (rest my-sequence) "" (conj stack {:type :operator :value :is} {:type :operator-test :value :equals}) new-line-number)
 
         (and (= (:type (peek stack)) :identifier)
+             (= current-char \ )
+             (#{"<" "<=" ">" ">="} (string/trim current-string)))
+        (let [operator-test ({"<"  :lower
+                              "<=" :lower-or-equal
+                              ">"  :greater
+                              ">=" :greater-or-equal}
+                             (string/trim current-string))]
+          (recur (rest my-sequence) "" (conj stack {:type :operator :value :is} {:type :operator-test :value operator-test}) new-line-number))
+
+        (and (= (:type (peek stack)) :identifier)
              (= (string/trim current-string) "only")
              (= current-char \ )
              (= :keyword-for (:type (second stack))))
@@ -273,7 +283,8 @@
               (recur (rest my-sequence) "" stack new-line-number)))
           (recur (rest my-sequence) (str current-string current-char) stack new-line-number))
 
-        (and (= (:type (peek stack)) :operator-test) (= (:value (peek stack)) :equals))
+        (and (= (:type (peek stack)) :operator-test)
+             (#{:equals :lower :lower-or-equal :greater :greater-or-equal} (:value (peek stack))))
         (cond
           (and (= current-char \ ) (string/blank? current-string))
           (recur (rest my-sequence) "" stack new-line-number)

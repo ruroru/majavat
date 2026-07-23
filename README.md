@@ -224,6 +224,13 @@ Available `is` tests:
 |----------|---------------------------|
 | ==       | {% if value == 0 %}       |
 |          | {% if value == "value" %} |
+| <        | {% if value < 10 %}       |
+| <=       | {% if value <= 10 %}      |
+| >        | {% if value > 10 %}       |
+| >=       | {% if value >= 10 %}      |
+
+`<`, `<=`, `>`, and `>=` compare numbers (a non-number value makes the condition
+false); `==` compares numbers and strings.
 
 #### Looping
 

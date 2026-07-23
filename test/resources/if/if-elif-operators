@@ -1,0 +1,1 @@
+{% if value > 10 %}big{% elif value > 5 %}medium{% elif value == 0 %}zero{% else %}small{% endif %}

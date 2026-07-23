@@ -651,6 +651,41 @@ this is a  footer"
     "odd" "if/if-is-even-else" {:value 1}
     "even" "if/if-is-even-else" {:value 2}))
 
+(deftest if-comparison-operators-test
+  (are [expected template-path context]
+    (= expected
+       (renderer/render (->StringRenderer)
+                        (parser/parse template-path contentResolver empty-fn-map empty-sanitizers-map)
+                        context
+                        default-error-handler))
+    "yes" "if/if-greater" {:value 6}
+    "no" "if/if-greater" {:value 5}
+    "no" "if/if-greater" {:value 4}
+
+    "yes" "if/if-lower" {:value 4}
+    "no" "if/if-lower" {:value 5}
+    "no" "if/if-lower" {:value 6}
+
+    "yes" "if/if-greater-or-equal" {:value 6}
+    "yes" "if/if-greater-or-equal" {:value 5}
+    "no" "if/if-greater-or-equal" {:value 4}
+
+    "yes" "if/if-lower-or-equal" {:value 4}
+    "yes" "if/if-lower-or-equal" {:value 5}
+    "no" "if/if-lower-or-equal" {:value 6}))
+
+(deftest elif-custom-condition-test
+  (are [expected context]
+    (= expected
+       (renderer/render (->StringRenderer)
+                        (parser/parse "if/if-elif-operators" contentResolver empty-fn-map empty-sanitizers-map)
+                        context
+                        default-error-handler))
+    "big" {:value 20}
+    "medium" {:value 8}
+    "zero" {:value 0}
+    "small" {:value 3}))
+
 (deftest debug-test
   (are [template-path context]
     (= context

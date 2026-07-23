@@ -62,3 +62,54 @@
                [1]
                {:a 1}
                #{:a}))
+
+
+
+(deftest is-ge-returns-true
+  (are [v arg] (= true (tests/is-ge? v arg))
+               10 5
+               5  5
+               0  0
+               -1 -5))
+
+(deftest is-ge-returns-false
+  (are [v arg] (= false (boolean (tests/is-ge? v arg)))
+               3        5
+               -5       -1))
+
+(deftest is-gt-returns-true
+  (are [v arg] (= true (tests/is-gt? v arg))
+               10 5
+               1  0
+               -1 -5))
+
+(deftest is-gt-returns-false
+  (are [v arg] (= false (boolean (tests/is-gt? v arg)))
+               5        5
+               3        5
+               -5       -1))
+
+(deftest is-le-returns-true
+  (are [v arg] (= true (tests/is-le? v arg))
+               5  10
+               5  5
+               0  0
+               -5 -1))
+
+(deftest is-le-returns-false
+  (are [v arg] (= false (boolean (tests/is-le? v arg)))
+               10       5
+               -1       -5))
+
+(deftest is-lt-returns-true
+  (are [v arg] (= true (tests/is-lt? v arg))
+               5  10
+               0  1
+               -5 -1))
+
+(deftest is-lt-returns-false
+  (are [v arg] (= false (boolean (tests/is-lt? v arg)))
+               5        5
+               10       5
+               -1       -5
+               ))

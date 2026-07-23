@@ -9,6 +9,21 @@
 (defn is-odd? [v]
   (and (integer? v) (odd? v)))
 
+(defn is-equal? [v arg]
+  (= v arg))
+
+(defn is-ge? [v arg]
+  (and (number? v) (>= v arg)))
+
+(defn is-gt? [v arg]
+  (and (number? v) (> v arg)))
+
+(defn is-le? [v arg]
+  (and (number? v) (<= v arg)))
+
+(defn is-lt? [v arg]
+  (and (number? v) (< v arg)))
+
 (defn is-empty? [v]
   (cond
     (nil? v) true

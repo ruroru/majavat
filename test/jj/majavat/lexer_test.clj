@@ -624,3 +624,75 @@
                {:line 1
                 :type :block-end})
          (lexer/tokenize "{% macro macro-name(argument1,argument2) %}hello {{argument}}{% endmacro %}"))))
+
+
+(deftest if-is-lower-than
+  (is (= [{:type :block-start}
+          {:type :keyword-if}
+          {:type  :identifier
+           :value [:some :condition]}
+          {:type  :operator
+           :value :is}
+          {:type :operator-test :value :lower}
+          {:type :comparative :value 6}
+          {:line 1 :type :block-end}
+          {:type  :text
+           :value "yes"}
+          {:type :block-start}
+          {:type :keyword-endif}
+          {:line 1
+           :type :block-end}]
+         (lexer/tokenize "{% if some.condition < 6 %}yes{% endif %}"))))
+
+(deftest if-is-lower-or-equal
+  (is (= [{:type :block-start}
+          {:type :keyword-if}
+          {:type  :identifier
+           :value [:some :condition]}
+          {:type  :operator
+           :value :is}
+          {:type :operator-test :value :lower-or-equal}
+          {:type :comparative :value 6}
+          {:line 1 :type :block-end}
+          {:type  :text
+           :value "yes"}
+          {:type :block-start}
+          {:type :keyword-endif}
+          {:line 1
+           :type :block-end}]
+         (lexer/tokenize "{% if some.condition <= 6 %}yes{% endif %}"))))
+
+(deftest if-is-greater-or-equal
+  (is (= [{:type :block-start}
+          {:type :keyword-if}
+          {:type  :identifier
+           :value [:some :condition]}
+          {:type  :operator
+           :value :is}
+          {:type :operator-test :value :greater-or-equal}
+          {:type :comparative :value 6}
+          {:line 1 :type :block-end}
+          {:type  :text
+           :value "yes"}
+          {:type :block-start}
+          {:type :keyword-endif}
+          {:line 1
+           :type :block-end}]
+         (lexer/tokenize "{% if some.condition >= 6 %}yes{% endif %}"))))
+
+(deftest if-is-greater-then
+  (is (= [{:type :block-start}
+          {:type :keyword-if}
+          {:type  :identifier
+           :value [:some :condition]}
+          {:type  :operator :value :is}
+          {:type :operator-test :value :greater}
+          {:type :comparative :value 6}
+          {:line 1 :type :block-end}
+          {:type  :text
+           :value "yes"}
+          {:type :block-start}
+          {:type :keyword-endif}
+          {:line 1
+           :type :block-end}]
+         (lexer/tokenize "{% if some.condition > 6 %}yes{% endif %}"))))
