@@ -159,6 +159,15 @@ Assoc :filter to option map, when building renderer, with this value
           (format "\"%s\" - %s" value author))}
 ```
 
+> **Note:** Tag a filter with `^{:context-aware true}` to receive the full render context
+> as the **second argument**, before any template arguments:
+>
+> ```clojure
+> {:quote ^{:context-aware true}
+>         (fn [value context author]
+>           (format "\"%s\" - %s (%s)" value author (:locale context)))}
+> ```
+
 #### Conditionals
 
 Rendering input file with content:

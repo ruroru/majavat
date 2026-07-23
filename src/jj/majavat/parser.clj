@@ -48,9 +48,9 @@
                                               (when (seq args) {:indent (first args)})))
    :str              filters/handle-str
    :trans            (with-meta
-                       (fn [v locale]
-                         (dictionary/translate dictionary locale (if (keyword? v) v (keyword v))))
-                       {:locale-aware true})
+                       (fn [v context]
+                         (dictionary/translate dictionary (get context :locale) (if (keyword? v) v (keyword v))))
+                       {:context-aware true})
    })
 
 (def ^:private ^:const sanitizers {:html (sanitizer/->Html)
@@ -64,10 +64,10 @@
 
 (defn- create-filter-fn [{:keys [filter-name args]} filter-map]
   (if-let [f (get filter-map filter-name)]
-    (if (:locale-aware (meta f))
-      (with-meta (fn [input locale]
-                   (apply f input locale args))
-                 {:locale-aware true})
+    (if (:context-aware (meta f))
+      (with-meta (fn [input context]
+                   (apply f input context args))
+                 {:context-aware true})
       (fn [input] (apply f input args)))
     (throw (ex-info (format "Unsupported filter: %s" (name filter-name))
                     {:type        :syntax-error
@@ -93,12 +93,12 @@
 
 (defn- build-filter-fn [filter-specs filter-map]
   (if (empty? filter-specs)
-    (fn [input _locale] input)
+    (fn [input _context] input)
     (let [fns (mapv #(create-filter-fn % filter-map) filter-specs)]
-      (fn [input locale]
+      (fn [input context]
         (reduce (fn [acc f]
-                  (if (:locale-aware (meta f))
-                    (f acc locale)
+                  (if (:context-aware (meta f))
+                    (f acc context)
                     (f acc)))
                 input
                 fns)))))
@@ -160,12 +160,12 @@
             (get-in context path))))
 
 (defn- bake-render-fn [{:keys [value filter-fn sanitizer]}]
-  (let [filter-fn (or filter-fn (fn [v _locale] v))
+  (let [filter-fn (or filter-fn (fn [v _context] v))
         finish (if sanitizer
-                 (fn [v locale] (sanitize sanitizer (->str (filter-fn v locale))))
-                 (fn [v locale] (->str (filter-fn v locale))))]
+                 (fn [v context] (sanitize sanitizer (->str (filter-fn v context))))
+                 (fn [v context] (->str (filter-fn v context))))]
     (fn
-      ([context] (finish (resolve-path context value) (get context :locale)))
+      ([context] (finish (resolve-path context value) context))
       ([context _raw] (resolve-path context value)))))
 
 (defn- expand-macro [body params args]
