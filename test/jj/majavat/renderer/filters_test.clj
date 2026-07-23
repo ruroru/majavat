@@ -240,3 +240,84 @@
                         (list :a :b) (list :b)
                         {:a :b :c :d} {:c :d}
                         ))
+
+(deftest join-test
+  (are [input sep expected] (= expected (filters/join-seq input sep))
+                            [1 2 3] ", " "1, 2, 3"
+                            ["a" "b" "c"] "-" "a-b-c"
+                            [1 2 3] nil "123"
+                            [] ", " ""
+                            ["only"] ", " "only"
+                            "not-a-seq" ", " nil
+                            nil ", " nil
+                            ))
+
+(deftest join-default-test
+  (are [input expected] (= expected (filters/join-seq input))
+                        [1 2 3] "1, 2, 3"
+                        ["a" "b" "c"] "a, b, c"
+                        "not-a-seq" nil
+                        nil nil
+                        ))
+
+(deftest length-test
+  (are [input expected] (= expected (filters/get-length input))
+                        "hello" 5
+                        "" 0
+                        [1 2 3] 3
+                        [] 0
+                        (list :a :b) 2
+                        {:a 1 :b 2} 2
+                        {} 0
+                        42 nil
+                        nil nil
+                        ))
+
+(deftest indent-test
+  (are [input width first? blank? expected]
+    (= expected (filters/indent-lines input width first? blank?))
+    "foo\nbar"            :4 :false :false "foo\n    bar"
+    "foo\nbar"            :2 :false :false "foo\n  bar"
+    "foo\nbar"            :4 :true  :false "    foo\n    bar"
+    "foo\n\nbar"          :4 :false :false "foo\n\n    bar"
+    "foo\n\nbar"          :4 :false :true  "foo\n    \n    bar"
+    "foo\nbar\n"          :4 :false :false "foo\n    bar\n"
+    "line1\nline2\nline3" :2 :false :false "line1\n  line2\n  line3"
+    "foo"                 :4 :false :false "foo"
+    "foo\nbar"            ">> " :false :false "foo\n>> bar"
+    nil                   :4 :false :false nil))
+
+(deftest replace-test
+  (are [input old new expected] (= expected (filters/replace-string input old new))
+                                "hello world" "o" "0" "hell0 w0rld"
+                                "aaa" "a" "b" "bbb"
+                                "hello" "x" "y" "hello"
+                                "hello" "l" "" "heo"
+                                "foobar" "foo" "baz" "bazbar"
+                                nil "a" "b" nil))
+
+(deftest replace-count-test
+  (are [input old new count expected] (= expected (filters/replace-string input old new count))
+                                      "aaaa" "a" "b" :2 "bbaa"
+                                      "aaaa" "a" "b" :0 "aaaa"
+                                      "aaaa" "a" "b" :99 "bbbb"
+                                      "hello world" "o" "0" :1 "hell0 world"))
+
+(deftest truncate-test
+  (are [input length expected] (= expected (filters/truncate-string input length))
+                               "Hello" :10 "Hello"                       ;; shorter than length -> unchanged
+                               "HelloWorld" :10 "HelloWorld"             ;; exactly length -> unchanged
+                               "The quick brown fox" :14 "The quick..."  ;; cut on word boundary
+                               "Hello World" :8 "Hello..."
+                               nil :10 nil))
+
+(deftest truncate-killwords-test
+  (are [input length killwords expected] (= expected (filters/truncate-string input length killwords))
+                                         "The quick brown fox" :14 :true "The quick b..."  ;; cut mid-word
+                                         "The quick brown fox" :14 :false "The quick..."))
+
+(deftest truncate-end-test
+  (are [input length killwords end expected] (= expected (filters/truncate-string input length killwords end))
+                                             "Hello World" :8 :false "…" "Hello…"
+                                             "The quick brown fox" :14 :true "»" "The quick bro»"))
+

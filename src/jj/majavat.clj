@@ -4,6 +4,7 @@
     [jj.majavat.error-handler.reporting :as reporting]
     [jj.majavat.protocol.builder :as builder]
     [jj.majavat.renderer :refer [->StringRenderer]]
+    [jj.majavat.renderer.json :as json]
     [jj.majavat.renderer.sanitizer :as sanitizer]
     [jj.majavat.protocol.builder :as builder]
     [jj.majavat.builder :as builders]
@@ -23,7 +24,8 @@
          resolver (or (:template-resolver opts)
                       @default-resolver)
 
-         environment (get opts :environment {})
+         environment (update (get opts :environment {})
+                             :json-serializer #(or % (json/->DefaultJsonSerializer)))
 
          renderer (or (:renderer opts)
                       (->StringRenderer))

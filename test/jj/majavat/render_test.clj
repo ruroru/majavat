@@ -6,6 +6,8 @@
     [clojure.walk :as walk]
     [clojure.test :refer [are deftest is testing]]
     [jj.majavat.parser :as parser]
+    [jj.majavat.protocol.json :as json-protocol]
+    [jj.majavat.renderer.json :refer [->DefaultJsonSerializer]]
     [jj.majavat.renderer :refer [->InputStreamRenderer ->PartialRenderer ->StringRenderer]]
     [jj.majavat.protocol.renderer.render-target :as renderer]
     [jj.majavat.renderer.sanitizer :refer [->Html]]
@@ -219,11 +221,11 @@ this is a  footer"
   (are [expected-value template-path context]
     (= expected-value
        (renderer/render (->StringRenderer)
-                        (parser/parse template-path contentResolver empty-fn-map empty-sanitizers-map nil (->Html))
+                        (parser/parse template-path contentResolver empty-fn-map empty-sanitizers-map nil (->Html) (->DefaultJsonSerializer))
                         context
                         default-error-handler)
        (String. (.readAllBytes ^InputStream (renderer/render (->InputStreamRenderer)
-                                                             (parser/parse template-path contentResolver empty-fn-map empty-sanitizers-map nil (->Html))
+                                                             (parser/parse template-path contentResolver empty-fn-map empty-sanitizers-map nil (->Html) (->DefaultJsonSerializer))
                                                              context
                                                              default-error-handler))))
     "foo BAR1 BAZｲ" "filter/upper-case" {:value "BAR1 BaZｲ"}
@@ -271,7 +273,29 @@ this is a  footer"
     "foobarbaz" "filter/append" {:value "bar"}
     "foobazbar" "filter/prepend" {:value "bar"}
     "foobar-baz-quaz" "filter/slugify" {:value "bar baz-Quaz"}
+    "foo1, 2, 3" "filter/join" {:value [1 2 3]}
+    "foo1, 2, 3" "filter/join-default" {:value [1 2 3]}
+    "foo3" "filter/length" {:value [1 2 3]}
+    "foo5" "filter/length" {:value "hello"}
+    "a\n  b" "filter/indent" {:value "a\nb"}
+    "foohello there" "filter/replace" {:value "hello world"}
+    "fooThe quick..." "filter/truncate" {:value "The quick brown fox"}
+    "[1,2,3]" "filter/json" {:value [1 2 3]}
+    "{&quot;a&quot;:1}" "filter/json" {:value {:a 1}}
     ))
+
+(defrecord StubJsonSerializer []
+  json-protocol/Json
+  (to-json [_ value _opts]
+    (str "STUB:" (pr-str value))))
+
+(deftest render-custom-json-serializer
+  (is (= "STUB:{:a 1}"
+         (renderer/render (->StringRenderer)
+                          (parser/parse "filter/json" contentResolver empty-fn-map
+                                        empty-sanitizers-map nil nil (->StubJsonSerializer))
+                          {:value {:a 1}}
+                          default-error-handler))))
 
 (deftest render-custom-filter
   (let [filter-map {:quote (fn [value args]

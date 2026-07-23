@@ -127,6 +127,20 @@ Hello {{ name | upper-case }}!
 | rest                        | Sequential    | (list :foo :bar :baz) -> (list :bar :baz)      |
 | first                       | Map           | {:foo :a :bar :b :baz :c} -> [:foo :a]         |
 | rest                        | Map           | {:foo :a :bar :b :baz :c} -> {:bar :b :baz :c} |
+| join                        | Sequential    | [1 2 3] \| join → "1, 2, 3" (default sep ", ") |
+| join("-")                   | Sequential    | [1 2 3] \| join("-") → "1-2-3"                 |
+| length                      | String        | "hello" → 5                                    |
+| length                      | Sequential    | [1 2 3] → 3                                    |
+| length                      | Map           | {:a 1 :b 2} → 2                                |
+| indent(width, first, blank) | String        | "a\nb" \| indent(2) → "a\n  b" (width required) |
+| replace("a", "b")           | String        | "banana" \| replace("a", "o") → "bonono"       |
+| replace("a", "b", 2)        | String        | "banana" \| replace("a", "o", 2) → "bonona"    |
+| truncate(len, kill, end)    | String        | "The quick brown fox" \| truncate(14) → "The quick..." |
+| json                        | Any           | {:a 1} \| json → {"a":1}                        |
+| json(2)                     | Any           | {:a 1} \| json(2) → pretty-printed, 2-sp indent |
+
+The `json` filter uses a built-in serializer by default; you can plug in your own via the
+[`Json`](#json) protocol.
 | trans                       | keyword       | translates keyword with a dictionary           |
 | default("foo")              | nil           | nil → "foo"                                    |
 | default("foo")              | not nil       | "bar" → "bar"                                  |
@@ -654,6 +668,49 @@ Handles a template error. Called when the parser returns an error map instead of
 
 (def render-fn (build-renderer "input-file" {:error-handler (->FailFast)}))
 (def render-fn (build-renderer "input-file" {:error-handler (->Reporting)}))
+```
+
+## Json
+
+The `Json` protocol controls how the [`json`](#built-in-filters) filter turns a value into a JSON string.
+Majavat ships a built-in serializer, but you can supply your own (for example one backed by Jackson or Cheshire) and the
+filter will call it instead.
+
+### Protocol Methods
+
+#### `to-json`
+
+Serializes a value to a JSON string.
+
+- value - the value being serialized
+- opts - a map of options (may be `nil`); the built-in serializer honours `{:indent n}` for pretty-printing (the
+  `json(n)` filter argument), custom implementations are free to ignore it
+
+```clojure
+(to-json serializer value opts)
+```
+
+### Built-in Implementation
+
+- **DefaultJsonSerializer** (default) - Compact JSON with optional pretty-printing via `json(n)`. Handles nil,
+  booleans, numbers (ratios as doubles, `NaN`/`Infinity` as `null`), strings, keywords, maps, and
+  sequential/set collections.
+
+### Example Implementation
+
+```clojure
+(:require [jj.majavat.protocol.json :refer [Json]])
+
+(defrecord JacksonSerializer [mapper]
+  Json
+  (to-json [_ value _opts]
+    (.writeValueAsString mapper value)))
+```
+
+Pass it via the environment when building a renderer:
+
+```clojure
+(def render-fn (build-renderer "input-file" {:environment {:json-serializer (->JacksonSerializer object-mapper)}}))
 ```
 
 ## Performance

@@ -4,6 +4,7 @@
             [jj.majavat.renderer.filters :as filters]
             [jj.majavat.renderer.tests :as tests]
             [jj.majavat.renderer.sanitizer :as sanitizer]
+            [jj.majavat.protocol.json :as json-protocol]
             [jj.majavat.protocol.renderer.sanitizer :refer [sanitize]]
             [jj.majavat.protocol.resolver :as resolver]
             [jj.majavat.protocol.dictionary :as dictionary])
@@ -12,7 +13,7 @@
            (java.nio.file Paths)
            (java.time ZoneId)))
 
-(defn create-filter-map [dictionary]
+(defn create-filter-map [dictionary json-serializer]
   {:trim             filters/trim-string
    :upper-case       filters/upper-case-string
    :lower-case       filters/lower-case-string
@@ -37,6 +38,14 @@
    :where            filters/->handle-where
    :first            filters/get-first
    :rest             filters/get-rest
+   :join             filters/join-seq
+   :length           filters/get-length
+   :indent           filters/indent-lines
+   :replace          filters/replace-string
+   :truncate         filters/truncate-string
+   :json             (fn [v & args]
+                       (json-protocol/to-json json-serializer v
+                                              (when (seq args) {:indent (first args)})))
    :str              filters/handle-str
    :trans            (with-meta
                        (fn [v locale]
@@ -779,14 +788,16 @@
 
 (defn parse
   ([resource-path template-resolver user-filters user-sanitizers]
-   (parse resource-path template-resolver user-filters user-sanitizers nil nil))
+   (parse resource-path template-resolver user-filters user-sanitizers nil nil nil))
   ([resource-path template-resolver user-filters user-sanitizers dictionary]
-   (parse resource-path template-resolver user-filters user-sanitizers dictionary nil))
+   (parse resource-path template-resolver user-filters user-sanitizers dictionary nil nil))
   ([resource-path template-resolver user-filters user-sanitizers dictionary current-sanitizer]
+   (parse resource-path template-resolver user-filters user-sanitizers dictionary current-sanitizer nil))
+  ([resource-path template-resolver user-filters user-sanitizers dictionary current-sanitizer json-serializer]
    (if (resolver/template-exists? template-resolver resource-path)
      (let [file-content (read-content-as-string template-resolver resource-path)
            lexed-value (lexer/tokenize file-content)
-           filter-map (merge (create-filter-map dictionary) user-filters)
+           filter-map (merge (create-filter-map dictionary json-serializer) user-filters)
            merged-sanitizers (merge user-sanitizers sanitizers)
            macros (atom {})]
        (try

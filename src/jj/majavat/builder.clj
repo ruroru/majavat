@@ -8,14 +8,14 @@
 (defrecord CachedBuilder [pre-render-context environment]
   builder/Builder
   (build-renderer [this file-path template-resolver renderer sanitizer error-handler]
-    (let [{:keys [filters sanitizers dictionary]} environment
+    (let [{:keys [filters sanitizers dictionary json-serializer]} environment
           pre-render? (not (empty? pre-render-context))]
       (if pre-render?
-        (let [template (parser/parse file-path template-resolver filters sanitizers dictionary sanitizer)
+        (let [template (parser/parse file-path template-resolver filters sanitizers dictionary sanitizer json-serializer)
               ast-renderer (renderers/->PartialRenderer)]
           (fn [context]
             (renderer/render renderer (renderer/render ast-renderer template pre-render-context error-handler) context error-handler)))
-        (let [template (parser/parse file-path template-resolver filters sanitizers dictionary sanitizer)]
+        (let [template (parser/parse file-path template-resolver filters sanitizers dictionary sanitizer json-serializer)]
           (fn [context]
             (renderer/render renderer template context error-handler)))))))
 
@@ -23,13 +23,13 @@
 (defrecord OneShotBuilder [pre-render-context environment]
   builder/Builder
   (build-renderer [this file-path template-resolver renderer sanitizer error-handler]
-    (let [{:keys [filters sanitizers dictionary]} environment
+    (let [{:keys [filters sanitizers dictionary json-serializer]} environment
           pre-render? (not (empty? pre-render-context))]
       (if pre-render?
         (fn [context]
-          (let [template (parser/parse file-path template-resolver filters sanitizers dictionary sanitizer)
+          (let [template (parser/parse file-path template-resolver filters sanitizers dictionary sanitizer json-serializer)
                 merged-context (merge context pre-render-context)]
             (renderer/render renderer template merged-context error-handler)))
         (fn [context]
-          (let [template (parser/parse file-path template-resolver filters sanitizers dictionary sanitizer)]
+          (let [template (parser/parse file-path template-resolver filters sanitizers dictionary sanitizer json-serializer)]
             (renderer/render renderer template context error-handler)))))))

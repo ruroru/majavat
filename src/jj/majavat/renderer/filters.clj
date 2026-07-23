@@ -279,3 +279,112 @@
     (map? v) (into {} (rest v))
     :else nil
     ))
+
+(defn join-seq
+  ([v] (join-seq v ", "))
+  ([v separator]
+   (when (sequential? v)
+     (str/join (str separator) v))))
+
+(defn get-length [v]
+  (cond
+    (string? v)     (.length ^String v)
+    (sequential? v) (count v)
+    (map? v)        (count v)
+    :else           nil))
+
+(defn- ->indention [width]
+  (cond
+    (integer? width) (apply str (repeat width " "))
+    (string? width)  width
+    (keyword? width) (if-let [n (as-int (name width))]
+                       (apply str (repeat n " "))
+                       (name width))
+    :else            "    "))
+
+(defn- ->bool [v]
+  (cond
+    (boolean? v) v
+    (keyword? v) (= "true" (str/lower-case (name v)))
+    (string? v)  (= "true" (str/lower-case v))
+    :else        false))
+
+(defn- split-keep-lines [s]
+  (let [parts (str/split s #"\n" -1)]
+    (if (and (seq parts) (= "" (last parts)))
+      (butlast parts)
+      parts)))
+
+(defn- replace-first-n [^String s ^String old ^String new n]
+  (if (or (zero? n) (zero? (.length old)))
+    s
+    (let [sb (StringBuilder.)]
+      (loop [from 0 remaining n]
+        (let [idx (.indexOf s old from)]
+          (if (or (neg? idx) (zero? remaining))
+            (do (.append sb (.substring s from))
+                (.toString sb))
+            (do
+              (.append sb (.substring s from idx))
+              (.append sb new)
+              (recur (+ idx (.length old)) (dec remaining)))))))))
+
+(defn replace-string
+  ([v old new] (replace-string v old new nil))
+  ([v old new count]
+   (when (some? v)
+     (let [s   (str v)
+           old (str old)
+           new (str new)
+           n   (cond
+                 (integer? count) count
+                 (keyword? count) (as-int (name count))
+                 (string? count)  (as-int count)
+                 :else            nil)]
+       (if (and n (not (neg? n)))
+         (replace-first-n s old new n)
+         (str/replace s old new))))))
+
+(defn indent-lines
+  ([v width] (indent-lines v width false false))
+  ([v width first?] (indent-lines v width first? false))
+  ([v width first? blank?]
+   (when (some? v)
+     (let [indention (->indention width)
+           first?    (->bool first?)
+           blank?    (->bool blank?)
+           lines     (split-keep-lines (str (str v) "\n"))
+           rv        (if blank?
+                       (str/join (str "\n" indention) lines)
+                       (if-let [tail (seq (rest lines))]
+                         (str (first lines) "\n"
+                              (str/join "\n" (map (fn [line]
+                                                    (if (= "" line) line (str indention line)))
+                                                  tail)))
+                         (first lines)))]
+       (if first? (str indention rv) rv)))))
+
+(defn- ->int [v]
+  (cond
+    (integer? v) v
+    (keyword? v) (as-int (name v))
+    (string? v)  (as-int v)
+    :else        nil))
+
+(defn truncate-string
+  ([v length] (truncate-string v length false "..."))
+  ([v length killwords] (truncate-string v length killwords "..."))
+  ([v length killwords end]
+   (when (some? v)
+     (let [s         (str v)
+           length    (->int length)
+           killwords (->bool killwords)
+           end       (str end)]
+       (if (or (nil? length) (<= (count s) length))
+         s
+         (let [cut (subs s 0 (max 0 (- length (count end))))]
+           (if killwords
+             (str cut end)
+             (let [idx (.lastIndexOf ^String cut " ")]
+               (str (if (pos? idx) (subs cut 0 idx) cut) end)))))))))
+

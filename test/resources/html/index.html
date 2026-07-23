@@ -82,6 +82,8 @@
         <form action="/search{% query-string params %}">{% csrf-token %}<input type="submit"></form>
     </section>
 
+    <section id="params-json">{{ params | json }}</section>
+
     <section id="partial">{% include "../let/let-foo" %}</section>
 </main>
 
