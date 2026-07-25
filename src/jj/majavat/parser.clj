@@ -802,12 +802,6 @@
          (recur (rest lexed-list) list current-block parsing-for-body current-file-path template-resolver filter-map merged-sanitizers tag-stack macros dictionary current-sanitizer macro-param))))))
 
 (defn parse
-  ([resource-path template-resolver user-filters user-sanitizers]
-   (parse resource-path template-resolver user-filters user-sanitizers nil nil nil))
-  ([resource-path template-resolver user-filters user-sanitizers dictionary]
-   (parse resource-path template-resolver user-filters user-sanitizers dictionary nil nil))
-  ([resource-path template-resolver user-filters user-sanitizers dictionary current-sanitizer]
-   (parse resource-path template-resolver user-filters user-sanitizers dictionary current-sanitizer nil))
   ([resource-path template-resolver user-filters user-sanitizers dictionary current-sanitizer json-serializer]
    (if (resolver/template-exists? template-resolver resource-path)
      (let [file-content (read-content-as-string template-resolver resource-path)

@@ -4,14 +4,23 @@
             [jj.majavat.lexer :as lexer]
             [jj.majavat.parser :as parser]
             [jj.majavat.renderer.tests :as tests]
+            [jj.majavat.renderer.sanitizer :refer [->None]]
+            [jj.majavat.renderer.json :refer [->DefaultJsonSerializer]]
+            [jj.majavat.protocol.mock-dictionary :refer [create-mock-dictionary]]
             [jj.majavat.resolver.resource :as rcr]))
 
 (def contentResolver (rcr/->ResourceResolver))
 (def empty-fn-map {})
 (def empty-sanitizers-map {})
+(def ^:private default-dictionary (create-mock-dictionary))
+(def ^:private default-sanitizer (->None))
+(def ^:private default-json-serializer (->DefaultJsonSerializer))
 
 (defn- parse [& args]
-  (walk/postwalk #(if (map? %) (dissoc % :render-fn) %) (apply parser/parse args)))
+  (walk/postwalk #(if (map? %) (dissoc % :render-fn) %)
+                 (apply parser/parse
+                        (concat args (drop (- (count args) 4)
+                                           [default-dictionary default-sanitizer default-json-serializer])))))
 
 (deftest test-deeply-nested-conditionals
   (is (= [{:branches [[{:condition           [:user :is_admin]

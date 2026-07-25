@@ -5,19 +5,27 @@
             [jj.majavat.parser :as parser]
             [clojure.pprint :as pprint]
             [jj.majavat.renderer.tests :as tests]
+            [jj.majavat.renderer.sanitizer :refer [->None]]
+            [jj.majavat.renderer.json :refer [->DefaultJsonSerializer]]
+            [jj.majavat.protocol.mock-dictionary :refer [create-mock-dictionary]]
             [jj.majavat.resolver.fs :as fcr]
             [jj.majavat.protocol.dictionary :as dictionary]
             [jj.majavat.resolver.resource :as rcr])
   (:import (java.io File)
-           (java.time ZoneId)
-           (jj.majavat.protocol.dictionary Dictionary)))
+           (java.time ZoneId)))
 
 (def contentResolver (rcr/->ResourceResolver))
 (def empty-fn-map {})
 (def empty-sanitizers-map {})
+(def ^:private default-dictionary (create-mock-dictionary))
+(def ^:private default-sanitizer (->None))
+(def ^:private default-json-serializer (->DefaultJsonSerializer))
 
 (defn- parse [& args]
-  (walk/postwalk #(if (map? %) (dissoc % :render-fn) %) (apply parser/parse args)))
+  (walk/postwalk #(if (map? %) (dissoc % :render-fn) %)
+                 (apply parser/parse
+                        (concat args (drop (- (count args) 4)
+                                           [default-dictionary default-sanitizer default-json-serializer])))))
 
 
 (deftest test-parse-text
@@ -29,7 +37,7 @@
   (is (= [{:type :text :value "hello "}
           {:type :value-node}]
          (parse "insert-value.html" contentResolver empty-fn-map empty-sanitizers-map)))
-  (let [value-node (second (parser/parse "insert-value.html" contentResolver empty-fn-map empty-sanitizers-map))]
+  (let [value-node (second (parser/parse "insert-value.html" contentResolver empty-fn-map empty-sanitizers-map default-dictionary default-sanitizer default-json-serializer))]
     (is (= "world" ((:render-fn value-node) {:name "world"})))))
 
 (deftest test-parse-child-value
@@ -425,7 +433,7 @@
 
 
 (deftest escape-tag
-  (let [result (parser/parse "escape/escape-html" contentResolver empty-fn-map empty-sanitizers-map)
+  (let [result (parser/parse "escape/escape-html" contentResolver empty-fn-map empty-sanitizers-map default-dictionary default-sanitizer default-json-serializer)
         node (first result)]
     (is (= [{:type :value-node}]
            (parse "escape/escape-html" contentResolver empty-fn-map empty-sanitizers-map)))
@@ -515,7 +523,7 @@
                       {:type :value-node}
                       {:type :text :value "!"}]
         input-file "macro/macro-with-arg"
-        result (parser/parse input-file (rcr/->ResourceResolver) empty-fn-map empty-sanitizers-map)]
+        result (parser/parse input-file (rcr/->ResourceResolver) empty-fn-map empty-sanitizers-map default-dictionary default-sanitizer default-json-serializer)]
     (is (= expected-ast (parse input-file (rcr/->ResourceResolver) empty-fn-map empty-sanitizers-map)))
     (is (= "bob" ((:render-fn (nth result 1)) {:name "bob"})))
     (is (= "alice" ((:render-fn (nth result 4)) {:user {:name "alice"}})))))
@@ -527,16 +535,6 @@
         input-file "macro/macro-with-literal-arg"]
     (is (= expected-ast (parse input-file (rcr/->ResourceResolver) empty-fn-map empty-sanitizers-map)))))
 
-
-
-(defrecord MockDictionary [translations]
-  Dictionary
-  (translate [_ language word]
-    (get-in translations [language word])))
-
-(defn create-mock-dictionary []
-  (->MockDictionary {"en" {:hello "hello" :world "world" :key "key"}
-                     "fi" {:hello "hei" :world "maailma" :key "avain"}}))
 
 
 (deftest trans-test

@@ -8,9 +8,10 @@
     [jj.majavat.parser :as parser]
     [jj.majavat.protocol.json :as json-protocol]
     [jj.majavat.renderer.json :refer [->DefaultJsonSerializer]]
+    [jj.majavat.protocol.mock-dictionary :refer [create-mock-dictionary]]
     [jj.majavat.renderer :refer [->InputStreamRenderer ->PartialRenderer ->StringRenderer]]
     [jj.majavat.protocol.renderer.render-target :as renderer]
-    [jj.majavat.renderer.sanitizer :refer [->Html]]
+    [jj.majavat.renderer.sanitizer :refer [->Html ->None]]
     [jj.majavat.renderer.tests :as tests]
     [jj.majavat.resolver.fs :as fcr]
     [jj.majavat.resolver.resource :as rcr]
@@ -31,6 +32,15 @@
 
 (def empty-fn-map {})
 (def empty-sanitizers-map {})
+(def ^:private default-dictionary (create-mock-dictionary))
+(def ^:private default-sanitizer (->None))
+(def ^:private default-json-serializer (->DefaultJsonSerializer))
+
+(defn- parse [& args]
+  (apply parser/parse
+         (concat args (drop (- (count args) 4)
+                            [default-dictionary default-sanitizer default-json-serializer]))))
+
 (def ^:private default-error-handler (fail-fast/->FailFast))
 (def ^:private reporting-error-handler (reporting/->Reporting))
 
@@ -125,7 +135,7 @@ Department: Marketing (Budget: $300K)
 \"testing your email is: some@mail.com\"
 foobarbaz
 this is a  footer"
-        template (parser/parse "inheritance-test" contentResolver empty-fn-map empty-sanitizers-map)
+        template (parse "inheritance-test" contentResolver empty-fn-map empty-sanitizers-map)
         context {:user {:name  "jj"
                         :email "some@mail.com"}}]
     (assert-render template context expected-string)))
@@ -133,20 +143,20 @@ this is a  footer"
 
 (deftest test-not-existing-file
   (let [expected-string (slurp (io/resource "render-template-not-found.html"))
-        template (parser/parse "not-existing-file" contentResolver empty-fn-map empty-sanitizers-map)
+        template (parse "not-existing-file" contentResolver empty-fn-map empty-sanitizers-map)
         context {}]
     (assert-render template context expected-string reporting-error-handler)))
 
 (deftest include-not-existing
   (let [expected-string (slurp (io/resource "include/not-existing.html"))
-        template (parser/parse "includes-not-existing-test" contentResolver empty-fn-map empty-sanitizers-map)
+        template (parse "includes-not-existing-test" contentResolver empty-fn-map empty-sanitizers-map)
         context {}]
     (assert-render template context expected-string reporting-error-handler)))
 
 
 (deftest extends-not-existing-file
   (let [expected-string (slurp (io/resource "extends/not-existing-extends-error.html"))
-        template (parser/parse "extends-not-existing-test" contentResolver empty-fn-map empty-sanitizers-map)
+        template (parse "extends-not-existing-test" contentResolver empty-fn-map empty-sanitizers-map)
         context {}]
     (assert-render template context expected-string reporting-error-handler)))
 
@@ -157,7 +167,7 @@ this is a  footer"
 \"testing your email is: some@mail.com\"
 foobarbaz
 this is a  footer"
-        template (parser/parse "./test/resources/inheritance-test" (fcr/->FsResolver) empty-fn-map empty-sanitizers-map)
+        template (parse "./test/resources/inheritance-test" (fcr/->FsResolver) empty-fn-map empty-sanitizers-map)
         context {:user {:name  "jj"
                         :email "some@mail.com"}}]
     (assert-render template context expected-string)))
@@ -165,30 +175,30 @@ this is a  footer"
 
 (deftest render-alternative-value-when-condition-is-nil
   (let [expected-string "not-posts"
-        template (parser/parse "else-conditional-test" contentResolver empty-fn-map empty-sanitizers-map)
+        template (parse "else-conditional-test" contentResolver empty-fn-map empty-sanitizers-map)
         context {:some {:condition nil}}]
     (assert-render template context expected-string)))
 
 (deftest render-value-when-condition-has-some-value
   (let [expected-string "posts"
-        template (parser/parse "conditional-test" contentResolver empty-fn-map empty-sanitizers-map)
+        template (parse "conditional-test" contentResolver empty-fn-map empty-sanitizers-map)
         context {:has {:posts 123}}]
     (assert-render template context expected-string)))
 
 (deftest render-alternative-value-when-condition-is-false
   (let [expected-string ""
-        template (parser/parse "conditional-test" contentResolver empty-fn-map empty-sanitizers-map)
+        template (parse "conditional-test" contentResolver empty-fn-map empty-sanitizers-map)
         context {:has {:posts false}}]
     (assert-render template context expected-string)))
 
 (deftest render-value-when-condition-is-true
   (let [expected-string "posts"
-        template (parser/parse "conditional-test" contentResolver empty-fn-map empty-sanitizers-map)
+        template (parse "conditional-test" contentResolver empty-fn-map empty-sanitizers-map)
         context {:has {:posts true}}]
     (assert-render template context expected-string)))
 
 (deftest escape-test
-  (let [template (parser/parse "insert-value.html" contentResolver empty-fn-map empty-sanitizers-map nil (->Html))]
+  (let [template (parse "insert-value.html" contentResolver empty-fn-map empty-sanitizers-map default-dictionary (->Html))]
     (are [input expected] (= (format "hello %s" expected) (renderer/render (->StringRenderer)
                                                                            template
                                                                            {:name input}
@@ -204,11 +214,11 @@ this is a  footer"
 
       (= rendered-string
          (String. (.readAllBytes ^InputStream (renderer/render (->InputStreamRenderer)
-                                                               (parser/parse template-path contentResolver empty-fn-map empty-sanitizers-map)
+                                                               (parse template-path contentResolver empty-fn-map empty-sanitizers-map)
                                                                context
                                                                default-error-handler)))
          (renderer/render (->StringRenderer)
-                          (parser/parse template-path contentResolver empty-fn-map empty-sanitizers-map)
+                          (parse template-path contentResolver empty-fn-map empty-sanitizers-map)
                           context
                           default-error-handler))
       "hello " "if/if-not"
@@ -221,11 +231,11 @@ this is a  footer"
   (are [expected-value template-path context]
     (= expected-value
        (renderer/render (->StringRenderer)
-                        (parser/parse template-path contentResolver empty-fn-map empty-sanitizers-map nil (->Html) (->DefaultJsonSerializer))
+                        (parse template-path contentResolver empty-fn-map empty-sanitizers-map default-dictionary (->Html) (->DefaultJsonSerializer))
                         context
                         default-error-handler)
        (String. (.readAllBytes ^InputStream (renderer/render (->InputStreamRenderer)
-                                                             (parser/parse template-path contentResolver empty-fn-map empty-sanitizers-map nil (->Html) (->DefaultJsonSerializer))
+                                                             (parse template-path contentResolver empty-fn-map empty-sanitizers-map default-dictionary (->Html) (->DefaultJsonSerializer))
                                                              context
                                                              default-error-handler))))
     "foo BAR1 BAZｲ" "filter/upper-case" {:value "BAR1 BaZｲ"}
@@ -292,8 +302,8 @@ this is a  footer"
 (deftest render-custom-json-serializer
   (is (= "STUB:{:a 1}"
          (renderer/render (->StringRenderer)
-                          (parser/parse "filter/json" contentResolver empty-fn-map
-                                        empty-sanitizers-map nil nil (->StubJsonSerializer))
+                          (parse "filter/json" contentResolver empty-fn-map
+                                        empty-sanitizers-map default-dictionary default-sanitizer (->StubJsonSerializer))
                           {:value {:a 1}}
                           default-error-handler))))
 
@@ -303,11 +313,11 @@ this is a  footer"
     (are [expected-value template-path context]
       (= expected-value
          (String. (.readAllBytes ^InputStream (renderer/render (->InputStreamRenderer)
-                                                               (parser/parse template-path contentResolver filter-map empty-sanitizers-map)
+                                                               (parse template-path contentResolver filter-map empty-sanitizers-map)
                                                                context
                                                                default-error-handler)))
          (renderer/render (->StringRenderer)
-                          (parser/parse template-path contentResolver filter-map empty-sanitizers-map)
+                          (parse template-path contentResolver filter-map empty-sanitizers-map)
                           context
                           default-error-handler))
       "\"Foo Bar Baz\" - Sun Tzu" "custom-filter/quote" {:value "Foo Bar Baz"})))
@@ -318,7 +328,7 @@ this is a  footer"
                       (format "\"%s\" - %s (%s/%s)" value author (:locale context) (:source context)))}]
     (is (= "\"Foo Bar Baz\" - Sun Tzu (fi/book)"
            (renderer/render (->StringRenderer)
-                            (parser/parse "custom-filter/quote" contentResolver filter-map empty-sanitizers-map)
+                            (parse "custom-filter/quote" contentResolver filter-map empty-sanitizers-map)
                             {:value "Foo Bar Baz" :locale "fi" :source "book"}
                             default-error-handler)))))
 
@@ -327,11 +337,11 @@ this is a  footer"
   (are [expected-file-path template-path context]
     (= (crlf->lf (slurp (io/resource expected-file-path)))
        (crlf->lf (renderer/render (->StringRenderer)
-                                  (parser/parse template-path contentResolver empty-fn-map empty-sanitizers-map)
+                                  (parse template-path contentResolver empty-fn-map empty-sanitizers-map)
                                   context
                                   reporting-error-handler))
        (crlf->lf (String. (.readAllBytes ^InputStream (renderer/render (->InputStreamRenderer)
-                                                                       (parser/parse template-path contentResolver empty-fn-map empty-sanitizers-map)
+                                                                       (parse template-path contentResolver empty-fn-map empty-sanitizers-map)
                                                                        context
                                                                        reporting-error-handler)))))
     "filter/not-supported-filter-expected" "filter/not-supported-filter" {:value "bar"}))
@@ -341,7 +351,7 @@ this is a  footer"
     (are [expected-value template-path context]
       (= expected-value
          (renderer/render (->StringRenderer)
-                          (parser/parse template-path contentResolver empty-fn-map empty-sanitizers-map)
+                          (parse template-path contentResolver empty-fn-map empty-sanitizers-map)
                           context
                           default-error-handler))
       "testing hello barbaz" "let/let-foo" {}
@@ -351,7 +361,7 @@ this is a  footer"
     (are [expected-value template-path context]
       (= expected-value
          (String. (.readAllBytes ^InputStream (renderer/render (->InputStreamRenderer)
-                                                               (parser/parse template-path contentResolver empty-fn-map empty-sanitizers-map)
+                                                               (parse template-path contentResolver empty-fn-map empty-sanitizers-map)
                                                                context
                                                                default-error-handler))))
       "testing hello barbaz" "let/let-foo" {}
@@ -363,12 +373,12 @@ this is a  footer"
   (are [expected template-path]
     (let [context {:planets ["Mercury" "Venus" "Earth" "Mars" "Jupiter" "Saturn" "Uranus" "Neptune"]}
           render-result (renderer/render (->StringRenderer)
-                                         (parser/parse template-path contentResolver empty-fn-map empty-sanitizers-map)
+                                         (parse template-path contentResolver empty-fn-map empty-sanitizers-map)
                                          context
                                          default-error-handler)
           render-is-result (String. (.readAllBytes ^InputStream (renderer/render
                                                                   (->InputStreamRenderer)
-                                                                  (parser/parse template-path contentResolver empty-fn-map empty-sanitizers-map) context
+                                                                  (parse template-path contentResolver empty-fn-map empty-sanitizers-map) context
                                                                   default-error-handler)))]
 
       (and (= expected render-result)
@@ -381,12 +391,12 @@ this is a  footer"
   (are [expected template-path context]
     (let [
           render-result (renderer/render (->StringRenderer)
-                                         (parser/parse template-path contentResolver empty-fn-map empty-sanitizers-map)
+                                         (parse template-path contentResolver empty-fn-map empty-sanitizers-map)
                                          context
                                          default-error-handler)
           render-is-result (String. (.readAllBytes ^InputStream (renderer/render
                                                                   (->InputStreamRenderer)
-                                                                  (parser/parse template-path contentResolver empty-fn-map empty-sanitizers-map) context
+                                                                  (parse template-path contentResolver empty-fn-map empty-sanitizers-map) context
                                                                   default-error-handler)))]
 
       (and (= expected render-result)
@@ -400,12 +410,12 @@ this is a  footer"
 (deftest each
   (let [context {:planets ["Mercury" "Venus" "Earth" "Mars" "Jupiter" "Saturn" "Uranus" "Neptune"]}
         string-renderer (renderer/render (->StringRenderer)
-                                         (parser/parse "each/each-planet" contentResolver empty-fn-map empty-sanitizers-map)
+                                         (parse "each/each-planet" contentResolver empty-fn-map empty-sanitizers-map)
                                          context
                                          default-error-handler)
         is-renderer (renderer/render
                       (->InputStreamRenderer)
-                      (parser/parse "each/each-planet" contentResolver empty-fn-map empty-sanitizers-map)
+                      (parse "each/each-planet" contentResolver empty-fn-map empty-sanitizers-map)
                       context
                       default-error-handler)]
 
@@ -420,7 +430,7 @@ this is a  footer"
     (are [expected-value template-path context]
       (= expected-value
          (renderer/render (->StringRenderer)
-                          (parser/parse template-path contentResolver empty-fn-map empty-sanitizers-map)
+                          (parse template-path contentResolver empty-fn-map empty-sanitizers-map)
                           context
                           default-error-handler))
       "foo <input type=\"hidden\" name=\"csrf_token\" value=\"bar\"> " "csrf/csrf" {:csrf-token "bar"}
@@ -429,7 +439,7 @@ this is a  footer"
     (are [expected-value template-path context]
       (= expected-value
          (String. (.readAllBytes ^InputStream (renderer/render (->InputStreamRenderer)
-                                                               (parser/parse template-path contentResolver empty-fn-map empty-sanitizers-map)
+                                                               (parse template-path contentResolver empty-fn-map empty-sanitizers-map)
                                                                context
                                                                default-error-handler))))
       "foo <input type=\"hidden\" name=\"csrf_token\" value=\"bar\"> " "csrf/csrf" {:csrf-token "bar"}
@@ -440,7 +450,7 @@ this is a  footer"
     (are [expected-value template-path context]
       (= expected-value
          (renderer/render (->StringRenderer)
-                          (parser/parse template-path contentResolver empty-fn-map empty-sanitizers-map)
+                          (parse template-path contentResolver empty-fn-map empty-sanitizers-map)
                           context
                           default-error-handler))
       "/some/route" "query-string/query-string" {}
@@ -450,7 +460,7 @@ this is a  footer"
   (testing "render to input stream"
     (are [expected-value template-path context]
       (= expected-value
-         (String. (.readAllBytes ^InputStream (renderer/render (->InputStreamRenderer) (parser/parse template-path contentResolver empty-fn-map empty-sanitizers-map) context default-error-handler))))
+         (String. (.readAllBytes ^InputStream (renderer/render (->InputStreamRenderer) (parse template-path contentResolver empty-fn-map empty-sanitizers-map) context default-error-handler))))
       "/some/route" "query-string/query-string" {}
       "/some/route?key=value" "query-string/query-string" {:foo {:bar {:key "value"}}}
       "/some/route?key=value&key1=value1" "query-string/query-string" {:foo {:bar {:key "value" :key1 "value1"}}})))
@@ -458,16 +468,16 @@ this is a  footer"
 (deftest now-default
   (testing "render to string"
     (are [timestamp-regex template-path context]
-      (is (re-find timestamp-regex (renderer/render (->StringRenderer) (parser/parse template-path contentResolver empty-fn-map empty-sanitizers-map) context default-error-handler))
-          (str "Expected timestamp format in result: " (renderer/render (->StringRenderer) (parser/parse template-path contentResolver empty-fn-map empty-sanitizers-map) context default-error-handler)))
+      (is (re-find timestamp-regex (renderer/render (->StringRenderer) (parse template-path contentResolver empty-fn-map empty-sanitizers-map) context default-error-handler))
+          (str "Expected timestamp format in result: " (renderer/render (->StringRenderer) (parse template-path contentResolver empty-fn-map empty-sanitizers-map) context default-error-handler)))
       #"20\d{2}/\d{2}/\d{2} \d{2}:\d{2}" "now/now" {}
       #"20\d{2}-\d{2}-\d{2}" "now/now-with-format-and-time-zone" {}
       #"offset is \+09:00" "now/now-offset-tokyo" {}
       ))
   (testing "render to input stream"
     (are [timestamp-regex template-path context]
-      (is (re-find timestamp-regex (String. (.readAllBytes ^InputStream (renderer/render (->InputStreamRenderer) (parser/parse template-path contentResolver empty-fn-map empty-sanitizers-map) context default-error-handler))))
-          (str "Expected timestamp format in result: " (renderer/render (->InputStreamRenderer) (parser/parse template-path contentResolver empty-fn-map empty-sanitizers-map) context default-error-handler)))
+      (is (re-find timestamp-regex (String. (.readAllBytes ^InputStream (renderer/render (->InputStreamRenderer) (parse template-path contentResolver empty-fn-map empty-sanitizers-map) context default-error-handler))))
+          (str "Expected timestamp format in result: " (renderer/render (->InputStreamRenderer) (parse template-path contentResolver empty-fn-map empty-sanitizers-map) context default-error-handler)))
       #"20\d{2}/\d{2}/\d{2} \d{2}:\d{2}" "now/now" {}
       #"20\d{2}-\d{2}-\d{2}" "now/now-with-format" {}
       #"20\d{2}-\d{2}-\d{2}" "now/now-with-format-and-time-zone" {})))
@@ -478,11 +488,11 @@ this is a  footer"
     (= (crlf->lf expected)
        (crlf->lf (String. (.readAllBytes ^InputStream (renderer/render
                                                         (->InputStreamRenderer)
-                                                        (parser/parse "loop/for-values" contentResolver empty-fn-map empty-sanitizers-map)
+                                                        (parse "loop/for-values" contentResolver empty-fn-map empty-sanitizers-map)
                                                         input-context
                                                         default-error-handler))))
        (crlf->lf (renderer/render (->StringRenderer)
-                                  (parser/parse "loop/for-values" contentResolver empty-fn-map empty-sanitizers-map)
+                                  (parse "loop/for-values" contentResolver empty-fn-map empty-sanitizers-map)
                                   input-context
                                   default-error-handler)))
     "first true false 3 0\nsecond false false 3 1\nthird false true 3 2\n" {:values (list "first" "second" "third")}
@@ -492,7 +502,7 @@ this is a  footer"
 
 (deftest partial-render
   (are [expected input-file input-context] (= expected (strip-render-fn (renderer/render (->PartialRenderer)
-                                                                                         (parser/parse input-file contentResolver empty-fn-map empty-sanitizers-map nil (->Html))
+                                                                                         (parse input-file contentResolver empty-fn-map empty-sanitizers-map default-dictionary (->Html))
                                                                                          input-context
                                                                                          default-error-handler)))
                                            [{:type :text :value "hello world"}] "insert-value.html" {:name "world"}
@@ -538,7 +548,7 @@ this is a  footer"
   (are [expected template-path context]
     (= expected
        (renderer/render (->StringRenderer)
-                        (parser/parse template-path contentResolver empty-fn-map empty-sanitizers-map)
+                        (parse template-path contentResolver empty-fn-map empty-sanitizers-map)
                         context
                         default-error-handler))
     "hello world" "path-resolver/length-1" {:value "world"}
@@ -564,11 +574,11 @@ this is a  footer"
     (= (crlf->lf (slurp (io/resource expected-file)))
        (crlf->lf (String. (.readAllBytes ^InputStream (renderer/render
                                                         (->InputStreamRenderer)
-                                                        (parser/parse input-file contentResolver empty-fn-map empty-sanitizers-map)
+                                                        (parse input-file contentResolver empty-fn-map empty-sanitizers-map)
                                                         {}
                                                         reporting-error-handler))))
        (crlf->lf (renderer/render (->StringRenderer)
-                                  (parser/parse input-file contentResolver empty-fn-map empty-sanitizers-map)
+                                  (parse input-file contentResolver empty-fn-map empty-sanitizers-map)
                                   {}
                                   reporting-error-handler)))
     "tagstack/expected-unclosed-each-tag.html" "tagstack/unclosed-each-tag"
@@ -583,11 +593,11 @@ this is a  footer"
 
       (= rendered-string
          (String. (.readAllBytes ^InputStream (renderer/render (->InputStreamRenderer)
-                                                               (parser/parse template-path contentResolver empty-fn-map empty-sanitizers-map)
+                                                               (parse template-path contentResolver empty-fn-map empty-sanitizers-map)
                                                                context
                                                                default-error-handler)))
          (renderer/render (->StringRenderer)
-                          (parser/parse template-path contentResolver empty-fn-map empty-sanitizers-map)
+                          (parse template-path contentResolver empty-fn-map empty-sanitizers-map)
                           context
                           default-error-handler))
       "&lt;some&gt;tag&lt;/some&gt;" "escape/escape-html"
@@ -599,11 +609,11 @@ this is a  footer"
 
       (= rendered-string
          (String. (.readAllBytes ^InputStream (renderer/render (->InputStreamRenderer)
-                                                               (parser/parse template-path contentResolver empty-fn-map empty-sanitizers-map nil (->Html))
+                                                               (parse template-path contentResolver empty-fn-map empty-sanitizers-map default-dictionary (->Html))
                                                                context
                                                                default-error-handler)))
          (renderer/render (->StringRenderer)
-                          (parser/parse template-path contentResolver empty-fn-map empty-sanitizers-map nil (->Html))
+                          (parse template-path contentResolver empty-fn-map empty-sanitizers-map default-dictionary (->Html))
                           context
                           default-error-handler))
       "<some>tag</some>" "escape/escape-nil"
@@ -615,7 +625,7 @@ this is a  footer"
 
       (= rendered-string
          (renderer/render (->PartialRenderer)
-                          (parser/parse template-path contentResolver empty-fn-map empty-sanitizers-map)
+                          (parse template-path contentResolver empty-fn-map empty-sanitizers-map)
                           context
                           default-error-handler)
          )
@@ -628,11 +638,11 @@ this is a  footer"
   (are [context rendered-string template-path]
     (= rendered-string
        (String. (.readAllBytes ^InputStream (renderer/render (->InputStreamRenderer)
-                                                             (parser/parse template-path contentResolver empty-fn-map empty-sanitizers-map)
+                                                             (parse template-path contentResolver empty-fn-map empty-sanitizers-map)
                                                              context
                                                              default-error-handler)))
        (renderer/render (->StringRenderer)
-                        (parser/parse template-path contentResolver empty-fn-map empty-sanitizers-map)
+                        (parse template-path contentResolver empty-fn-map empty-sanitizers-map)
                         context
                         default-error-handler))
     {:small true} "small" "if/if-elif-else"
@@ -645,7 +655,7 @@ this is a  footer"
 
     (= expected
        (renderer/render (->StringRenderer)
-                        (parser/parse template-path contentResolver empty-fn-map empty-sanitizers-map)
+                        (parse template-path contentResolver empty-fn-map empty-sanitizers-map)
                         context
                         default-error-handler)
        )
@@ -656,7 +666,7 @@ this is a  footer"
   (are [expected template-path context]
     (= expected
        (renderer/render (->StringRenderer)
-                        (parser/parse template-path contentResolver empty-fn-map empty-sanitizers-map)
+                        (parse template-path contentResolver empty-fn-map empty-sanitizers-map)
                         context
                         default-error-handler))
     "yes" "if/if-greater" {:value 6}
@@ -679,7 +689,7 @@ this is a  footer"
   (are [expected context]
     (= expected
        (renderer/render (->StringRenderer)
-                        (parser/parse "if/if-elif-operators" contentResolver empty-fn-map empty-sanitizers-map)
+                        (parse "if/if-elif-operators" contentResolver empty-fn-map empty-sanitizers-map)
                         context
                         default-error-handler))
     "big" {:value 20}
@@ -691,12 +701,12 @@ this is a  footer"
   (are [template-path context]
     (= context
        (edn/read-string (with-out-str (String. (.readAllBytes ^InputStream (renderer/render (->InputStreamRenderer)
-                                                                                            (parser/parse template-path contentResolver empty-fn-map empty-sanitizers-map)
+                                                                                            (parse template-path contentResolver empty-fn-map empty-sanitizers-map)
                                                                                             context
                                                                                             default-error-handler)))))
 
        (edn/read-string (with-out-str (renderer/render (->StringRenderer)
-                                                       (parser/parse template-path contentResolver empty-fn-map empty-sanitizers-map)
+                                                       (parse template-path contentResolver empty-fn-map empty-sanitizers-map)
                                                        context
                                                        default-error-handler))))
     "debug/debug" {:value 1}))
@@ -718,7 +728,7 @@ this is a  footer"
                            (flush [])
                            (close []))
           context (assoc context-without-writer :logger capture-writer)
-          parse #(parser/parse template-path contentResolver empty-fn-map empty-sanitizers-map)]
+          parse #(parse template-path contentResolver empty-fn-map empty-sanitizers-map)]
 
       (renderer/render (->StringRenderer) (parse) context default-error-handler)
       (let [string-result (edn/read-string (.toString buffer))]
@@ -730,7 +740,7 @@ this is a  footer"
         input-file "macro/macro"]
     (is (= expected
            (renderer/render (->StringRenderer)
-                            (parser/parse input-file contentResolver empty-fn-map empty-sanitizers-map)
+                            (parse input-file contentResolver empty-fn-map empty-sanitizers-map)
                             {:baz "baz"}
                             default-error-handler)))))
 
@@ -740,7 +750,7 @@ this is a  footer"
         input-file "macro/macro-open-paren"]
     (is (= expected
            (renderer/render (->StringRenderer)
-                            (parser/parse input-file contentResolver empty-fn-map empty-sanitizers-map)
+                            (parse input-file contentResolver empty-fn-map empty-sanitizers-map)
                             {:baz "baz"}
                             default-error-handler)))))
 
@@ -749,7 +759,7 @@ this is a  footer"
         input-file "macro/macro-with-arg"]
     (is (= expected
            (renderer/render (->StringRenderer)
-                            (parser/parse input-file contentResolver empty-fn-map empty-sanitizers-map)
+                            (parse input-file contentResolver empty-fn-map empty-sanitizers-map)
                             {:name "bob" :user {:name "alice"}}
                             default-error-handler)))))
 
@@ -758,7 +768,7 @@ this is a  footer"
         input-file "macro/macro-literal-args"]
     (is (= expected
            (renderer/render (->StringRenderer)
-                            (parser/parse input-file contentResolver empty-fn-map empty-sanitizers-map)
+                            (parse input-file contentResolver empty-fn-map empty-sanitizers-map)
                             {:baz "baz"}
                             default-error-handler)))))
 
@@ -767,7 +777,7 @@ this is a  footer"
         input-file "macro/macro-with-literal-arg"]
     (is (= expected
            (renderer/render (->StringRenderer)
-                            (parser/parse input-file contentResolver empty-fn-map empty-sanitizers-map)
+                            (parse input-file contentResolver empty-fn-map empty-sanitizers-map)
                             {}
                             default-error-handler)))))
 
@@ -776,7 +786,7 @@ this is a  footer"
         input-file "macro/two-param-macro-args"]
     (is (= expected
            (renderer/render (->StringRenderer)
-                            (parser/parse input-file contentResolver empty-fn-map empty-sanitizers-map)
+                            (parse input-file contentResolver empty-fn-map empty-sanitizers-map)
                             {:name "alice" :user {:name "carol"}}
                             default-error-handler)))))
 
@@ -785,7 +795,7 @@ this is a  footer"
         input-file "macro/five-param-macro"]
     (is (= expected
            (renderer/render (->StringRenderer)
-                            (parser/parse input-file contentResolver empty-fn-map empty-sanitizers-map)
+                            (parse input-file contentResolver empty-fn-map empty-sanitizers-map)
                             {:two "TWO" :three {:nested "THREE"}}
                             default-error-handler)))))
 
@@ -794,7 +804,7 @@ this is a  footer"
         input-file "import/imports-and-calls"]
     (is (= expected
            (renderer/render (->StringRenderer)
-                            (parser/parse input-file contentResolver empty-fn-map empty-sanitizers-map)
+                            (parse input-file contentResolver empty-fn-map empty-sanitizers-map)
                             {}
                             default-error-handler)))))
 
@@ -803,12 +813,12 @@ this is a  footer"
         input-file "import/reimport-parent"]
     (is (= expected
            (renderer/render (->StringRenderer)
-                            (parser/parse input-file contentResolver empty-fn-map empty-sanitizers-map)
+                            (parse input-file contentResolver empty-fn-map empty-sanitizers-map)
                             {}
                             default-error-handler)))))
 
 (deftest fail-fast-throws-on-template-not-found
-  (let [template (parser/parse "not-existing-file" contentResolver empty-fn-map empty-sanitizers-map)]
+  (let [template (parse "not-existing-file" contentResolver empty-fn-map empty-sanitizers-map)]
     (is (thrown-with-msg? clojure.lang.ExceptionInfo
                           #"Failed to render template"
                           (renderer/render (->StringRenderer) template {} default-error-handler)))
@@ -817,7 +827,7 @@ this is a  footer"
                           (renderer/render (->InputStreamRenderer) template {} default-error-handler)))))
 
 (deftest fail-fast-throws-on-syntax-error
-  (let [template (parser/parse "filter/not-supported-filter" contentResolver empty-fn-map empty-sanitizers-map)]
+  (let [template (parse "filter/not-supported-filter" contentResolver empty-fn-map empty-sanitizers-map)]
     (let [ex (is (thrown? clojure.lang.ExceptionInfo
                           (renderer/render (->StringRenderer) template {:value "bar"} default-error-handler)))]
       (is (= "syntax-error" (:type (ex-data ex))))
@@ -832,7 +842,7 @@ this is a  footer"
 
 (deftest trans-test
   (let [mock-dictionary (->MockDictionary)
-        template (parser/parse "trans/trans" contentResolver empty-fn-map empty-sanitizers-map mock-dictionary)
+        template (parse "trans/trans" contentResolver empty-fn-map empty-sanitizers-map mock-dictionary)
         fi-context {:locale "fi"}
         en-context {:locale "en"}]
     (assert-render template en-context "hello")
@@ -840,7 +850,7 @@ this is a  footer"
 
 (deftest trans-filter-test
   (let [mock-dictionary (->MockDictionary)
-        template (parser/parse "trans/trans-filter" contentResolver empty-fn-map empty-sanitizers-map mock-dictionary)]
+        template (parse "trans/trans-filter" contentResolver empty-fn-map empty-sanitizers-map mock-dictionary)]
     (assert-render template {:locale "en" :k "hello"} "hello")
     (assert-render template {:locale "fi" :k "hello"} "hei")
     (assert-render template {:locale "fi" :k "world"} "maailma")))
