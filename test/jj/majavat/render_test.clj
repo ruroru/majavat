@@ -435,6 +435,12 @@ this is a  footer"
                           default-error-handler))
       "foo <input type=\"hidden\" name=\"csrf_token\" value=\"bar\"> " "csrf/csrf" {:csrf-token "bar"}
       "foo <input type=\"hidden\" name=\"csrf_token\" value=\"\"> " "csrf/csrf" {}))
+  (testing "token is never sanitized, even inside an escape block"
+    (is (= "<input type=\"hidden\" name=\"csrf_token\" value=\"a&b<c\">"
+           (renderer/render (->StringRenderer)
+                            (parse "csrf/csrf-escaped" contentResolver empty-fn-map empty-sanitizers-map)
+                            {:csrf-token "a&b<c"}
+                            default-error-handler))))
   (testing "render to input stream"
     (are [expected-value template-path context]
       (= expected-value

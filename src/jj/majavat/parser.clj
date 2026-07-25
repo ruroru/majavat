@@ -165,21 +165,26 @@
             6 (let [[a b c d e f] path] (local-get-in context a b c d e f))
             (get-in context path))))
 
-(defn- bake-render-fn [{:keys [value filter-fn sanitizer]}]
-  (let [filter-fn (or filter-fn (fn [v _context] v))
-        finish (if sanitizer
-                 (fn [v context] (sanitize sanitizer (->str (filter-fn v context))))
-                 (fn [v context] (->str (filter-fn v context))))]
-    (fn
-      ([context] (finish (resolve-path context value) context))
-      ([context _raw] (resolve-path context value)))))
+(defn- bake-render-fn
+  ([value]
+   (bake-render-fn value nil nil))
+  ([value sanitizer]
+   (bake-render-fn value sanitizer nil))
+  ([value sanitizer filter-fn]
+   (let [filter-fn (or filter-fn (fn [v _context] v))
+         finish (if sanitizer
+                  (fn [v context] (sanitize sanitizer (->str (filter-fn v context))))
+                  (fn [v context] (->str (filter-fn v context))))]
+     (fn
+       ([context] (finish (resolve-path context value) context))
+       ([context _raw] (resolve-path context value))))))
 
-(defn- builtin-macros [current-sanitizer]
+(def ^:private builtin-macros
   {:csrf-token
    (with-meta
      (fn [_args]
        [{:type :text :value "<input type=\"hidden\" name=\"csrf_token\" value=\""}
-        {:type :value-node :render-fn (bake-render-fn {:value [:csrf-token] :sanitizer current-sanitizer})}
+        {:type :value-node :render-fn (bake-render-fn [:csrf-token])}
         {:type :text :value "\">"}])
      {:param-count 0})})
 
@@ -329,13 +334,13 @@
                                                                                 s))}
 
                                                         (vector? arg)
-                                                        {:type :value-node :render-fn (bake-render-fn {:value (into arg (subvec path 1)) :filter-fn filter-fn :sanitizer current-sanitizer})}
+                                                        {:type :value-node :render-fn (bake-render-fn (into arg (subvec path 1)) current-sanitizer filter-fn)}
 
                                                         :else
-                                                        {:type :value-node :render-fn (bake-render-fn {:value path :filter-fn filter-fn :sanitizer current-sanitizer})}))}
+                                                        {:type :value-node :render-fn (bake-render-fn path current-sanitizer filter-fn)}))}
 
                                           :else
-                                          {:type :value-node :render-fn (bake-render-fn {:value path :filter-fn filter-fn :sanitizer current-sanitizer})}))]
+                                          {:type :value-node :render-fn (bake-render-fn path current-sanitizer filter-fn)}))]
                        (recur remaining-after-filters (conj list value-node) current-block parsing-for-body current-file-path template-resolver filter-map merged-sanitizers tag-stack macros dictionary current-sanitizer macro-param))
 
          :opening-bracket (recur (rest lexed-list) list current-block parsing-for-body current-file-path template-resolver filter-map merged-sanitizers tag-stack macros dictionary current-sanitizer macro-param)
@@ -808,7 +813,7 @@
            lexed-value (lexer/tokenize file-content)
            filter-map (merge (create-filter-map dictionary json-serializer) user-filters)
            merged-sanitizers (merge user-sanitizers sanitizers)
-           macros (atom (builtin-macros current-sanitizer))]
+           macros (atom builtin-macros)]
        (try
          (parse-ast lexed-value [] {} false resource-path template-resolver filter-map merged-sanitizers [] macros dictionary current-sanitizer nil)
          (catch ExceptionInfo e
