@@ -33,7 +33,7 @@
                         "123iv" "123iv"))
 
 (deftest file-size
-  (are [expected input] (= expected (filters/file-size input ))
+  (are [expected input] (= expected (filters/file-size input))
                         nil nil
                         nil "not-a-number"
                         nil "1024"
@@ -276,16 +276,16 @@
 (deftest indent-test
   (are [input width first? blank? expected]
     (= expected (filters/indent-lines input width first? blank?))
-    "foo\nbar"            :4 :false :false "foo\n    bar"
-    "foo\nbar"            :2 :false :false "foo\n  bar"
-    "foo\nbar"            :4 :true  :false "    foo\n    bar"
-    "foo\n\nbar"          :4 :false :false "foo\n\n    bar"
-    "foo\n\nbar"          :4 :false :true  "foo\n    \n    bar"
-    "foo\nbar\n"          :4 :false :false "foo\n    bar\n"
+    "foo\nbar" :4 :false :false "foo\n    bar"
+    "foo\nbar" :2 :false :false "foo\n  bar"
+    "foo\nbar" :4 :true :false "    foo\n    bar"
+    "foo\n\nbar" :4 :false :false "foo\n\n    bar"
+    "foo\n\nbar" :4 :false :true "foo\n    \n    bar"
+    "foo\nbar\n" :4 :false :false "foo\n    bar\n"
     "line1\nline2\nline3" :2 :false :false "line1\n  line2\n  line3"
-    "foo"                 :4 :false :false "foo"
-    "foo\nbar"            ">> " :false :false "foo\n>> bar"
-    nil                   :4 :false :false nil))
+    "foo" :4 :false :false "foo"
+    "foo\nbar" ">> " :false :false "foo\n>> bar"
+    nil :4 :false :false nil))
 
 (deftest replace-test
   (are [input old new expected] (= expected (filters/replace-string input old new))
@@ -305,15 +305,15 @@
 
 (deftest truncate-test
   (are [input length expected] (= expected (filters/truncate-string input length))
-                               "Hello" :10 "Hello"                       ;; shorter than length -> unchanged
-                               "HelloWorld" :10 "HelloWorld"             ;; exactly length -> unchanged
-                               "The quick brown fox" :14 "The quick..."  ;; cut on word boundary
+                               "Hello" :10 "Hello"
+                               "HelloWorld" :10 "HelloWorld"
+                               "The quick brown fox" :14 "The quick..."
                                "Hello World" :8 "Hello..."
                                nil :10 nil))
 
 (deftest truncate-killwords-test
   (are [input length killwords expected] (= expected (filters/truncate-string input length killwords))
-                                         "The quick brown fox" :14 :true "The quick b..."  ;; cut mid-word
+                                         "The quick brown fox" :14 :true "The quick b..." ;; cut mid-word
                                          "The quick brown fox" :14 :false "The quick..."))
 
 (deftest truncate-end-test

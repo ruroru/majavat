@@ -1,0 +1,1 @@
+{% greet("bob") %}{% macro greet(who) %}hi {{who}}!{% endmacro %}

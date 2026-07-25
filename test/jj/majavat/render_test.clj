@@ -37,9 +37,10 @@
 (def ^:private default-json-serializer (->DefaultJsonSerializer))
 
 (defn- parse [& args]
-  (apply parser/parse
-         (concat args (drop (- (count args) 4)
-                            [default-dictionary default-sanitizer default-json-serializer]))))
+  (parser/expand-macros
+    (apply parser/parse
+           (concat args (drop (- (count args) 4)
+                              [default-dictionary default-sanitizer default-json-serializer])))))
 
 (def ^:private default-error-handler (fail-fast/->FailFast))
 (def ^:private reporting-error-handler (reporting/->Reporting))

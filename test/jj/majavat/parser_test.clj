@@ -22,10 +22,11 @@
 (def ^:private default-json-serializer (->DefaultJsonSerializer))
 
 (defn- parse [& args]
-  (walk/postwalk #(if (map? %) (dissoc % :render-fn) %)
-                 (apply parser/parse
-                        (concat args (drop (- (count args) 4)
-                                           [default-dictionary default-sanitizer default-json-serializer])))))
+  (let [result (apply parser/parse
+                      (concat args (drop (- (count args) 4)
+                                         [default-dictionary default-sanitizer default-json-serializer])))]
+    (walk/postwalk #(if (map? %) (dissoc % :render-fn) %)
+                   (if (map? result) result (first result)))))
 
 
 (deftest test-parse-text
@@ -37,7 +38,7 @@
   (is (= [{:type :text :value "hello "}
           {:type :value-node}]
          (parse "insert-value.html" contentResolver empty-fn-map empty-sanitizers-map)))
-  (let [value-node (second (parser/parse "insert-value.html" contentResolver empty-fn-map empty-sanitizers-map default-dictionary default-sanitizer default-json-serializer))]
+  (let [value-node (second (first (parser/parse "insert-value.html" contentResolver empty-fn-map empty-sanitizers-map default-dictionary default-sanitizer default-json-serializer)))]
     (is (= "world" ((:render-fn value-node) {:name "world"})))))
 
 (deftest test-parse-child-value
@@ -327,31 +328,25 @@
      ]
     "let/let-bar"))
 
-(deftest csrf-token-test
-  (are [expected-ast input-file]
-    (= expected-ast
-       (parse input-file (rcr/->ResourceResolver) empty-fn-map empty-sanitizers-map))
-    [{:type  :text
-      :value "foo "}
-     {:type  :text
-      :value "<input type=\"hidden\" name=\"csrf_token\" value=\""}
-     {:type :value-node}
-     {:type  :text
-      :value "\">"}
-     {:type  :text
-      :value " "}
-     {:type :value-node}]
-    "csrf/csrf"))
 
-(deftest query-string
+(deftest macro-calls-are-unexpanded
   (are [expected-ast input-file]
     (= expected-ast
        (parse input-file (rcr/->ResourceResolver) empty-fn-map empty-sanitizers-map))
-    [{:type  :text
-      :value "/some/route"}
-     {:type  :query-string
-      :value [:foo :bar]}]
-    "query-string/query-string"))
+
+    [{:type :text :value "foo "}
+     {:type :macro-call :name :csrf-token :args [] :line 1}
+     {:type :text :value " "}
+     {:type :value-node}]
+    "csrf/csrf"
+
+    [{:type :text :value "/some/route"}
+     {:type :macro-call :name :query-string :args [[:foo :bar]] :line 1}]
+    "query-string/query-string"
+
+    [{:type :macro-call :name :greet :args [[:name]] :line 1}
+     {:type :macro-call :name :greet :args [[:user :name]] :line 1}]
+    "macro/macro-with-arg"))
 
 
 (deftest now
@@ -433,7 +428,7 @@
 
 
 (deftest escape-tag
-  (let [result (parser/parse "escape/escape-html" contentResolver empty-fn-map empty-sanitizers-map default-dictionary default-sanitizer default-json-serializer)
+  (let [result (first (parser/parse "escape/escape-html" contentResolver empty-fn-map empty-sanitizers-map default-dictionary default-sanitizer default-json-serializer))
         node (first result)]
     (is (= [{:type :value-node}]
            (parse "escape/escape-html" contentResolver empty-fn-map empty-sanitizers-map)))
@@ -494,49 +489,6 @@
     "debug/debug-with-target"))
 
 
-(deftest macro
-  (let [expected-ast [{:type :text :value "bar"}
-                      {:type :value-node}
-                      {:type :text :value "bar"}
-                      {:type :value-node}]
-        input-file "macro/macro"]
-    (is (= expected-ast (parse input-file (rcr/->ResourceResolver) empty-fn-map empty-sanitizers-map)))))
-
-(deftest macro-open-paren
-  (let [expected-ast [{:type :text :value "bar"}
-                      {:type :value-node}
-                      {:type :text :value "bar"}
-                      {:type :value-node}]
-        input-file "macro/macro-open-paren"]
-    (is (= expected-ast (parse input-file (rcr/->ResourceResolver) empty-fn-map empty-sanitizers-map)))))
-
-(deftest unknown-block-tag-is-error
-  (let [result (parse "macro/macro-unknown" (rcr/->ResourceResolver) empty-fn-map empty-sanitizers-map)]
-    (is (= "syntax-error" (:type result)))
-    (is (= "unknown tag or macro 'bogus' on line 1" (:error-message result)))))
-
-(deftest macro-with-argument
-  (let [expected-ast [{:type :text :value "hello "}
-                      {:type :value-node}
-                      {:type :text :value "!"}
-                      {:type :text :value "hello "}
-                      {:type :value-node}
-                      {:type :text :value "!"}]
-        input-file "macro/macro-with-arg"
-        result (parser/parse input-file (rcr/->ResourceResolver) empty-fn-map empty-sanitizers-map default-dictionary default-sanitizer default-json-serializer)]
-    (is (= expected-ast (parse input-file (rcr/->ResourceResolver) empty-fn-map empty-sanitizers-map)))
-    (is (= "bob" ((:render-fn (nth result 1)) {:name "bob"})))
-    (is (= "alice" ((:render-fn (nth result 4)) {:user {:name "alice"}})))))
-
-(deftest macro-with-literal-argument
-  (let [expected-ast [{:type :text :value "hello "}
-                      {:type :text :value "world"}
-                      {:type :text :value "!"}]
-        input-file "macro/macro-with-literal-arg"]
-    (is (= expected-ast (parse input-file (rcr/->ResourceResolver) empty-fn-map empty-sanitizers-map)))))
-
-
-
 (deftest trans-test
   (let [mock-dictionary (create-mock-dictionary)
         input-file "trans/trans"
@@ -583,14 +535,6 @@
     (is (= expected-ast (parse input-file (rcr/->ResourceResolver) empty-fn-map empty-sanitizers-map)))))
 
 
-(deftest macro-with-two-params
-  (let [expected-ast [{:type :text :value "hello"}
-                      {:type :text :value "foo"}
-                      {:type :text :value "bar"}]
-        input-file "macro/two-param-macro"]
-    (is (= expected-ast (parse input-file (rcr/->ResourceResolver) empty-fn-map empty-sanitizers-map)))))
-
-
 (deftest import-macro-collision
   (let [expected-ast {:error-message "macro 'greet' is already defined"
                       :line          "2"
@@ -606,9 +550,3 @@
     (is (= expected-ast (parse input-file (rcr/->ResourceResolver) empty-fn-map empty-sanitizers-map)))))
 
 
-(deftest macro-called-with-not-enough-args
-  (let [expected-ast {:error-message "error on line 1"
-                      :line          "1"
-                      :type          "syntax-error"}
-        input-file "macro/two-param-macro-not-enough-args"]
-    (is (= expected-ast (parse input-file (rcr/->ResourceResolver) empty-fn-map empty-sanitizers-map)))))

@@ -17,10 +17,11 @@
 (def ^:private default-json-serializer (->DefaultJsonSerializer))
 
 (defn- parse [& args]
-  (walk/postwalk #(if (map? %) (dissoc % :render-fn) %)
-                 (apply parser/parse
-                        (concat args (drop (- (count args) 4)
-                                           [default-dictionary default-sanitizer default-json-serializer])))))
+  (let [result (apply parser/parse
+                      (concat args (drop (- (count args) 4)
+                                         [default-dictionary default-sanitizer default-json-serializer])))]
+    (walk/postwalk #(if (map? %) (dissoc % :render-fn) %)
+                   (if (map? result) result (first result)))))
 
 (deftest test-deeply-nested-conditionals
   (is (= [{:branches [[{:condition           [:user :is_admin]

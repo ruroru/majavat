@@ -212,6 +212,60 @@
           node))
       body)))
 
+(declare expand-nodes)
+
+(defn- expand-node-children [node macros]
+  (cond-> node
+    (contains? node :body)       (update :body expand-nodes macros)
+    (contains? node :when-empty) (update :when-empty expand-nodes macros)
+    (contains? node :else)       (update :else expand-nodes macros)
+    (contains? node :branches)   (update :branches
+                                         (fn [branches]
+                                           (mapv (fn [[condition body]]
+                                                   [condition (expand-nodes body macros)])
+                                                 branches)))))
+
+(defn- expand-nodes [nodes macros]
+  (into []
+        (mapcat
+          (fn [node]
+            (if (= :macro-call (:type node))
+              (let [macro-def (get macros (:name node))]
+                (when-not macro-def
+                  (throw (ex-info (format "unknown tag or macro '%s' on line %s"
+                                          (name (:name node)) (:line node 1))
+                                  {:type :syntax-error :line (:line node 1)})))
+                (when (not= (count (:args node)) (count (:params (meta macro-def))))
+                  (throw (ex-info (format "error on line %s" (:line node 1))
+                                  {:type :syntax-error :line (:line node 1)})))
+                (expand-nodes (macro-def (:args node)) macros))
+              [(expand-node-children node macros)])))
+        nodes))
+
+(defn expand-macros
+  "Second parse phase: takes the [ast macros] pair produced by `parse` and
+   splices every :macro-call node into its expansion. An error map from phase
+   one is passed through untouched. Returns the final node vector or an error map."
+  [parsed]
+  (if (map? parsed)
+    parsed
+    (let [[ast macros] parsed]
+      (try
+        (expand-nodes ast macros)
+        (catch ExceptionInfo e
+          (let [data (ex-data e)]
+            (case (:type data)
+              :syntax-error
+              {:type          "syntax-error"
+               :error-message (.getMessage e)
+               :line          (str (get data :line 1))}
+
+              {:type          "error"
+               :error-message (.getMessage e)})))
+        (catch Exception e
+          {:type          "error"
+           :error-message (.getMessage e)})))))
+
 (defn- resolve-file-path [base-path relative-path]
   (let [base-path-obj (Paths/get base-path (make-array String 0))
         relative-path-obj (Paths/get relative-path (make-array String 0))
@@ -738,22 +792,17 @@
 
          :macro-name (recur (rest lexed-list) list current-block parsing-for-body current-file-path template-resolver filter-map merged-sanitizers tag-stack macros dictionary current-sanitizer macro-param)
 
-         :macro-call (let [macro-def (get @macros (:value current-item))
-                           after-open (rest (rest lexed-list))
+         :macro-call (let [after-open (rest (rest lexed-list))
                            arg-values (into [] (comp (take-while #(not= :close-paren (:type %)))
                                                      (filter #(= :macro-arg (:type %)))
                                                      (map :value))
                                             after-open)
-                           remaining-after-call (rest (drop-while #(not= :close-paren (:type %)) after-open))]
-                       (if macro-def
-                         (if (not= (count arg-values) (count (:params (meta macro-def))))
-                           (throw (ex-info (format "error on line %s" (:line current-item 1))
-                                           {:type :syntax-error
-                                            :line (:line current-item 1)}))
-                           (recur remaining-after-call (into list (macro-def arg-values)) current-block parsing-for-body current-file-path template-resolver filter-map merged-sanitizers tag-stack macros dictionary current-sanitizer macro-param))
-                         (throw (ex-info (format "unknown tag or macro '%s' on line %s" (name (:value current-item)) (:line current-item 1))
-                                         {:type :syntax-error
-                                          :line (:line current-item 1)}))))
+                           remaining-after-call (rest (drop-while #(not= :close-paren (:type %)) after-open))
+                           call-node {:type :macro-call
+                                      :name (:value current-item)
+                                      :args arg-values
+                                      :line (:line current-item 1)}]
+                       (recur remaining-after-call (conj list call-node) current-block parsing-for-body current-file-path template-resolver filter-map merged-sanitizers tag-stack macros dictionary current-sanitizer macro-param))
 
 
          :keyword-in (recur (rest lexed-list) list current-block parsing-for-body current-file-path template-resolver filter-map merged-sanitizers tag-stack macros dictionary current-sanitizer macro-param)
@@ -803,7 +852,8 @@
            merged-sanitizers (merge user-sanitizers sanitizers)
            macros (atom builtin-macros)]
        (try
-         (parse-ast lexed-value [] {} false resource-path template-resolver filter-map merged-sanitizers [] macros dictionary current-sanitizer nil)
+         [(parse-ast lexed-value [] {} false resource-path template-resolver filter-map merged-sanitizers [] macros dictionary current-sanitizer nil)
+          @macros]
          (catch ExceptionInfo e
            (let [data (ex-data e)]
              (case (:type data)

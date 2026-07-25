@@ -205,7 +205,7 @@
     (doseq [{:keys [label opts expected-calls]} cases]
       (testing label
         (mock/with-mock
-          [parser/parse [{:type :text :value "text"}]]
+          [parser/parse [[{:type :text :value "text"}] {}]]
           (let [render-fn (majavat/build-renderer "somefile" opts)]
             (render-fn {}) (render-fn {}) (render-fn {}))
           (is (= expected-calls (mock/call-count parser/parse))))))))
