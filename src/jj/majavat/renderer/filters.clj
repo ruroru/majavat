@@ -1,7 +1,7 @@
 (ns jj.majavat.renderer.filters
   (:require [clojure.string :as str]
             [clojure.tools.logging :as logger])
-  (:import (java.net URI URL)
+  (:import (java.net URI URL URLEncoder)
            (java.time Instant LocalDate LocalDateTime LocalTime ZoneId ZonedDateTime)
            (java.time.format DateTimeFormatter)
            (java.util UUID)))
@@ -387,4 +387,22 @@
              (str cut end)
              (let [idx (.lastIndexOf ^String cut " ")]
                (str (if (pos? idx) (subs cut 0 idx) cut) end)))))))))
+
+(defn query-string [v]
+  (when (map? v)
+    (let [params (filter (fn [[_ val]] (some? val)) v)]
+      (when (seq params)
+        (let [sb (StringBuilder.)]
+          (.append sb "?")
+          (loop [params (seq params)
+                 first?  true]
+            (when params
+              (let [[k val] (first params)]
+                (when-not first?
+                  (.append sb "&"))
+                (.append sb (name k))
+                (.append sb "=")
+                (.append sb (.replace ^String (URLEncoder/encode ^String (str val) "UTF-8") "+" "%20"))
+                (recur (next params) false))))
+          (.toString sb))))))
 

@@ -191,7 +191,7 @@
    :query-string
    (with-meta
      (fn [[path]]
-       [{:type :query-string :value path}])
+       [{:type :value-node :render-fn (bake-render-fn path nil (fn [v _context] (filters/query-string v)))}])
      {:params {:path nil}})})
 
 (defn- expand-macro [body params args]

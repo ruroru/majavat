@@ -33,9 +33,9 @@
          (expand "csrf/csrf" (rcr/->ResourceResolver) empty-fn-map empty-sanitizers-map))))
 
 
-(deftest query-string-expands
+(deftest query-string-expands-to-value-node
   (is (= [{:type :text :value "/some/route"}
-          {:type :query-string :value [:foo :bar]}]
+          {:type :value-node}]
          (expand "query-string/query-string" (rcr/->ResourceResolver) empty-fn-map empty-sanitizers-map))))
 
 

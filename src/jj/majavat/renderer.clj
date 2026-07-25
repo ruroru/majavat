@@ -4,8 +4,7 @@
             [jj.majavat.protocol.error-handler :as error]
             [jj.majavat.protocol.renderer.render-target :as render-target]
             [jj.majavat.renderer.filters :as filters])
-  (:import (java.net URLEncoder)
-           (java.nio.charset Charset StandardCharsets)
+  (:import (java.nio.charset Charset StandardCharsets)
            (java.time Instant)
            (java.util ArrayList)
            (jj.majavat.stream SequentialByteArrayInputStream)))
@@ -14,28 +13,6 @@
   (if (string? v)
     v
     (str v)))
-
-(defn- remove-nil [[_ v]]
-  (not (nil? v)))
-
-(defn- build-query-string [path context]
-  (let [query-data (parser/resolve-path context path)]
-    (when (map? query-data)
-      (let [sb (StringBuilder.)
-            filtered-params (filter remove-nil query-data)]
-        (when (seq filtered-params)
-          (.append sb "?")
-          (loop [params (seq filtered-params)
-                 first? true]
-            (when params
-              (let [[k v] (first params)]
-                (when-not first?
-                  (.append sb "&"))
-                (.append sb (name k))
-                (.append sb "=")
-                (.append sb (.replace ^String (URLEncoder/encode ^String (->str v) "UTF-8") "+" "%20"))
-                (recur (next params) false))))
-          (.toString sb))))))
 
 (defn- get-loop-context [context index count]
   (assoc context
@@ -73,10 +50,6 @@
                                (render-fn context)
                                (->str (parser/resolve-path context (node :value))))]
         (.append sb resolved))
-
-      :query-string
-      (when-let [query-str (build-query-string (node :value) context)]
-        (.append sb query-str))
 
       :keyword-now
       (.append sb (filters/->formatted-instant (Instant/now) [(node :format) (node :time-zone)]))
@@ -175,12 +148,6 @@
                (.add result (.getBytes resolved charset)))
              (recur rest-nodes))
 
-           :query-string
-           (do
-             (when-let [qs (build-query-string (node :value) context)]
-               (.add result (.getBytes ^String qs charset)))
-             (recur rest-nodes))
-
            :keyword-now
            (do
              (let [now-str (filters/->formatted-instant (Instant/now) [(node :format) (node :time-zone)])]
@@ -274,14 +241,6 @@
             (conj acc {:type :text :value (if render-fn
                                             (render-fn context)
                                             (->str raw))})
-            (conj acc node)))
-
-        :query-string
-        (let [query-data (parser/resolve-path context (node :value))]
-          (if (some? query-data)
-            (if-let [query-str (build-query-string (node :value) context)]
-              (conj acc {:type :text :value query-str})
-              acc)
             (conj acc node)))
 
         :variable-assignment
