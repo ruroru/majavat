@@ -462,6 +462,7 @@ this is a  footer"
           (str "Expected timestamp format in result: " (renderer/render (->StringRenderer) (parser/parse template-path contentResolver empty-fn-map empty-sanitizers-map) context default-error-handler)))
       #"20\d{2}/\d{2}/\d{2} \d{2}:\d{2}" "now/now" {}
       #"20\d{2}-\d{2}-\d{2}" "now/now-with-format-and-time-zone" {}
+      #"offset is \+09:00" "now/now-offset-tokyo" {}
       ))
   (testing "render to input stream"
     (are [timestamp-regex template-path context]

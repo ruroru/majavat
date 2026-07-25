@@ -378,10 +378,11 @@ foo{# bar baz #}
 CSRF token can be added via
 
 ```
-{% csrf-token %}
+{% csrf-token() %}
 ```
 
-and when rendering file `:csrf-token` has to be provided
+`csrf-token` is a built-in macro, so it is called with the same parenthesised
+syntax as any other macro. When rendering the file `:csrf-token` has to be provided
 
 ```clojure
 (def render-fn (build-renderer "input-file"))

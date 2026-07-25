@@ -174,6 +174,15 @@
       ([context] (finish (resolve-path context value) context))
       ([context _raw] (resolve-path context value)))))
 
+(defn- builtin-macros [current-sanitizer]
+  {:csrf-token
+   (with-meta
+     (fn [_args]
+       [{:type :text :value "<input type=\"hidden\" name=\"csrf_token\" value=\""}
+        {:type :value-node :render-fn (bake-render-fn {:value [:csrf-token] :sanitizer current-sanitizer})}
+        {:type :text :value "\">"}])
+     {:param-count 0})})
+
 (defn- expand-macro [body params args]
   (let [param->arg (zipmap params args)]
     (walk/postwalk
@@ -362,11 +371,6 @@
                                                        :format    format
                                                        :time-zone timezone} remaining])))]
                 (recur final-remaining (conj list now-node) current-block parsing-for-body current-file-path template-resolver filter-map merged-sanitizers tag-stack macros dictionary current-sanitizer macro-param))
-
-         :keyword-csrf-token (recur (rest lexed-list) (apply conj list [{:type :text :value "<input type=\"hidden\" name=\"csrf_token\" value=\""}
-                                                                        {:type :value-node :render-fn (bake-render-fn {:value [:csrf-token] :sanitizer current-sanitizer})}
-                                                                        {:type :text :value "\">"}])
-                                    current-block parsing-for-body current-file-path template-resolver filter-map merged-sanitizers tag-stack macros dictionary current-sanitizer macro-param)
 
          :keyword-query-string (let [remaining (rest lexed-list)
                                      query-string-decl-token (first remaining)
@@ -810,7 +814,7 @@
            lexed-value (lexer/tokenize file-content)
            filter-map (merge (create-filter-map dictionary json-serializer) user-filters)
            merged-sanitizers (merge user-sanitizers sanitizers)
-           macros (atom {})]
+           macros (atom (builtin-macros current-sanitizer))]
        (try
          (parse-ast lexed-value [] {} false resource-path template-resolver filter-map merged-sanitizers [] macros dictionary current-sanitizer nil)
          (catch ExceptionInfo e

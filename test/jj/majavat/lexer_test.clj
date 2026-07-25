@@ -252,10 +252,12 @@
 
 (deftest csrf-lex-test
   (is (= [{:type :block-start}
-          {:type :keyword-csrf-token}
+          {:type :macro-call :value :csrf-token :line 1}
+          {:type :open-paren :kind :macro}
+          {:type :close-paren :kind :macro}
           {:line 1
            :type :block-end}]
-         (lexer/tokenize "{% csrf-token %}"))))
+         (lexer/tokenize "{% csrf-token() %}"))))
 
 (deftest query-string
   (is (= [{:type :block-start}

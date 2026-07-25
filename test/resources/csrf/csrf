@@ -1,1 +1,1 @@
-foo {% csrf-token %} {{ foo }}
+foo {% csrf-token() %} {{ foo }}

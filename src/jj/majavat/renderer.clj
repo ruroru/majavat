@@ -79,7 +79,7 @@
         (.append sb query-str))
 
       :keyword-now
-      (.append sb (filters/->formatted-instant (Instant/now) [(node :format)]))
+      (.append sb (filters/->formatted-instant (Instant/now) [(node :format) (node :time-zone)]))
 
       :variable-assignment
       (let [variable-name (node :variable-name)
@@ -183,7 +183,7 @@
 
            :keyword-now
            (do
-             (let [now-str (filters/->formatted-instant (Instant/now) [(node :format)])]
+             (let [now-str (filters/->formatted-instant (Instant/now) [(node :format) (node :time-zone)])]
                (.add result (.getBytes ^String now-str charset)))
              (recur rest-nodes))
 

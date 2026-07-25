@@ -195,9 +195,6 @@
             (= "endescape" trimmed-string)
             (recur (rrest my-sequence) "" (conj stack {:type :keyword-end-escape} {:type :block-end :line line-number}) new-line-number)
 
-            (= "csrf-token" trimmed-string)
-            (recur (rrest my-sequence) "" (conj stack {:type :keyword-csrf-token} {:type :block-end :line line-number}) new-line-number)
-
             (= "now" trimmed-string)
             (recur (rrest my-sequence) "" (conj stack {:type :now} {:type :block-end :line line-number}) new-line-number)
 
