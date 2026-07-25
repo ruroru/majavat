@@ -186,13 +186,13 @@
        [{:type :text :value "<input type=\"hidden\" name=\"csrf_token\" value=\""}
         {:type :value-node :render-fn (bake-render-fn [:csrf-token])}
         {:type :text :value "\">"}])
-     {:param-count 0})
+     {:params {}})
 
    :query-string
    (with-meta
      (fn [[path]]
        [{:type :query-string :value path}])
-     {:param-count 1})})
+     {:params {:path nil}})})
 
 (defn- expand-macro [body params args]
   (let [param->arg (zipmap params args)]
@@ -725,7 +725,7 @@
                                                 {:type :syntax-error
                                                  :line (:line block-end-token)})))
                               (swap! macros assoc (:value name-token) (with-meta (fn [args] (expand-macro body params args))
-                                                                                 {:param-count (count params)}))
+                                                                                 {:params (into {} (map (fn [p] [p nil])) params)}))
                               (recur remaining-after-body list current-block parsing-for-body current-file-path template-resolver filter-map merged-sanitizers updated-tag-stack macros dictionary current-sanitizer macro-param))
                             (throw (ex-info (format "error on line %s" (:line (or block-end-token name-token current-item)))
                                             {:type :syntax-error
@@ -746,7 +746,7 @@
                                             after-open)
                            remaining-after-call (rest (drop-while #(not= :close-paren (:type %)) after-open))]
                        (if macro-def
-                         (if (not= (count arg-values) (:param-count (meta macro-def)))
+                         (if (not= (count arg-values) (count (:params (meta macro-def))))
                            (throw (ex-info (format "error on line %s" (:line current-item 1))
                                            {:type :syntax-error
                                             :line (:line current-item 1)}))
