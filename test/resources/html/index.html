@@ -79,7 +79,7 @@
     </section>
 
     <section id="search">
-        <form action="/search{% query-string params %}">{% csrf-token() %}<input type="submit"></form>
+        <form action="/search{% query-string(params) %}">{% csrf-token() %}<input type="submit"></form>
     </section>
 
     <section id="params-json">{{ params | json }}</section>

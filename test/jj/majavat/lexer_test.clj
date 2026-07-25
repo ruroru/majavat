@@ -261,12 +261,13 @@
 
 (deftest query-string
   (is (= [{:type :block-start}
-          {:type :keyword-query-string}
-          {:type           :query-string-declaration
-           :variable-value [:bar :qux]}
+          {:type :macro-call :value :query-string :line 1}
+          {:type :open-paren :kind :macro}
+          {:type :macro-arg :value [:bar :qux]}
+          {:type :close-paren :kind :macro}
           {:line 1
            :type :block-end}]
-         (lexer/tokenize "{% query-string bar.qux %}"))))
+         (lexer/tokenize "{% query-string(bar.qux) %}"))))
 
 (deftest now
   (are [expected input] (= expected (lexer/tokenize input))

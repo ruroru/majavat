@@ -186,7 +186,13 @@
        [{:type :text :value "<input type=\"hidden\" name=\"csrf_token\" value=\""}
         {:type :value-node :render-fn (bake-render-fn [:csrf-token])}
         {:type :text :value "\">"}])
-     {:param-count 0})})
+     {:param-count 0})
+
+   :query-string
+   (with-meta
+     (fn [[path]]
+       [{:type :query-string :value path}])
+     {:param-count 1})})
 
 (defn- expand-macro [body params args]
   (let [param->arg (zipmap params args)]
@@ -376,23 +382,6 @@
                                                        :format    format
                                                        :time-zone timezone} remaining])))]
                 (recur final-remaining (conj list now-node) current-block parsing-for-body current-file-path template-resolver filter-map merged-sanitizers tag-stack macros dictionary current-sanitizer macro-param))
-
-         :keyword-query-string (let [remaining (rest lexed-list)
-                                     query-string-decl-token (first remaining)
-                                     remaining-after-decl (rest remaining)]
-                                 (if (and query-string-decl-token (= :query-string-declaration (:type query-string-decl-token)))
-                                   (let [block-end-token (first remaining-after-decl)]
-                                     (if (and block-end-token (= :block-end (:type block-end-token)))
-                                       (let [remaining-after-block-end (rest remaining-after-decl)
-                                             query-string-node {:type  :query-string
-                                                                :value (:variable-value query-string-decl-token)}]
-                                         (recur remaining-after-block-end (conj list query-string-node) current-block parsing-for-body current-file-path template-resolver filter-map merged-sanitizers tag-stack macros dictionary current-sanitizer macro-param))
-                                       (throw (ex-info (format "error on line %s" (:line (or block-end-token query-string-decl-token)))
-                                                       {:type :syntax-error
-                                                        :line (:line (or block-end-token query-string-decl-token))}))))
-                                   (throw (ex-info (format "error on line %s" (:line (or query-string-decl-token current-item)))
-                                                   {:type :syntax-error
-                                                    :line (:line (or query-string-decl-token current-item))}))))
 
          :keyword-include (let [remaining (rest lexed-list)
                                 file-name-token (first remaining)
@@ -795,7 +784,6 @@
 
          :file-path (recur (rest lexed-list) list current-block parsing-for-body current-file-path template-resolver filter-map merged-sanitizers tag-stack macros dictionary current-sanitizer macro-param)
          :block-name (recur (rest lexed-list) list current-block parsing-for-body current-file-path template-resolver filter-map merged-sanitizers tag-stack macros dictionary current-sanitizer macro-param)
-         :query-string-declaration (recur (rest lexed-list) list current-block parsing-for-body current-file-path template-resolver filter-map merged-sanitizers tag-stack macros dictionary current-sanitizer macro-param)
          :filter-tag (recur (rest lexed-list) list current-block parsing-for-body current-file-path template-resolver filter-map merged-sanitizers tag-stack macros dictionary current-sanitizer macro-param)
          :filter-function (recur (rest lexed-list) list current-block parsing-for-body current-file-path template-resolver filter-map merged-sanitizers tag-stack macros dictionary current-sanitizer macro-param)
          :filter-arg (recur (rest lexed-list) list current-block parsing-for-body current-file-path template-resolver filter-map merged-sanitizers tag-stack macros dictionary current-sanitizer macro-param)

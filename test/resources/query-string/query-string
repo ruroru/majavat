@@ -1,1 +1,1 @@
-/some/route{% query-string foo.bar %}
+/some/route{% query-string(foo.bar) %}

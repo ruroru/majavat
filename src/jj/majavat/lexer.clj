@@ -49,13 +49,6 @@
         {:variable-name var-name :variable-value var-value})
       {:variable-name nil :variable-value nil})))
 
-(defn- parse-query-string-value [value-string]
-  (let [trimmed (string/trim value-string)]
-    (if (and (string/starts-with? trimmed "\"")
-             (string/ends-with? trimmed "\""))
-      (subs trimmed 1 (dec (count trimmed)))
-      (parse-path trimmed))))
-
 (defn- macro-value-token [kind trimmed-string]
   (cond
     (= kind :macro-def)
@@ -218,9 +211,6 @@
 
             (= (:type (peek stack)) :keyword-escape)
             (recur (rrest my-sequence) "" (conj stack {:type :escape-name :value (keyword trimmed-string)} {:type :block-end :line line-number}) new-line-number)
-
-            (= (:type (peek stack)) :keyword-query-string)
-            (recur (rrest my-sequence) "" (conj stack {:type :block-end :line line-number}) new-line-number)
 
             (= (:type (peek stack)) :now)
             (recur (rrest my-sequence) "" (conj stack {:type :block-end :line line-number}) new-line-number)
@@ -441,9 +431,6 @@
           (= (string/trim current-string) "escape")
           (recur (rest my-sequence) "" (conj stack {:type :keyword-escape}) new-line-number)
 
-          (= (string/trim current-string) "query-string")
-          (recur (rest my-sequence) "" (conj stack {:type :keyword-query-string}) new-line-number)
-
           (= (string/trim current-string) "debug")
           (recur (rest my-sequence) (str "" current-char) (conj stack {:type :token/debug}) new-line-number)
 
@@ -534,14 +521,6 @@
             (recur (rest my-sequence) "" (conj stack {:type           :variable-declaration
                                                        :variable-name  variable-name
                                                        :variable-value variable-value}) new-line-number))
-          (recur (rest my-sequence) (str current-string current-char) stack new-line-number))
-
-        (= (:type (peek stack)) :keyword-query-string)
-        (if (= next-char \%)
-          (let [variable-value (parse-query-string-value current-string)]
-            (recur (rest my-sequence) "" (conj stack {:type           :query-string-declaration
-                                                       :variable-value variable-value})
-                   new-line-number))
           (recur (rest my-sequence) (str current-string current-char) stack new-line-number))
 
         (or (= (:type (peek stack)) :now)

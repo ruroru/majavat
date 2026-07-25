@@ -395,7 +395,7 @@ syntax as any other macro. When rendering the file `:csrf-token` has to be provi
 input-file with content
 
 ```
-/foo{% query-string foo %}
+/foo{% query-string(foo) %}
 ```
 
 ```clojure
