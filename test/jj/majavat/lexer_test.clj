@@ -137,6 +137,23 @@
            :type :block-end}]
          (lexer/tokenize "testing {% extends  \"file.txt\" %}"))))
 
+(deftest fragment-test
+  (is (= [{:type :text :value "<ul>"}
+          {:type :block-start}
+          {:type :keyword-fragment}
+          {:type :fragment-name :value :row}
+          {:line 1 :type :block-end}
+          {:type :text :value "<li>"}
+          {:type :opening-bracket}
+          {:type :expression :value [:item]}
+          {:line 1 :type :closing-bracket}
+          {:type :text :value "</li>"}
+          {:type :block-start}
+          {:type :keyword-end-fragment}
+          {:line 1 :type :block-end}
+          {:type :text :value "</ul>"}]
+         (lexer/tokenize "<ul>{% fragment row %}<li>{{ item }}</li>{% endfragment %}</ul>"))))
+
 (deftest tokenize-without-value
   (is (= [{:type  :text
            :value "testing "}

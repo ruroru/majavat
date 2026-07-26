@@ -156,6 +156,27 @@
            :value "this is a subfolder footer"}]
          (parse "subfolder/extends-from-sub-dir" (rcr/->ResourceResolver) empty-fn-map empty-sanitizers-map))))
 
+(deftest fragment-node
+  (is (= [{:type :text :value "<html>"}
+          {:type :fragment
+           :name :row
+           :line 1
+           :body [{:type :text :value "<li>"}
+                  {:type :value-node}
+                  {:type :text :value "</li>"}]}
+          {:type :text :value "<footer>bye</footer></html>"}]
+         (parse "fragment/page.html" contentResolver empty-fn-map empty-sanitizers-map))))
+
+(deftest unclosed-fragment-error
+  (is (= {:type          "syntax-error"
+          :error-message "Unclosed 'fragment' tag starting on line 1"
+          :line          "1"}
+         (parse "fragment/unclosed.html" contentResolver empty-fn-map empty-sanitizers-map))))
+
+(deftest fragment-missing-name-error
+  (is (= "syntax-error"
+         (:type (parse "fragment/no-name.html" contentResolver empty-fn-map empty-sanitizers-map)))))
+
 (deftest linebreak-parsing
   (.mkdir ^File (File. "./target"))
   (are [expected linebreak-content] (do

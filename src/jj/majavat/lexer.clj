@@ -185,6 +185,9 @@
             (= "endmacro" trimmed-string)
             (recur (rrest my-sequence) "" (conj stack {:type :keyword-end-macro} {:type :block-end :line line-number}) new-line-number)
 
+            (= "endfragment" trimmed-string)
+            (recur (rrest my-sequence) "" (conj stack {:type :keyword-end-fragment} {:type :block-end :line line-number}) new-line-number)
+
             (= "endescape" trimmed-string)
             (recur (rrest my-sequence) "" (conj stack {:type :keyword-end-escape} {:type :block-end :line line-number}) new-line-number)
 
@@ -455,6 +458,9 @@
           (= (string/trim current-string) "block")
           (recur (rest my-sequence) "" (conj stack {:type :keyword-block}) new-line-number)
 
+          (= (string/trim current-string) "fragment")
+          (recur (rest my-sequence) "" (conj stack {:type :keyword-fragment}) new-line-number)
+
           (= (string/trim current-string) "now")
           (recur (rest my-sequence) "" (conj stack {:type :now}) new-line-number)
 
@@ -622,6 +628,18 @@
           (and (not (string/blank? current-string))
                (or (= current-char \ ) (= next-char \%)))
           (recur (rest my-sequence) (str "" current-char) (conj stack {:type :block-name :value (keyword (string/trim current-string))}) new-line-number)
+
+          :else
+          (recur (rest my-sequence) (str current-string current-char) stack new-line-number))
+
+        (= (:type (peek stack)) :keyword-fragment)
+        (cond
+          (and (string/blank? current-string) (= current-char \ ))
+          (recur (rest my-sequence) current-string stack new-line-number)
+
+          (and (not (string/blank? current-string))
+               (or (= current-char \ ) (= next-char \%)))
+          (recur (rest my-sequence) (str "" current-char) (conj stack {:type :fragment-name :value (keyword (string/trim current-string))}) new-line-number)
 
           :else
           (recur (rest my-sequence) (str current-string current-char) stack new-line-number))

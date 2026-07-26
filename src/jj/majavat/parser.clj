@@ -266,6 +266,70 @@
           {:type          "error"
            :error-message (.getMessage e)})))))
 
+(defn- update-fragment-children
+  [node f]
+  (cond-> node
+    (contains? node :body)       (update :body f)
+    (contains? node :when-empty) (update :when-empty f)
+    (contains? node :else)       (update :else f)
+    (contains? node :branches)   (update :branches
+                                         (fn [branches]
+                                           (mapv (fn [[condition body]] [condition (f body)]) branches)))))
+
+(defn- find-fragment [nodes fragment-name]
+  (some (fn [n]
+          (if (and (= :fragment (:type n)) (= fragment-name (:name n)))
+            n
+            (or (find-fragment (:body n) fragment-name)
+                (find-fragment (:when-empty n) fragment-name)
+                (find-fragment (:else n) fragment-name)
+                (some (fn [[_ body]] (find-fragment body fragment-name)) (:branches n)))))
+        nodes))
+
+(defn- unwrap-fragments
+  [nodes]
+  (into []
+        (mapcat (fn [n]
+                  (if (= :fragment (:type n))
+                    (unwrap-fragments (:body n))
+                    [(update-fragment-children n unwrap-fragments)])))
+        nodes))
+
+(defn- fragment-defs
+  "All `:fragment` nodes in `nodes`, at any depth, in document order."
+  [nodes]
+  (mapcat (fn [n]
+            (concat (when (= :fragment (:type n)) [n])
+                    (fragment-defs (:body n))
+                    (fragment-defs (:when-empty n))
+                    (fragment-defs (:else n))
+                    (mapcat (fn [[_ body]] (fragment-defs body)) (:branches n))))
+          nodes))
+
+(defn- duplicate-fragment
+  "First `:fragment` node whose name repeats an earlier one, or nil."
+  [nodes]
+  (loop [seen #{} [f & more] (fragment-defs nodes)]
+    (when f
+      (if (contains? seen (:name f))
+        f
+        (recur (conj seen (:name f)) more)))))
+
+(defn- select-fragment
+  [parsed fragment-name]
+  (if (map? parsed)
+    parsed
+    (if-let [dup (duplicate-fragment parsed)]
+      {:type          "syntax-error"
+       :error-message (format "fragment '%s' is already defined" (name (:name dup)))
+       :line          (str (:line dup 1))}
+      (if fragment-name
+        (if-let [node (find-fragment parsed fragment-name)]
+          (unwrap-fragments (:body node))
+          {:type          "fragment-not-found-error"
+           :error-message (format "fragment '%s' not found" (name fragment-name))})
+        (unwrap-fragments parsed)))))
+
 (defn- resolve-file-path [base-path relative-path]
   (let [base-path-obj (Paths/get base-path (make-array String 0))
         relative-path-obj (Paths/get relative-path (make-array String 0))
@@ -507,6 +571,31 @@
                             (recur remaining-after-block-name (into list replacement-content) current-block parsing-for-body current-file-path template-resolver filter-map merged-sanitizers tag-stack macros dictionary current-sanitizer macro-param)
                             (let [[block-content remaining-after-block _] (parse-ast remaining-after-block-name [] current-block true current-file-path template-resolver filter-map merged-sanitizers tag-stack macros dictionary current-sanitizer macro-param)]
                               (recur remaining-after-block (into list block-content) current-block parsing-for-body current-file-path template-resolver filter-map merged-sanitizers tag-stack macros dictionary current-sanitizer macro-param))))
+
+         :keyword-fragment (let [remaining (rest lexed-list)
+                                 name-token (first remaining)
+                                 remaining-after-name (rest remaining)
+                                 block-end-token (first remaining-after-name)]
+                             (if (and name-token (= :fragment-name (:type name-token))
+                                      block-end-token (= :block-end (:type block-end-token)))
+                               (let [remaining-after-block-end (rest remaining-after-name)
+                                     new-tag-stack (push-tag tag-stack :fragment (:line current-item))
+                                     [body remaining-after-body updated-tag-stack] (parse-ast remaining-after-block-end [] current-block true current-file-path template-resolver filter-map merged-sanitizers new-tag-stack macros dictionary current-sanitizer macro-param)
+                                     fragment-node {:type :fragment
+                                                    :name (:value name-token)
+                                                    :line (:line current-item 1)
+                                                    :body body}]
+                                 (recur remaining-after-body (conj list fragment-node) current-block parsing-for-body current-file-path template-resolver filter-map merged-sanitizers updated-tag-stack macros dictionary current-sanitizer macro-param))
+                               (throw (ex-info (format "error on line %s" (:line (or block-end-token name-token current-item)))
+                                               {:type :syntax-error
+                                                :line (:line (or block-end-token name-token current-item))}))))
+
+         :keyword-end-fragment (if parsing-for-body
+                                 (let [updated-tag-stack (pop-tag tag-stack :fragment (or (:line current-item) 1))]
+                                   [list (rest lexed-list) updated-tag-stack])
+                                 (recur (rest lexed-list) list current-block parsing-for-body current-file-path template-resolver filter-map merged-sanitizers tag-stack macros dictionary current-sanitizer macro-param))
+
+         :fragment-name (recur (rest lexed-list) list current-block parsing-for-body current-file-path template-resolver filter-map merged-sanitizers tag-stack macros dictionary current-sanitizer macro-param)
 
          :keyword-let (let [remaining (rest lexed-list)
                             var-decl-token (first remaining)]
@@ -873,3 +962,9 @@
             :error-message (.getMessage e)})))
      {:type          "template-not-found-error"
       :error-message (format "%s can not be found." resource-path)})))
+
+(defn parse-template
+  [resource-path template-resolver user-filters user-sanitizers dictionary current-sanitizer json-serializer fragment]
+  (-> (parse resource-path template-resolver user-filters user-sanitizers dictionary current-sanitizer json-serializer)
+      expand-macros
+      (select-fragment fragment)))

@@ -6,8 +6,8 @@
     [clojure.walk :as walk]
     [clojure.test :refer [are deftest is testing]]
     [jj.majavat.parser :as parser]
-    [jj.majavat.protocol.json :as json-protocol]
     [jj.majavat.renderer.json :refer [->DefaultJsonSerializer]]
+    [jj.majavat.protocol.json :refer [Json]]
     [jj.majavat.protocol.mock-dictionary :refer [create-mock-dictionary]]
     [jj.majavat.renderer :refer [->InputStreamRenderer ->PartialRenderer ->StringRenderer]]
     [jj.majavat.protocol.renderer.render-target :as renderer]
@@ -296,7 +296,7 @@ this is a  footer"
     ))
 
 (defrecord StubJsonSerializer []
-  json-protocol/Json
+  Json
   (to-json [_ value _opts]
     (str "STUB:" (pr-str value))))
 

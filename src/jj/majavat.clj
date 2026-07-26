@@ -24,8 +24,9 @@
          resolver (or (:template-resolver opts)
                       @default-resolver)
 
-         environment (update (get opts :environment {})
-                             :json-serializer #(or % (json/->DefaultJsonSerializer)))
+         environment (-> (get opts :environment {})
+                         (update :json-serializer #(or % (json/->DefaultJsonSerializer)))
+                         (assoc :fragment (:fragment opts)))
 
          renderer (or (:renderer opts)
                       (->StringRenderer))

@@ -62,6 +62,7 @@ All supported options:
 | `sanitizer`         | nil                                     | Any Sanitizer implementation                        |
 | `environment`       | {}                                      | Map (see [environment options](#environment))       |
 | `error-handler`     | Reporting                               | Any ErrorHandler Implementation                     |
+| `fragment`          | nil                                     | Keyword naming a [fragment](#fragments) to render   |
 
 #### Environment
 
@@ -536,6 +537,32 @@ Macros defined in another file can be imported with `{% import "macros/macros.mj
 
 Defining a macro with a name that already exists — whether imported or defined
 in the current file — is a syntax error.
+
+### Fragments
+
+A fragment marks a named region of a template that can be rendered on its own,
+which is useful for returning partial responses (for example an htmx swap).
+
+```
+<ul>{% fragment row %}<li>{{ item.name }}</li>{% endfragment %}</ul>
+```
+
+Rendering the whole template inlines the fragment's body, so the `fragment` tag
+is invisible in normal output:
+
+```clojure
+(def render-fn (build-renderer "input-file"))
+
+(render-fn {:item {:name "alice"}}) ;; returns "<ul><li>alice</li></ul>"
+```
+
+Pass a `:fragment` option to render only that region:
+
+```clojure
+(def render-fn (build-renderer "input-file" {:fragment :row}))
+
+(render-fn {:item {:name "alice"}}) ;; returns "<li>alice</li>"
+```
 
 ## RenderTarget Protocol
 
