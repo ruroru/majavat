@@ -1,8 +1,6 @@
 (ns jj.majavat.renderer.json
   (:require [jj.majavat.protocol.json :as protocol]))
 
-(declare ^:private write-value)
-
 (defn- parse-int [s]
   (try
     (Integer/parseInt s)
@@ -40,7 +38,59 @@
     (dotimes [_ level]
       (.append sb ^String indent))))
 
-(defn- write-object [^StringBuilder sb m indent level]
+(defn- ->indent-str [indent]
+  (cond
+    (nil? indent)     nil
+    (integer? indent) (apply str (repeat indent " "))
+    (keyword? indent) (when-let [n (parse-int (name indent))]
+                        (apply str (repeat n " ")))
+    (string? indent)  indent
+    :else             nil))
+
+(defn- value-type [v]
+  (cond
+    (nil? v)                      :null
+    (boolean? v)                  :boolean
+    (string? v)                   :string
+    (ratio? v)                    :ratio
+    (float? v)                    :float
+    (number? v)                   :number
+    (keyword? v)                  :keyword
+    (symbol? v)                   :symbol
+    (map? v)                      :object
+    (or (sequential? v) (set? v)) :array
+    :else                         :default))
+
+(defmulti ^:private write-value (fn [_sb v _indent _level] (value-type v)))
+
+(defmethod write-value :null [^StringBuilder sb _ _ _]
+  (.append sb "null"))
+
+(defmethod write-value :boolean [^StringBuilder sb v _ _]
+  (.append sb (if v "true" "false")))
+
+(defmethod write-value :string [^StringBuilder sb v _ _]
+  (append-string sb v))
+
+(defmethod write-value :ratio [^StringBuilder sb v _ _]
+  (.append sb (str (double v))))
+
+(defmethod write-value :float [^StringBuilder sb v _ _]
+  (let [d (double v)]
+    (if (or (Double/isNaN d) (Double/isInfinite d))
+      (.append sb "null")
+      (.append sb (str v)))))
+
+(defmethod write-value :number [^StringBuilder sb v _ _]
+  (.append sb (str v)))
+
+(defmethod write-value :keyword [^StringBuilder sb v _ _]
+  (append-string sb (key->str v)))
+
+(defmethod write-value :symbol [^StringBuilder sb v _ _]
+  (append-string sb (str v)))
+
+(defmethod write-value :object [^StringBuilder sb m indent level]
   (if (empty? m)
     (.append sb "{}")
     (let [inner (inc level)]
@@ -57,7 +107,7 @@
       (newline-indent sb indent level)
       (.append sb "}"))))
 
-(defn- write-array [^StringBuilder sb coll indent level]
+(defmethod write-value :array [^StringBuilder sb coll indent level]
   (if (empty? coll)
     (.append sb "[]")
     (let [inner (inc level)]
@@ -71,44 +121,13 @@
       (newline-indent sb indent level)
       (.append sb "]"))))
 
-(defn- write-value [^StringBuilder sb v indent level]
-  (cond
-    (nil? v)     (.append sb "null")
-    (boolean? v) (.append sb (if v "true" "false"))
-    (string? v)  (append-string sb v)
-    (ratio? v)   (.append sb (str (double v)))
-    (and (float? v)
-         (let [d (double v)]
-           (or (Double/isNaN d) (Double/isInfinite d))))
-    (.append sb "null")
-    (number? v)  (.append sb (str v))
-    (keyword? v) (append-string sb (key->str v))
-    (symbol? v)  (append-string sb (str v))
-    (map? v)     (write-object sb v indent level)
-    (or (sequential? v) (set? v))
-    (write-array sb v indent level)
-    :else        (append-string sb (str v))))
-
-(defn- ->indent-str [indent]
-  (cond
-    (nil? indent)     nil
-    (integer? indent) (apply str (repeat indent " "))
-    (keyword? indent) (when-let [n (parse-int (name indent))]
-                        (apply str (repeat n " ")))
-    (string? indent)  indent
-    :else             nil))
-
-(defn- write
-  "Serializes v to a JSON string. When indent is a positive integer (or a
-  keyword/string parsed as one) the output is pretty-printed with that many
-  spaces per level; otherwise it is compact."
-  ([v] (write v nil))
-  ([v indent]
-   (let [sb (StringBuilder.)]
-     (write-value sb v (->indent-str indent) 0)
-     (.toString sb))))
+(defmethod write-value :default [^StringBuilder sb v _ _]
+  (append-string sb (str v)))
 
 (defrecord DefaultJsonSerializer []
   protocol/Json
   (to-json [_ value opts]
-    (write value (:indent opts))))
+    (let [sb (StringBuilder.)]
+      (write-value sb value (->indent-str (:indent opts)) 0)
+      (.toString sb))
+    ))
