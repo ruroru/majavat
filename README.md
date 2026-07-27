@@ -24,9 +24,13 @@ Add majavat to dependency list
 (def render-fn (majavat/build-renderer "index.html"))
 ;; or build html renderer, which will sanitize input
 (def html-render-fn (majavat/build-html-renderer "index.html"))
+(def render-fn-from-string (majavat/build-string-renderer "hello {{ user }}</b>"
+                                              {:sanitizer (->Html)}))
+
 
 (render-fn {:user "jj"})
 (html-render-fn {:user "jj"})
+(render-fn-from-string {:user "jj"})
 ```
 
 Additional options can be passed with

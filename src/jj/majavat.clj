@@ -8,9 +8,12 @@
     [jj.majavat.renderer.sanitizer :as sanitizer]
     [jj.majavat.protocol.builder :as builder]
     [jj.majavat.builder :as builders]
-    [jj.majavat.resolver.resource :as rcr]))
+    [jj.majavat.resolver.resource :as rcr]
+    [jj.majavat.resolver.string :as str-resolver]))
 
 (def ^:private default-resolver (delay (rcr/->ResourceResolver)))
+
+(def ^:private string-template-path "<string>")
 
 (defn build-renderer
   ([file-path]
@@ -43,6 +46,14 @@
                    (builders/->OneShotBuilder pre-render-context environment))]
 
      (builder/build-renderer builder file-path resolver renderer sanitizer error-handler))))
+
+(defn build-string-renderer
+  ([template]
+   (build-string-renderer template {}))
+  ([template opts]
+   (build-renderer string-template-path
+                   (assoc opts :template-resolver
+                              (str-resolver/->StringResolver string-template-path template)))))
 
 (defn build-html-renderer
   ([file-path]
