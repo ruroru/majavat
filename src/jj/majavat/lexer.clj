@@ -1,16 +1,17 @@
 (ns jj.majavat.lexer
-  (:require [clojure.string :as string]))
+  (:require [clojure.string :as string]
+            [jj.majavat.string-builder :as sb]))
 
 (defn- rrest [s]
   (rest (rest s)))
 
 (defn- parse-path [^String s]
-  (let [len (.length s)]
+  (let [len (count s)]
     (loop [i 0
-           current (StringBuilder.)
+           current (sb/create-string-builder)
            result []]
       (if (>= i len)
-        (let [remaining (.toString current)]
+        (let [remaining (sb/build current)]
           (if (string/blank? remaining)
             result
             (conj result (keyword remaining))))
@@ -23,17 +24,17 @@
                       next-i (if (and (< (inc close) len) (= (.charAt s (inc close)) \.))
                                (+ close 2)
                                (inc close))]
-                  (recur next-i (StringBuilder.) (conj result (keyword content))))
-                (recur (inc i) (.append current c) result)))
+                  (recur next-i (sb/create-string-builder) (conj result (keyword content))))
+                (recur (inc i) (sb/append current c) result)))
 
             (= c \.)
-            (let [remaining (.toString current)]
+            (let [remaining (sb/build current)]
               (if (string/blank? remaining)
-                (recur (inc i) (StringBuilder.) result)
-                (recur (inc i) (StringBuilder.) (conj result (keyword remaining)))))
+                (recur (inc i) (sb/create-string-builder) result)
+                (recur (inc i) (sb/create-string-builder) (conj result (keyword remaining)))))
 
             :else
-            (recur (inc i) (.append current c) result)))))))
+            (recur (inc i) (sb/append current c) result)))))))
 
 (defn- parse-let-assignment [assignment-string]
   (let [trimmed (string/trim assignment-string)
@@ -307,7 +308,7 @@
 
           (= next-char \%)
           (let [current-trimmed (string/trim current-string)]
-            (if (not (.isBlank ^String current-trimmed))
+            (if (not (string/blank? current-trimmed))
               (recur (rest my-sequence) "" (conj stack {:type :identifier :value (parse-path current-trimmed)}) new-line-number)
               (recur (rest my-sequence) "" (conj stack {:type :identifier}) new-line-number)))
 
@@ -316,13 +317,13 @@
 
         (every? identity [(= (:type (peek stack)) :keyword-in) (= next-char \%)])
         (let [current-trimmed (string/trim current-string)]
-          (if (not (.isBlank ^String current-trimmed))
+          (if (not (string/blank? current-trimmed))
             (recur (rest my-sequence) "" (conj stack {:type :identifier :value (parse-path current-trimmed)}) new-line-number)
             (recur (rest my-sequence) "" (conj stack {:type :identifier}) new-line-number)))
 
         (every? identity [(= (:type (peek stack)) :each-in-token) (= next-char \%)])
         (let [current-trimmed (string/trim current-string)]
-          (if (not (.isBlank ^String current-trimmed))
+          (if (not (string/blank? current-trimmed))
             (recur (rest my-sequence) "" (conj stack {:type :each-identifier-token :value (parse-path current-trimmed)}) new-line-number)
             (recur (rest my-sequence) "" (conj stack {:type :each-identifier-token}) new-line-number)))
 

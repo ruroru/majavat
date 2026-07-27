@@ -1,6 +1,7 @@
 (ns jj.majavat.renderer.filters
   (:require [clojure.string :as str]
-            [clojure.tools.logging :as logger])
+            [clojure.tools.logging :as logger]
+            [jj.majavat.string-builder :as sb])
   (:import (java.net URI URL URLEncoder)
            (java.time Instant LocalDate LocalDateTime LocalTime ZoneId ZonedDateTime)
            (java.time.format DateTimeFormatter)
@@ -11,21 +12,21 @@
 
 (defn title-case [s]
   (when (some? s)
-    (let [sb (StringBuilder.)
+    (let [sb (sb/create-string-builder)
           char-array (char-array s)]
       (loop [index 0 new-word? true]
         (if (< index (count char-array))
           (let [c (aget char-array index)]
             (if (or (Character/isWhitespace c) (= c \-))
               (do
-                (.append sb c)
+                (sb/append sb c)
                 (recur (inc index) true))
               (do
                 (if new-word?
-                  (.append sb (Character/toUpperCase c))
-                  (.append sb (Character/toLowerCase c)))
+                  (sb/append sb (Character/toUpperCase c))
+                  (sb/append sb (Character/toLowerCase c)))
                 (recur (inc index) false))))
-          (.toString sb))))))
+          (sb/build sb))))))
 
 (defn upper-roman [v]
   (when v (str/replace v roman-regex str/upper-case)))
@@ -318,15 +319,15 @@
 (defn- replace-first-n [^String s ^String old ^String new n]
   (if (or (zero? n) (zero? (.length old)))
     s
-    (let [sb (StringBuilder.)]
+    (let [sb (sb/create-string-builder)]
       (loop [from 0 remaining n]
         (let [idx (.indexOf s old from)]
           (if (or (neg? idx) (zero? remaining))
-            (do (.append sb (.substring s from))
-                (.toString sb))
+            (do (sb/append sb (.substring s from))
+                (sb/build sb))
             (do
-              (.append sb (.substring s from idx))
-              (.append sb new)
+              (sb/append sb (.substring s from idx))
+              (sb/append sb new)
               (recur (+ idx (.length old)) (dec remaining)))))))))
 
 (defn replace-string
@@ -392,17 +393,17 @@
   (when (map? v)
     (let [params (filter (fn [[_ val]] (some? val)) v)]
       (when (seq params)
-        (let [sb (StringBuilder.)]
-          (.append sb "?")
+        (let [sb (sb/create-string-builder)]
+          (sb/append sb "?")
           (loop [params (seq params)
                  first?  true]
             (when params
               (let [[k val] (first params)]
                 (when-not first?
-                  (.append sb "&"))
-                (.append sb (name k))
-                (.append sb "=")
-                (.append sb (.replace ^String (URLEncoder/encode ^String (str val) "UTF-8") "+" "%20"))
+                  (sb/append sb "&"))
+                (sb/append sb (name k))
+                (sb/append sb "=")
+                (sb/append sb (.replace ^String (URLEncoder/encode ^String (str val) "UTF-8") "+" "%20"))
                 (recur (next params) false))))
-          (.toString sb))))))
+          (sb/build sb))))))
 

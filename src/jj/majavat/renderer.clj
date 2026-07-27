@@ -3,7 +3,8 @@
             [jj.majavat.parser :as parser]
             [jj.majavat.protocol.error-handler :as error]
             [jj.majavat.protocol.renderer.render-target :as render-target]
-            [jj.majavat.renderer.filters :as filters])
+            [jj.majavat.renderer.filters :as filters]
+            [jj.majavat.string-builder :as sb])
   (:import (java.nio.charset Charset StandardCharsets)
            (java.time Instant)
            (java.util ArrayList)
@@ -38,21 +39,21 @@
           (pprint/pprint (dissoc context target)))
         (pprint/pprint context)))))
 
-(defn- render-nodes [nodes context ^StringBuilder sb]
+(defn- render-nodes [nodes context sb]
   (doseq [node nodes]
     (case (node :type)
       :text
-      (.append sb (node :value ""))
+      (sb/append sb (node :value ""))
 
       :value-node
       (let [render-fn (node :render-fn)
             ^String resolved (if render-fn
                                (render-fn context)
                                (->str (parser/resolve-path context (node :value))))]
-        (.append sb resolved))
+        (sb/append sb resolved))
 
       :keyword-now
-      (.append sb (filters/->formatted-instant (Instant/now) [(node :format) (node :time-zone)]))
+      (sb/append sb (filters/->formatted-instant (Instant/now) [(node :format) (node :time-zone)]))
 
       :variable-assignment
       (let [variable-name (node :variable-name)
@@ -115,7 +116,7 @@
       (let [trans-fn (node :trans-fn)
             locale (get context :locale)]
         (when-let [result (trans-fn locale)]
-          (.append sb (->str result))))
+          (sb/append sb (->str result))))
 
       :debug
       (debug-output node context)
@@ -382,7 +383,7 @@
   render-target/RenderTarget
   (render [this template context error-handler]
     (if-not (map? template)
-      (.toString ^StringBuilder (render-nodes template context (StringBuilder.)))
+      (sb/build (render-nodes template context (sb/create-string-builder)))
       (error/handle-error error-handler this template))))
 
 (defrecord InputStreamRenderer []
