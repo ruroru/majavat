@@ -1,19 +1,121 @@
 (ns jj.majavat.error-handler.reporting
-  (:require [clojure.edn :as edn]
-            [clojure.java.io :as io]
-            [jj.majavat.error-handler.fail-fast :as fail-fast]
-            [jj.majavat.protocol.error-handler :as error-handler]
-            [jj.majavat.protocol.renderer.render-target :as render-target])
-  (:import (java.io PushbackReader)))
+  (:require [jj.majavat.error-handler.fail-fast :as fail-fast]
+            [jj.majavat.protocol.error-handler :as error-handler]))
 
-(defn- read-edn-resource [resource-path]
-  (when-let [resource (io/resource resource-path)]
-    (with-open [stream (.openStream resource)
-                reader (io/reader stream)
-                pushback-reader (PushbackReader. reader)]
-      (edn/read pushback-reader))))
+(def error-template
+  "<!DOCTYPE html>
+<html lang=\"en\">
+<head>
+    <meta charset=\"UTF-8\">
+    <meta name=\"viewport\" content=\"width=device-width, initial-scale=1.0\">
+    <title>Syntax Error</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+
+        .error-box {
+            background: white;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            padding: 20px;
+        }
+
+        /* Error type specific styles */
+        .error-box.syntax-error {
+            border-left: 4px solid #ff1744;
+            background: #ffebee;
+        }
+
+        .error-box.syntax-error .error-type {
+            color: #ff1744;
+        }
+
+        .error-box.template-not-found-error {
+            border-left: 4px solid #ff9800;
+            background: #fff3e0;
+        }
+
+        .error-box.template-not-found-error .error-type {
+            color: #ff9800;
+        }
+
+        .error-box.permission-denied {
+            border-left: 4px solid #9c27b0;
+            background: #f3e5f5;
+        }
+
+        .error-box.permission-denied .error-type {
+            color: #9c27b0;
+        }
+
+        .error-box.network-error {
+            border-left: 4px solid #2196f3;
+            background: #e3f2fd;
+        }
+
+        .error-box.network-error .error-type {
+            color: #2196f3;
+        }
+
+        .error-box.timeout {
+            border-left: 4px solid #ff5722;
+            background: #fbe9e7;
+        }
+
+        .error-box.timeout .error-type {
+            color: #ff5722;
+        }
+
+        .error-box.validation-error {
+            border-left: 4px solid #e91e63;
+            background: #fce4ec;
+        }
+
+        .error-box.validation-error .error-type {
+            color: #e91e63;
+        }
+
+        .error-type {
+            font-size: 18px;
+            font-weight: bold;
+            margin-bottom: 10px;
+        }
+
+        .error-line {
+            color: #666;
+            margin-bottom: 5px;
+        }
+
+        .error-message {
+            background: #f8f8f8;
+            padding: 10px;
+            border-radius: 4px;
+            font-family: monospace;
+            color: #333;
+            margin-top: 10px;
+        }
+    </style>
+</head>
+<body>
+<div class=\"error-box {{ type }}\">
+    <div class=\"error-type\">{{ type }}</div>
+{% if line %}    <div class=\"error-line\">Line: {{ line }}</div>
+{% endif %}    <div class=\"error-message\">{{ error-message }}</div>
+</div>
+</body>
+</html>")
 
 (defrecord Reporting []
   error-handler/ErrorHandler
-  (handle-error [this renderer template]
-    (render-target/render renderer (read-edn-resource "jj/majavat/error-template.edn") template (fail-fast/->FailFast))))
+  (handle-error [_ renderer template]
+    ;; build-string-renderer lives in jj.majavat, which requires this namespace,
+    ;; so resolve it at runtime to avoid a circular load dependency.
+    (let [build-string-renderer (requiring-resolve 'jj.majavat/build-string-renderer)]
+      ((build-string-renderer error-template
+                              {:renderer      renderer
+                               :error-handler (fail-fast/->FailFast)})
+       template))))

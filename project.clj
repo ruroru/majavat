@@ -13,7 +13,6 @@
   :java-source-paths ["java-src"]
   :javac-options ["--release" "11"]
 
-  :resource-paths ["src/resources"]
   :profiles {:benchmark {:source-paths   ["benchmark/src"]
                          :resource-paths ["benchmark/resources"]
                          :dependencies   [[selmer "1.13.4"]
