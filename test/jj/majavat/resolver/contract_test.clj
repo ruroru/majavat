@@ -6,14 +6,9 @@
             [jj.majavat.protocol.resolver :as template-resolver]
             [jj.majavat.resolver.fs :refer [->FsResolver]]
             [jj.majavat.resolver.resource :refer [->ResourceResolver]]
-            [jj.majavat.resolver.string :refer [->StringResolver]])
-  (:import (java.io Reader)))
+            [jj.majavat.resolver.string :refer [->StringResolver]]))
 
-(defn- read-all [^Reader reader]
-  (when reader
-    (with-open [r reader]
-      (slurp r))))
-
+;; label -> {:resolver, :existing-path, :expected-content, :missing-path}
 (def ^:private cases
   (let [resource-path "deeply-nested-conditionals.txt"
         fs-path       "./test/resources/deeply-nested-conditionals.txt"]
@@ -38,11 +33,11 @@
       (is (false? (template-resolver/template-exists? resolver missing-path))
           "returns false for a missing path"))))
 
-(deftest open-reader-contract
+(deftest read-template-contract
   (doseq [[label {:keys [resolver existing-path expected-content missing-path]}] cases]
     (testing label
       (is (= expected-content
-             (read-all (template-resolver/open-reader resolver existing-path)))
-          "returns a reader over the content for an existing path")
-      (is (nil? (template-resolver/open-reader resolver missing-path))
+             (template-resolver/read-template resolver existing-path))
+          "returns the content string for an existing path")
+      (is (nil? (template-resolver/read-template resolver missing-path))
           "returns nil for a missing path"))))

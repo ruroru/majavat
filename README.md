@@ -613,12 +613,12 @@ The `TemplateResolver` protocol provides a uniform interface for accessing templ
 
 ### Protocol Methods
 
-#### `open-reader`
+#### `read-template`
 
-Returns reader for that template, or `nil` if not found.
+Returns the contents of that template as a string, or `nil` if not found.
 
 ```clojure
-(open-reader "/templates/header.html")
+(read-template resolver "/templates/header.html")
 ```
 
 #### `template-exists?`

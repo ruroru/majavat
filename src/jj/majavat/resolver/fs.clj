@@ -7,10 +7,10 @@
 (defrecord FsResolver []
   template-resolver/TemplateResolver
 
-  (open-reader [_ content-path]
+  (read-template [_ content-path]
     (let [path (Paths/get content-path (make-array String 0))]
       (when (Files/exists path (make-array LinkOption 0))
-        (Files/newBufferedReader path StandardCharsets/UTF_8))))
+        (Files/readString path StandardCharsets/UTF_8))))
 
   (template-exists? [_ content-path]
     (let [path (Paths/get content-path (make-array String 0))]

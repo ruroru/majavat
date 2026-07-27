@@ -9,7 +9,6 @@
             [jj.majavat.protocol.resolver :as resolver]
             [jj.majavat.protocol.dictionary :as dictionary])
   (:import (clojure.lang ExceptionInfo)
-           (java.io PushbackReader StringWriter)
            (java.nio.file Paths)
            (java.time ZoneId)))
 
@@ -340,12 +339,6 @@
         (.normalize)
         (.toString))))
 
-(defn- read-content-as-string [template-resolver content-path]
-  (when-let [reader (PushbackReader. (resolver/open-reader template-resolver content-path))]
-    (with-open [r reader]
-      (let [writer (StringWriter.)]
-        (.transferTo r writer)
-        (.toString writer)))))
 
 (defn- push-tag [tag-stack tag-type line]
   (conj tag-stack {:tag tag-type :line (or line 1)}))
@@ -510,7 +503,7 @@
                                                         (resolve-file-path current-file-path filename)
                                                         filename)]
                                 (if (resolver/template-exists? template-resolver resolved-filename)
-                                  (let [file-content (read-content-as-string template-resolver resolved-filename)
+                                  (let [file-content (resolver/read-template template-resolver resolved-filename)
                                         included-lexed (lexer/tokenize file-content)
                                         included-content (parse-ast included-lexed [] {} false resolved-filename template-resolver filter-map merged-sanitizers [] (atom {}) dictionary current-sanitizer macro-param)]
                                     (recur remaining-after-filename (into list included-content) current-block parsing-for-body current-file-path template-resolver filter-map merged-sanitizers tag-stack macros dictionary current-sanitizer macro-param))
@@ -530,7 +523,7 @@
                                                        (resolve-file-path current-file-path filename)
                                                        filename)]
                                (if (resolver/template-exists? template-resolver resolved-filename)
-                                 (let [file-content (read-content-as-string template-resolver resolved-filename)
+                                 (let [file-content (resolver/read-template template-resolver resolved-filename)
                                        imported-lexed (lexer/tokenize file-content)]
                                    (parse-ast imported-lexed [] {} false resolved-filename template-resolver filter-map merged-sanitizers [] macros dictionary current-sanitizer macro-param)
                                    (recur remaining-after-filename list current-block parsing-for-body current-file-path template-resolver filter-map merged-sanitizers tag-stack macros dictionary current-sanitizer macro-param))
@@ -550,7 +543,7 @@
                                                          (resolve-file-path current-file-path file-path)
                                                          file-path)]
                                 (if (resolver/template-exists? template-resolver resolved-file-path)
-                                  (let [parent-content-str (read-content-as-string template-resolver resolved-file-path)
+                                  (let [parent-content-str (resolver/read-template template-resolver resolved-file-path)
                                         parent-lexed (lexer/tokenize parent-content-str)
                                         [block-content remaining-after-block new-tag-stack] (parse-ast remaining-after-file-path [] current-block true current-file-path template-resolver filter-map merged-sanitizers tag-stack macros dictionary current-sanitizer macro-param)
                                         parent-content (parse-ast parent-lexed [] {:content block-content} false resolved-file-path template-resolver filter-map merged-sanitizers [] macros dictionary current-sanitizer macro-param)]
@@ -935,7 +928,7 @@
 (defn parse
   ([resource-path template-resolver user-filters user-sanitizers dictionary current-sanitizer json-serializer]
    (if (resolver/template-exists? template-resolver resource-path)
-     (let [file-content (read-content-as-string template-resolver resource-path)
+     (let [file-content (resolver/read-template template-resolver resource-path)
            lexed-value (lexer/tokenize file-content)
            filter-map (merge (create-filter-map dictionary json-serializer) user-filters)
            merged-sanitizers (merge user-sanitizers sanitizers)

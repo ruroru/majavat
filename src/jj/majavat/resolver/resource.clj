@@ -5,10 +5,9 @@
 (defrecord ResourceResolver []
   template-resolver/TemplateResolver
 
-  (open-reader [_ content-path]
+  (read-template [_ content-path]
     (when-let [resource (io/resource content-path)]
-      (let [stream (.openStream resource)]
-        (io/reader stream))))
+      (slurp resource)))
 
   (template-exists? [_ content-path]
     (some? (io/resource content-path))))
