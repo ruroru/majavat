@@ -1,1 +1,1 @@
-offset is {% now "xxx" "Asia/Tokyo" %}
+offset is {% now("xxx", "Asia/Tokyo") %}

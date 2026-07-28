@@ -291,27 +291,33 @@
                         [{:type  :text
                           :value "current time is "}
                          {:type :block-start}
-                         {:type :now}
-
+                         {:type :macro-call :value :now :line 1}
+                         {:type :open-paren :kind :macro}
+                         {:type :close-paren :kind :macro}
                          {:line 1
                           :type :block-end}]
-                        "current time is {% now %}"
+                        "current time is {% now() %}"
                         [{:type  :text
                           :value "current time is "}
                          {:type :block-start}
-                         {:type :now}
-                         {:now-format "yyyy-MM-dd/hh:mm"}
+                         {:type :macro-call :value :now :line 1}
+                         {:type :open-paren :kind :macro}
+                         {:type :macro-arg :value "yyyy-MM-dd/hh:mm"}
+                         {:type :close-paren :kind :macro}
                          {:line 1
                           :type :block-end}]
-                        "current time is {% now \"yyyy-MM-dd/hh:mm\" %}"
+                        "current time is {% now(\"yyyy-MM-dd/hh:mm\") %}"
                         [{:type  :text
                           :value "current time is "}
                          {:type :block-start}
-                         {:type :now}
-                         {:now-format "yyyy-MM-dd/hh:mm"}
-                         {:now-timezone "Asia/Tokyo"}
+                         {:type :macro-call :value :now :line 1}
+                         {:type :open-paren :kind :macro}
+                         {:type :macro-arg :value "yyyy-MM-dd/hh:mm"}
+                         {:type :comma :kind :macro-arg}
+                         {:type :macro-arg :value "Asia/Tokyo"}
+                         {:type :close-paren :kind :macro}
                          {:line 1 :type :block-end}]
-                        "current time is {% now \"yyyy-MM-dd/hh:mm\" \"Asia/Tokyo\" %}"))
+                        "current time is {% now(\"yyyy-MM-dd/hh:mm\", \"Asia/Tokyo\") %}"))
 
 (deftest verbatim-tokenize
   (are [input expected] (= expected (lexer/tokenize input))

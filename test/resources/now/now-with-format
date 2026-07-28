@@ -1,1 +1,1 @@
-current time is {% now "yyyy-MM-dd" %}
+current time is {% now("yyyy-MM-dd") %}

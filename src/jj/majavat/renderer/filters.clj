@@ -159,6 +159,12 @@
 
 
 
+(defn now-instant
+  "Reads the current instant. Isolated here so the rest of the engine stays
+   clock-free (see the `now` builtin macro)."
+  []
+  (Instant/now))
+
 (defn ->formatted-instant [v filter-args]
   (let [pattern (first filter-args)
         time-zone (string->time-zone (second filter-args))

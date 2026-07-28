@@ -378,54 +378,7 @@ foo{# bar baz #}
 (render-fn {}) ;; returns "foo"
 ```
 
-#### csrf
-
-CSRF token can be added via
-
-```
-{% csrf-token() %}
-```
-
-`csrf-token` is a built-in macro, so it is called with the same parenthesised
-syntax as any other macro. When rendering the file `:csrf-token` has to be provided
-
-```clojure
-(def render-fn (build-renderer "input-file"))
-
-(render-fn {:csrf-token "foobarbaz"}) ;; returns <input type="hidden" name="csrf_token" value="foobarbaz"> 
-```
-
-#### Query string
-
-input-file with content
-
-```
-/foo{% query-string(foo) %}
-```
-
-```clojure
-(def render-fn (build-renderer "input-file"))
-
-(render-fn {:foo {:count 2}}) ;; returns "/foo?count=2"
-```
-
-#### Now
-
-input-file with content
-
-```
-default format {% now %}
-formatted {% now "yyyy-MM-dd" %}
-formatted with tz {% now "yyyy-MM-dd hh:mm " "Asia/Tokyo" %}
-```
-
-```clojure
-(def render-fn (build-renderer "input-file"))
-
-(render-fn {}) ;; returns "default format 2011/11/11 11:11\nformatted 2011-11-11\ntormatted with tz 2011-11-11 23:11"
-```
-
-### Verbatim
+#### Verbatim
 
 input-file with content
 
@@ -439,7 +392,7 @@ input-file with content
 (render-fn {}) ;; returns "foo{{bar}}{%baz%}{#qux#}quux"
 ```
 
-### Debug
+#### Debug
 
 Currennt context can be printed out with debug tag
 
@@ -467,7 +420,7 @@ and render file
 (render-fn {:number 1 :writer-imp (java.io.StringWriter.)}) ;; prints out "{:number 1}" to console   
 ```
 
-### Escape
+#### Escape
 
 If needed, ```Sanitizer``` implementation can be set/overridden via ```escape``` tag.
 
@@ -489,7 +442,7 @@ Available values:
 
 or ones provided under `:environment :sanitizers`
 
-### Translation
+#### Translation
 
 The `trans` tag translates a key using the configured [`Dictionary`](#dictionary). The language is determined by the
 `:locale` key in the context.
@@ -505,7 +458,61 @@ The `trans` tag translates a key using the configured [`Dictionary`](#dictionary
 (render-fn {:locale "en"}) ;; returns the English translation for :hello
 ```
 
-### Macro
+#### Macros
+
+Every macro — whether built-in or user-defined — is called with parenthesised,
+comma-separated arguments: `{% name(arg1, arg2) %}`.
+
+##### Built-in macros
+
+###### csrf-token
+
+Renders a hidden CSRF input. `:csrf-token` has to be provided in the context; its
+value is never sanitized, even inside an `{% escape %}` block.
+
+```
+{% csrf-token() %}
+```
+
+```clojure
+(def render-fn (build-renderer "input-file"))
+
+(render-fn {:csrf-token "foobarbaz"}) ;; returns <input type="hidden" name="csrf_token" value="foobarbaz">
+```
+
+###### query-string
+
+Turns a map into a URL query string.
+
+```
+/foo{% query-string(foo) %}
+```
+
+```clojure
+(def render-fn (build-renderer "input-file"))
+
+(render-fn {:foo {:count 2}}) ;; returns "/foo?count=2"
+```
+
+###### now
+
+Prints the current time, evaluated fresh on every render. Takes an optional
+format and time zone; the default format is `yyyy/MM/dd hh:mm` and the default
+zone is the system default.
+
+```
+default format {% now() %}
+formatted {% now("yyyy-MM-dd") %}
+formatted with tz {% now("yyyy-MM-dd HH:mm", "Asia/Tokyo") %}
+```
+
+```clojure
+(def render-fn (build-renderer "input-file"))
+
+(render-fn {}) ;; e.g. "default format 2011/11/11 11:11\nformatted 2011-11-11\nformatted with tz 2011-11-11 23:11"
+```
+
+##### Defining macros
 
 ```
 {% macro foo %}foobar{{baz}}{% endmacro %}{% foo() %}{% foo() %}
@@ -521,7 +528,7 @@ The `trans` tag translates a key using the configured [`Dictionary`](#dictionary
 (render-fn {:user {:name "alice"}}) ;; returns "hi alice!"
 ```
 
-### Importing macros
+##### Importing macros
 
 Macros defined in another file can be imported with `{% import "macros/macros.mjvt" %}`:
 
@@ -542,7 +549,7 @@ Macros defined in another file can be imported with `{% import "macros/macros.mj
 Defining a macro with a name that already exists — whether imported or defined
 in the current file — is a syntax error.
 
-### Fragments
+#### Fragments
 
 A fragment marks a named region of a template that can be rendered on its own,
 which is useful for returning partial responses (for example an htmx swap).

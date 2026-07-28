@@ -192,9 +192,6 @@
             (= "endescape" trimmed-string)
             (recur (rrest my-sequence) "" (conj stack {:type :keyword-end-escape} {:type :block-end :line line-number}) new-line-number)
 
-            (= "now" trimmed-string)
-            (recur (rrest my-sequence) "" (conj stack {:type :now} {:type :block-end :line line-number}) new-line-number)
-
             (= "endif" trimmed-string)
             (recur (rrest my-sequence) "" (conj stack {:type :keyword-endif} {:type :block-end :line line-number}) new-line-number)
 
@@ -215,12 +212,6 @@
 
             (= (:type (peek stack)) :keyword-escape)
             (recur (rrest my-sequence) "" (conj stack {:type :escape-name :value (keyword trimmed-string)} {:type :block-end :line line-number}) new-line-number)
-
-            (= (:type (peek stack)) :now)
-            (recur (rrest my-sequence) "" (conj stack {:type :block-end :line line-number}) new-line-number)
-
-            (and (map? (peek stack)) (:now-format (peek stack)))
-            (recur (rrest my-sequence) "" (conj stack {:type :block-end :line line-number}) new-line-number)
 
             (= (:type (peek stack)) :verbatim)
             (let [[remaining-seq updated-line-number verbatim-content] (collect-verbatim-content (rrest my-sequence) new-line-number)]
@@ -462,9 +453,6 @@
           (= (string/trim current-string) "fragment")
           (recur (rest my-sequence) "" (conj stack {:type :keyword-fragment}) new-line-number)
 
-          (= (string/trim current-string) "now")
-          (recur (rest my-sequence) "" (conj stack {:type :now}) new-line-number)
-
           (= (string/trim current-string) "verbatim")
           (recur (rest my-sequence) "" (conj stack {:type :verbatim}) new-line-number)
 
@@ -528,33 +516,6 @@
             (recur (rest my-sequence) "" (conj stack {:type           :variable-declaration
                                                        :variable-name  variable-name
                                                        :variable-value variable-value}) new-line-number))
-          (recur (rest my-sequence) (str current-string current-char) stack new-line-number))
-
-        (or (= (:type (peek stack)) :now)
-            (and (map? (peek stack)) (:now-format (peek stack))))
-        (cond
-          (and (string/blank? current-string) (= current-char \ ))
-          (recur (rest my-sequence) current-string stack new-line-number)
-
-          (and (string/blank? current-string) (= current-char \"))
-          (recur (rest my-sequence) "" stack new-line-number)
-
-          (and (not (string/blank? current-string)) (= current-char \"))
-          (cond
-            (= (:type (peek stack)) :now)
-            (recur (rest my-sequence) "" (conj stack {:now-format current-string}) new-line-number)
-
-            (and (map? (peek stack)) (:now-format (peek stack)))
-            (recur (rest my-sequence) "" (conj stack {:now-timezone current-string}) new-line-number))
-
-          (and (string/blank? current-string) (= current-char \%) (= next-char \}))
-          (let [updated-stack (conj (pop stack) {:type :now})]
-            (recur (rest my-sequence) (str current-char) updated-stack new-line-number))
-
-          (not (= current-char \"))
-          (recur (rest my-sequence) (str current-string current-char) stack new-line-number)
-
-          :else
           (recur (rest my-sequence) (str current-string current-char) stack new-line-number))
 
         (= (:type (peek stack)) :keyword-macro)

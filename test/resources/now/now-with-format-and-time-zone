@@ -1,1 +1,1 @@
-current time is  {% now "yyyy-MM-dd" "Asia/Tokyo" %}
+current time is  {% now("yyyy-MM-dd", "Asia/Tokyo") %}

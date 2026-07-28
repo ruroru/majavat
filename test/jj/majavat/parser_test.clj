@@ -11,8 +11,7 @@
             [jj.majavat.resolver.fs :as fcr]
             [jj.majavat.protocol.dictionary :as dictionary]
             [jj.majavat.resolver.resource :as rcr])
-  (:import (java.io File)
-           (java.time ZoneId)))
+  (:import (java.io File)))
 
 (def contentResolver (rcr/->ResourceResolver))
 (def empty-fn-map {})
@@ -375,22 +374,16 @@
     (= expected-ast (parse input-file (rcr/->ResourceResolver) empty-fn-map empty-sanitizers-map))
     [{:type  :text
       :value "current time is "}
-     {:format    "yyyy/MM/dd hh:mm"
-      :type      :keyword-now
-      :time-zone (.toString ^ZoneId (ZoneId/systemDefault))}]
+     {:type :macro-call :name :now :args [] :line 1}]
     "now/now"
     [{:type  :text
       :value "current time is "}
-     {:format    "yyyy-MM-dd"
-      :time-zone (.toString ^ZoneId (ZoneId/systemDefault))
-      :type      :keyword-now}]
+     {:type :macro-call :name :now :args ["yyyy-MM-dd"] :line 1}]
     "now/now-with-format"
 
     [{:type  :text
       :value "current time is  "}
-     {:format    "yyyy-MM-dd"
-      :time-zone "Asia/Tokyo"
-      :type      :keyword-now}]
+     {:type :macro-call :name :now :args ["yyyy-MM-dd" "Asia/Tokyo"] :line 1}]
     "now/now-with-format-and-time-zone"))
 
 (deftest verbatim

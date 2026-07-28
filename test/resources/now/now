@@ -1,1 +1,1 @@
-current time is {% now %}
+current time is {% now() %}

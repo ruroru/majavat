@@ -3,10 +3,8 @@
             [jj.majavat.parser :as parser]
             [jj.majavat.protocol.error-handler :as error]
             [jj.majavat.protocol.renderer.render-target :as render-target]
-            [jj.majavat.renderer.filters :as filters]
             [jj.majavat.string-builder :as sb])
   (:import (java.nio.charset Charset StandardCharsets)
-           (java.time Instant)
            (java.util ArrayList)
            (jj.majavat.stream SequentialByteArrayInputStream)))
 
@@ -27,8 +25,8 @@
   (let [eval-fn (or (:evaluation-function condition) boolean)
         raw-val (parser/resolve-path context (:condition condition))
         result (boolean (eval-fn raw-val))
-        matches? (if (:negate condition) (not result) result)]
-    matches?))
+        ]
+    (if (:negate condition) (not result) result)))
 
 (defn- debug-output [node context]
   (let [target (node :target)]
@@ -51,9 +49,6 @@
                                (render-fn context)
                                (->str (parser/resolve-path context (node :value))))]
         (sb/append sb resolved))
-
-      :keyword-now
-      (sb/append sb (filters/->formatted-instant (Instant/now) [(node :format) (node :time-zone)]))
 
       :variable-assignment
       (let [variable-name (node :variable-name)
@@ -147,12 +142,6 @@
                                       (render-fn context)
                                       (->str (parser/resolve-path context (node :value))))]
                (.add result (.getBytes resolved charset)))
-             (recur rest-nodes))
-
-           :keyword-now
-           (do
-             (let [now-str (filters/->formatted-instant (Instant/now) [(node :format) (node :time-zone)])]
-               (.add result (.getBytes ^String now-str charset)))
              (recur rest-nodes))
 
            :variable-declaration

@@ -39,6 +39,29 @@
          (expand "query-string/query-string" (rcr/->ResourceResolver) empty-fn-map empty-sanitizers-map))))
 
 
+(deftest now-expands-to-value-node
+  (are [input-file] (= [{:type :text :value "current time is "}
+                        {:type :value-node}]
+                       (expand input-file (rcr/->ResourceResolver) empty-fn-map empty-sanitizers-map))
+    "now/now"
+    "now/now-with-format"))
+
+
+(deftest now-value-node-evaluates-itself-at-render-time
+  (let [result    (expand-raw "now/now-with-format-and-time-zone" (rcr/->ResourceResolver) empty-fn-map empty-sanitizers-map)
+        render-fn (:render-fn (nth result 1))]
+    ;; args baked at build time, formatted fresh at render time, no context needed
+    (is (re-matches #"\d{4}-\d{2}-\d{2}" (render-fn {})))
+    ;; pre-render (raw) arity returns nil so partial rendering never freezes it
+    (is (nil? (render-fn {} ::raw)))))
+
+
+(deftest now-with-too-many-args-is-error
+  (let [result (expand "now/now-too-many-args" (rcr/->ResourceResolver) empty-fn-map empty-sanitizers-map)]
+    (is (= "syntax-error" (:type result)))
+    (is (= "1" (:line result)))))
+
+
 (deftest macro
   (let [expected-ast [{:type :text :value "bar"}
                       {:type :value-node}

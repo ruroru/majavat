@@ -9,8 +9,7 @@
             [jj.majavat.protocol.resolver :as resolver]
             [jj.majavat.protocol.dictionary :as dictionary])
   (:import (clojure.lang ExceptionInfo)
-           (java.nio.file Paths)
-           (java.time ZoneId)))
+           (java.nio.file Paths)))
 
 (defn create-filter-map [dictionary json-serializer]
   {:trim             filters/trim-string
@@ -178,6 +177,16 @@
        ([context] (finish (resolve-path context value) context))
        ([context _raw] (resolve-path context value))))))
 
+(defn- bake-thunk
+  "Builds a self-evaluating value-node render-fn: `f`'s arguments are baked in
+   at build time, `f` is called fresh on every render, it ignores the render
+   context, and the pre-render (raw) arity returns nil so partial rendering
+   never collapses the node into static text (which would freeze the value)."
+  [f]
+  (fn
+    ([_context] (f))
+    ([_context _raw] nil)))
+
 (def ^:private builtin-macros
   {:csrf-token
    (with-meta
@@ -191,7 +200,17 @@
    (with-meta
      (fn [[path]]
        [{:type :value-node :render-fn (bake-render-fn path nil (fn [v _context] (filters/query-string v)))}])
-     {:params {:path nil}})})
+     {:params {:path nil}})
+
+   :now
+   (with-meta
+     (fn [[format time-zone]]
+       [{:type      :value-node
+         :render-fn (bake-thunk
+                      (fn [] (filters/->formatted-instant
+                               (filters/now-instant)
+                               [(or format "yyyy/MM/dd hh:mm") time-zone])))}])
+     {:params {:format nil :timezone nil} :arities #{0 1 2}})})
 
 (defn- expand-macro [body params args]
   (let [param->arg (zipmap params args)]
@@ -234,9 +253,13 @@
                   (throw (ex-info (format "unknown tag or macro '%s' on line %s"
                                           (name (:name node)) (:line node 1))
                                   {:type :syntax-error :line (:line node 1)})))
-                (when (not= (count (:args node)) (count (:params (meta macro-def))))
-                  (throw (ex-info (format "error on line %s" (:line node 1))
-                                  {:type :syntax-error :line (:line node 1)})))
+                (let [macro-meta (meta macro-def)
+                      arg-count  (count (:args node))]
+                  (when (if-let [arities (:arities macro-meta)]
+                          (not (contains? arities arg-count))
+                          (not= arg-count (count (:params macro-meta))))
+                    (throw (ex-info (format "error on line %s" (:line node 1))
+                                    {:type :syntax-error :line (:line node 1)}))))
                 (expand-nodes (macro-def (:args node)) macros))
               [(expand-node-children node macros)])))
         nodes))
@@ -475,24 +498,6 @@
                             (recur remaining-after-block-end list current-block parsing-for-body current-file-path template-resolver filter-map merged-sanitizers tag-stack macros dictionary current-sanitizer macro-param))
                           (recur remaining list current-block parsing-for-body current-file-path template-resolver filter-map merged-sanitizers tag-stack macros dictionary current-sanitizer macro-param)))
          :block-end (recur (rest lexed-list) list current-block parsing-for-body current-file-path template-resolver filter-map merged-sanitizers tag-stack macros dictionary current-sanitizer macro-param)
-
-         :now (let [remaining (rest lexed-list)
-                    [now-node final-remaining] (loop [remaining remaining
-                                                      format "yyyy/MM/dd hh:mm"
-                                                      timezone (.toString ^ZoneId (ZoneId/systemDefault))]
-                                                 (let [current-token (first remaining)]
-                                                   (cond
-                                                     (and current-token (contains? current-token :now-format))
-                                                     (recur (rest remaining) (:now-format current-token) timezone)
-
-                                                     (and current-token (contains? current-token :now-timezone))
-                                                     (recur (rest remaining) format (:now-timezone current-token))
-
-                                                     :else
-                                                     [{:type      :keyword-now
-                                                       :format    format
-                                                       :time-zone timezone} remaining])))]
-                (recur final-remaining (conj list now-node) current-block parsing-for-body current-file-path template-resolver filter-map merged-sanitizers tag-stack macros dictionary current-sanitizer macro-param))
 
          :keyword-include (let [remaining (rest lexed-list)
                                 file-name-token (first remaining)
