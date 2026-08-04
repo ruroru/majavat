@@ -11,9 +11,13 @@
    (StringBuilder. capacity)))
 
 (defn append
-  "Appends a string or char to the builder and returns the builder."
+  "Appends a string or char to the builder and returns the builder.
+   Dispatches on the argument type so the call compiles to the matching
+   StringBuilder overload instead of a reflective, char-boxing `.append`."
   [^StringBuilder sb s]
-  (.append sb s))
+  (if (string? s)
+    (.append sb ^String s)
+    (.append sb (char s))))
 
 (defn build
   "Returns the accumulated string."
