@@ -4,6 +4,7 @@
             [jj.majavat.renderer.filters :as filters]
             [jj.majavat.renderer.tests :as tests]
             [jj.majavat.renderer.sanitizer :as sanitizer]
+            [jj.majavat.string-builder :as sb]
             [jj.majavat.protocol.json :as json-protocol]
             [jj.majavat.protocol.renderer.sanitizer :refer [sanitize]]
             [jj.majavat.protocol.resolver :as resolver]
@@ -168,14 +169,23 @@
    (bake-render-fn value nil nil))
   ([value sanitizer]
    (bake-render-fn value sanitizer nil))
-  ([value sanitizer filter-fn]
+  ([value san filter-fn]
    (let [filter-fn (or filter-fn (fn [v _context] v))
-         finish (if sanitizer
-                  (fn [v context] (sanitize sanitizer (->str (filter-fn v context))))
+         sink-fn   (when san (sanitizer/sink-writer san))
+         finish (if san
+                  (fn [v context] (sanitize san (->str (filter-fn v context))))
                   (fn [v context] (->str (filter-fn v context))))]
      (fn
        ([context] (finish (resolve-path context value) context))
-       ([context _raw] (resolve-path context value))))))
+       ([context _raw] (resolve-path context value))
+       ;; sink arity: write the finished value straight into `builder`,
+       ;; escaping in place when the sanitizer supports it (no temp string)
+       ([context builder _sink]
+        (let [s (->str (filter-fn (resolve-path context value) context))]
+          (cond
+            sink-fn (sink-fn builder s)
+            san     (sb/append builder (sanitize san s))
+            :else   (sb/append builder s))))))))
 
 (defn- bake-thunk
   "Builds a self-evaluating value-node render-fn: `f`'s arguments are baked in
@@ -185,7 +195,8 @@
   [f]
   (fn
     ([_context] (f))
-    ([_context _raw] nil)))
+    ([_context _raw] nil)
+    ([_context builder _sink] (sb/append builder (f)))))
 
 (def ^:private builtin-macros
   {:csrf-token

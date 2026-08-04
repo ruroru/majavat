@@ -25,8 +25,7 @@
   [condition context]
   (let [eval-fn (or (:evaluation-function condition) boolean)
         raw-val (parser/resolve-path context (:condition condition))
-        result (boolean (eval-fn raw-val))
-        ]
+        result (boolean (eval-fn raw-val))]
     (if (:negate condition) (not result) result)))
 
 (defn- debug-output [node context]
@@ -47,11 +46,12 @@
         (rf acc (node :value ""))
 
         :value-node
-        (let [render-fn (node :render-fn)
-              ^String resolved (if render-fn
-                                 (render-fn context)
-                                 (->str (parser/resolve-path context (node :value))))]
-          (rf acc resolved))
+        (let [render-fn (node :render-fn)]
+          (if render-fn
+            ;; hand the render-fn to the sink so it can write straight into the
+            ;; output builder (escaping in place) instead of returning a string
+            (rf acc render-fn context)
+            (rf acc (->str (parser/resolve-path context (node :value))))))
 
         :variable-assignment
         (reduce-nodes rf acc (node :body)
@@ -104,9 +104,9 @@
                         nil
                         (node :branches))]
           (cond
-            matched            (reduce-nodes rf acc (:body matched) context)
+            matched (reduce-nodes rf acc (:body matched) context)
             (seq (node :else)) (reduce-nodes rf acc (node :else) context)
-            :else              acc))
+            :else acc))
 
         :translation
         (let [result ((node :trans-fn) (get context :locale))]
@@ -287,7 +287,8 @@
       (transduce identity
                  (fn
                    ([sb] (sb/build sb))
-                   ([sb ^String s] (sb/append sb s)))
+                   ([sb ^String s] (sb/append sb s))
+                   ([sb render-fn context] (render-fn context sb nil)))
                  (sb/create-string-builder)
                  (template-reducible template context))
       (error/handle-error error-handler this template))))
@@ -303,7 +304,12 @@
                      ([^ArrayList al ^String s]
                       (when (pos? (.length s))
                         (.add al (.getBytes s charset)))
-                      al))
+                      al)
+                     ([^ArrayList al render-fn context]
+                      (let [^String s (render-fn context)]
+                        (when (pos? (.length s))
+                          (.add al (.getBytes s charset)))
+                        al)))
                    (ArrayList. (count template))
                    (template-reducible template context)))
       (error/handle-error error-handler this template))))
