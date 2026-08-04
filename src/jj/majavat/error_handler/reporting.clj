@@ -112,8 +112,6 @@
 (defrecord Reporting []
   error-handler/ErrorHandler
   (handle-error [_ renderer template]
-    ;; build-string-renderer lives in jj.majavat, which requires this namespace,
-    ;; so resolve it at runtime to avoid a circular load dependency.
     (let [build-string-renderer (requiring-resolve 'jj.majavat/build-string-renderer)]
       ((build-string-renderer error-template
                               {:renderer      renderer

@@ -178,8 +178,6 @@
      (fn
        ([context] (finish (resolve-path context value) context))
        ([context _raw] (resolve-path context value))
-       ;; sink arity: write the finished value straight into `builder`,
-       ;; escaping in place when the sanitizer supports it (no temp string)
        ([context builder _sink]
         (let [s (->str (filter-fn (resolve-path context value) context))]
           (cond
@@ -243,15 +241,46 @@
 
 (declare expand-nodes)
 
+(defn- bake-path-fn
+  "Bakes a lookup path into a `context -> value` closure, so the renderer can
+   pull loop sources and variable values without resolving paths (or knowing
+   about the parser) itself."
+  [path]
+  (fn [context] (resolve-path context path)))
+
+(defn- bake-condition
+  "Rewrites a branch condition so it carries everything the renderer needs:
+   :evaluation-function becomes `context -> boolean` (resolving its own path and
+   applying the test), and :resolve is a `context -> raw-value` closure the
+   partial renderer uses to decide whether the condition is resolvable yet.
+   Idempotent (via :baked?) so running expansion twice is safe. Done after macro
+   expansion, when the condition's path is in its final substituted form."
+  [{:keys [condition evaluation-function baked?] :as c}]
+  (if baked?
+    c
+    (let [test-fn (or evaluation-function boolean)]
+      (assoc c :evaluation-function (fn [context] (test-fn (resolve-path context condition)))
+               :resolve (bake-path-fn condition)
+               :baked? true))))
+
 (defn- expand-node-children [node macros]
   (cond-> node
+    (and (= :value-node (:type node)) (not (:render-fn node)) (contains? node :value))
+    (-> (assoc :render-fn (bake-render-fn (:value node))) (dissoc :value))
+
+    (and (contains? node :source) (not (fn? (:source node))))
+    (update :source bake-path-fn)
+
+    (and (= :variable-assignment (:type node)) (not (fn? (:variable-value node))))
+    (update :variable-value bake-path-fn)
+
     (contains? node :body)       (update :body expand-nodes macros)
     (contains? node :when-empty) (update :when-empty expand-nodes macros)
     (contains? node :else)       (update :else expand-nodes macros)
     (contains? node :branches)   (update :branches
                                          (fn [branches]
                                            (mapv (fn [[condition body]]
-                                                   [condition (expand-nodes body macros)])
+                                                   [(bake-condition condition) (expand-nodes body macros)])
                                                  branches)))))
 
 (defn- expand-nodes [nodes macros]

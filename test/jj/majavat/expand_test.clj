@@ -50,9 +50,7 @@
 (deftest now-value-node-evaluates-itself-at-render-time
   (let [result    (expand-raw "now/now-with-format-and-time-zone" (rcr/->ResourceResolver) empty-fn-map empty-sanitizers-map)
         render-fn (:render-fn (nth result 1))]
-    ;; args baked at build time, formatted fresh at render time, no context needed
     (is (re-matches #"\d{4}-\d{2}-\d{2}" (render-fn {})))
-    ;; pre-render (raw) arity returns nil so partial rendering never freezes it
     (is (nil? (render-fn {} ::raw)))))
 
 

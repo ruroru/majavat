@@ -28,7 +28,7 @@
   (str/replace s "\r\n" "\n"))
 
 (defn- strip-render-fn [ast]
-  (walk/postwalk #(if (map? %) (dissoc % :render-fn) %) ast))
+  (walk/postwalk #(if (map? %) (dissoc % :render-fn :evaluation-function :resolve :baked?) %) ast))
 
 (def empty-fn-map {})
 (def empty-sanitizers-map {})
@@ -125,7 +125,7 @@ Department: Marketing (Budget: $300K)
 👔 MANAGER: Carol Davis - Marketing Manager
 
 "]
-    (assert-render template context expected-string)))
+    (assert-render (parser/expand-macros [template {}]) context expected-string)))
 
 
 
@@ -517,9 +517,7 @@ this is a  footer"
                                            [{:type :text :value "hello World from "} {:type :value-node}] "if-statement.txt" {:some {:condition "wolrd"}}
                                            [{:type  :text
                                              :value "hello "}
-                                            {:branches [[{:condition           [:some
-                                                                                :condition]
-                                                          :evaluation-function tests/default-test}
+                                            {:branches [[{:condition [:some :condition]}
                                                          [{:type  :text
                                                            :value "World from "}
                                                           {:type :value-node}]]]
@@ -528,9 +526,7 @@ this is a  footer"
                                            [{:type :text :value "hello World! from world"}] "if-else-statement.txt" {:some {:condition true} :location "world"}
                                            [{:type  :text
                                              :value "hello "}
-                                            {:branches [[{:evaluation-function tests/default-test
-                                                          :condition           [:some
-                                                                                :condition]}
+                                            {:branches [[{:condition [:some :condition]}
                                                          [{:type  :text
                                                            :value "World! from "}
                                                           {:type :value-node}]]]
