@@ -1,6 +1,5 @@
 (ns jj.majavat.renderer
   (:require [clojure.pprint :as pprint]
-            [jj.majavat.parser :as parser]
             [jj.majavat.protocol.error-handler :as error]
             [jj.majavat.protocol.renderer.render-target :as render-target]
             [jj.majavat.string-builder :as sb])
@@ -24,9 +23,7 @@
 (defn- evaluate-condition
   [condition context]
   (let [eval-fn (or (:evaluation-function condition) boolean)
-        raw-val (parser/resolve-path context (:condition condition))
-        result (boolean (eval-fn raw-val))
-        ]
+        result (boolean (eval-fn context))]
     (if (:negate condition) (not result) result)))
 
 (defn- debug-output [node context]
@@ -47,16 +44,12 @@
         (rf acc (node :value ""))
 
         :value-node
-        (let [render-fn (node :render-fn)
-              ^String resolved (if render-fn
-                                 (render-fn context)
-                                 (->str (parser/resolve-path context (node :value))))]
-          (rf acc resolved))
+        (rf acc (node :render-fn) context)
 
         :variable-assignment
         (reduce-nodes rf acc (node :body)
                       (assoc context (node :variable-name)
-                                     (parser/resolve-path context (node :variable-value))))
+                                     ((node :variable-value) context)))
 
         :variable-declaration
         (reduce-nodes rf acc (node :body)
@@ -65,7 +58,7 @@
         :for
         (let [body (node :body)
               identifier (node :identifier)
-              items (parser/resolve-path context (node :source))]
+              items ((node :source) context)]
           (if (seq items)
             (let [item-count (count items)]
               (loop [i 0
@@ -84,7 +77,7 @@
         :each
         (let [body (node :body)
               identifier (node :identifier)
-              items (parser/resolve-path context (node :source))]
+              items ((node :source) context)]
           (if (seq items)
             (loop [remaining (seq items)
                    acc acc]
@@ -104,9 +97,9 @@
                         nil
                         (node :branches))]
           (cond
-            matched            (reduce-nodes rf acc (:body matched) context)
+            matched (reduce-nodes rf acc (:body matched) context)
             (seq (node :else)) (reduce-nodes rf acc (node :else) context)
-            :else              acc))
+            :else acc))
 
         :translation
         (let [result ((node :trans-fn) (get context :locale))]
@@ -136,20 +129,16 @@
 
         :value-node
         (let [render-fn (node :render-fn)
-              raw (if render-fn
-                    (render-fn context ::raw)
-                    (parser/resolve-path context (node :value)))]
+              raw (render-fn context ::raw)]
           (if (some? raw)
-            (conj acc {:type :text :value (if render-fn
-                                            (render-fn context)
-                                            (->str raw))})
+            (conj acc {:type :text :value (render-fn context)})
             (conj acc node)))
 
         :variable-assignment
         (let [variable-name (node :variable-name)
               variable-value (node :variable-value)
               body (node :body)
-              resolved-val (parser/resolve-path context variable-value)]
+              resolved-val (variable-value context)]
           (if (some? resolved-val)
             (let [new-context (assoc context variable-name resolved-val)
                   rendered-body (partial-render-nodes body new-context)]
@@ -168,9 +157,8 @@
 
         :for
         (let [identifier (node :identifier)
-              source-path (node :source)
               body (node :body)
-              items (parser/resolve-path context source-path)]
+              items ((node :source) context)]
           (if (some? items)
             (if (seq items)
               (let [item-count (count items)]
@@ -192,9 +180,8 @@
 
         :each
         (let [identifier (node :identifier)
-              source-path (node :source)
               body (node :body)
-              items (parser/resolve-path context source-path)]
+              items ((node :source) context)]
           (if (some? items)
             (if (seq items)
               (let [item-count (count items)]
@@ -219,15 +206,11 @@
               else-body (node :else)
               first-unresolved (reduce
                                  (fn [acc [condition body]]
-                                   (let [condition-val (parser/resolve-path context (:condition condition))]
-                                     (if (some? condition-val)
-                                       (let [eval-fn (or (:evaluation-function condition) boolean)
-                                             result (boolean (eval-fn condition-val))
-                                             matches? (if (:negate condition) (not result) result)]
-                                         (if matches?
-                                           (reduced {:resolved true :body body})
-                                           acc))
-                                       (reduced {:resolved false}))))
+                                   (if (some? ((:resolve condition) context))
+                                     (if (evaluate-condition condition context)
+                                       (reduced {:resolved true :body body})
+                                       acc)
+                                     (reduced {:resolved false})))
                                  nil
                                  branches)]
           (cond
@@ -287,7 +270,8 @@
       (transduce identity
                  (fn
                    ([sb] (sb/build sb))
-                   ([sb ^String s] (sb/append sb s)))
+                   ([sb ^String s] (sb/append sb s))
+                   ([sb render-fn context] (render-fn context sb nil)))
                  (sb/create-string-builder)
                  (template-reducible template context))
       (error/handle-error error-handler this template))))
@@ -303,7 +287,12 @@
                      ([^ArrayList al ^String s]
                       (when (pos? (.length s))
                         (.add al (.getBytes s charset)))
-                      al))
+                      al)
+                     ([^ArrayList al render-fn context]
+                      (let [^String s (render-fn context)]
+                        (when (pos? (.length s))
+                          (.add al (.getBytes s charset)))
+                        al)))
                    (ArrayList. (count template))
                    (template-reducible template context)))
       (error/handle-error error-handler this template))))

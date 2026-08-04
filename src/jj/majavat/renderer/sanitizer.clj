@@ -14,8 +14,7 @@
 
 (defn- html-escaped-length
   "Exact length of the HTML-escaped form of `s`, or -1 when no character needs
-   escaping (so the caller returns the input unchanged, allocating nothing).
-   The per-char additions match escape-html-sb's replacements exactly:
+   escaping. Per-char additions match escape-html-into's replacements:
    & -> &amp; (+4), < -> &lt; / > -> &gt; (+3), \" -> &quot; / ' -> &apos; (+5)."
   [^String s len]
   (loop [i 0 extra 0]
@@ -28,10 +27,12 @@
                               0))))
       (if (zero? extra) -1 (+ len extra)))))
 
-(defn- escape-html-sb [^String s len sb]
+(defn- escape-html-into
+  "Append the HTML-escaped form of `s` into builder `sb`; returns `sb`."
+  [^String s len sb]
   (loop [i 0]
     (if (< i len)
-      (let [c (.charAt ^String s i)]
+      (let [c (.charAt s i)]
         (case c
           \& (sb/append sb "&amp;")
           \< (sb/append sb "&lt;")
@@ -40,7 +41,17 @@
           \' (sb/append sb "&apos;")
           (sb/append sb c))
         (recur (inc i)))
-      (sb/build sb))))
+      sb)))
+
+(defn- append-html
+  "Escape `s` directly into builder `sb` (no intermediate string); returns `sb`."
+  [sb s]
+  (if (nil? s)
+    sb
+    (let [len (count s)]
+      (if (neg? (html-escaped-length s len))
+        (sb/append sb s)
+        (escape-html-into s len sb)))))
 
 (defrecord Html []
   sanitizer/Sanitizer
@@ -50,11 +61,11 @@
             out-len (html-escaped-length s len)]
         (if (neg? out-len)
           s
-          (escape-html-sb s len (sb/create-string-builder out-len)))))))
+          (sb/build (escape-html-into s len (sb/create-string-builder out-len))))))))
 
 (defn- json-escaped-length
-  "Exact length of the JSON-escaped form of `s`, or -1 when no character needs
-   escaping. The per-char additions match escape-json-sb: \" \\ / \\b \\f \\n \\r
+  "Exact length of the JSON-escaped form of `s`, or -1 when nothing needs
+   escaping. Per-char additions match escape-json-into: \" \\ / \\b \\f \\n \\r
    \\t each grow by 1, any other control char (< 32) becomes \\uXXXX (+5)."
   [^String s len]
   (loop [i 0 extra 0]
@@ -66,10 +77,12 @@
                                 (if (< (int c) 32) 5 0))))))
       (if (zero? extra) -1 (+ len extra)))))
 
-(defn- escape-json-sb [^String s len sb]
+(defn- escape-json-into
+  "Append the JSON-escaped form of `s` into builder `sb`; returns `sb`."
+  [^String s len sb]
   (loop [i 0]
     (if (< i len)
-      (let [c (.charAt ^String s i)]
+      (let [c (.charAt s i)]
         (case c
           \" (sb/append sb "\\\"")
           \\ (sb/append sb "\\\\")
@@ -83,7 +96,17 @@
             (sb/append sb (unicode-escape (int c)))
             (sb/append sb c)))
         (recur (inc i)))
-      (sb/build sb))))
+      sb)))
+
+(defn- append-json
+  "Escape `s` directly into builder `sb` (no intermediate string); returns `sb`."
+  [sb s]
+  (if (nil? s)
+    sb
+    (let [len (count s)]
+      (if (neg? (json-escaped-length s len))
+        (sb/append sb s)
+        (escape-json-into s len sb)))))
 
 (defrecord Json []
   sanitizer/Sanitizer
@@ -93,8 +116,22 @@
             out-len (json-escaped-length s len)]
         (if (neg? out-len)
           s
-          (escape-json-sb s len (sb/create-string-builder out-len)))))))
+          (sb/build (escape-json-into s len (sb/create-string-builder out-len))))))))
+
+(defn- append-none [sb s] (if (nil? s) sb (sb/append sb s)))
 
 (defrecord None []
   sanitizer/Sanitizer
   (sanitize [_ s] s))
+
+(defn sink-writer
+  "Returns a fn (fn [builder s] -> builder) that escapes `s` straight into a
+   mutable string builder, for the built-in sanitizers. Returns nil for any
+   other sanitizer, so callers fall back to `sanitize` + append. Intended to be
+   called once at parse time, not per render."
+  [san]
+  (condp instance? san
+    Html append-html
+    Json append-json
+    None append-none
+    nil))

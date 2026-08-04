@@ -4,6 +4,7 @@
             [jj.majavat.renderer.filters :as filters]
             [jj.majavat.renderer.tests :as tests]
             [jj.majavat.renderer.sanitizer :as sanitizer]
+            [jj.majavat.string-builder :as sb]
             [jj.majavat.protocol.json :as json-protocol]
             [jj.majavat.protocol.renderer.sanitizer :refer [sanitize]]
             [jj.majavat.protocol.resolver :as resolver]
@@ -168,14 +169,21 @@
    (bake-render-fn value nil nil))
   ([value sanitizer]
    (bake-render-fn value sanitizer nil))
-  ([value sanitizer filter-fn]
+  ([value san filter-fn]
    (let [filter-fn (or filter-fn (fn [v _context] v))
-         finish (if sanitizer
-                  (fn [v context] (sanitize sanitizer (->str (filter-fn v context))))
+         sink-fn   (when san (sanitizer/sink-writer san))
+         finish (if san
+                  (fn [v context] (sanitize san (->str (filter-fn v context))))
                   (fn [v context] (->str (filter-fn v context))))]
      (fn
        ([context] (finish (resolve-path context value) context))
-       ([context _raw] (resolve-path context value))))))
+       ([context _raw] (resolve-path context value))
+       ([context builder _sink]
+        (let [s (->str (filter-fn (resolve-path context value) context))]
+          (cond
+            sink-fn (sink-fn builder s)
+            san     (sb/append builder (sanitize san s))
+            :else   (sb/append builder s))))))))
 
 (defn- bake-thunk
   "Builds a self-evaluating value-node render-fn: `f`'s arguments are baked in
@@ -185,7 +193,8 @@
   [f]
   (fn
     ([_context] (f))
-    ([_context _raw] nil)))
+    ([_context _raw] nil)
+    ([_context builder _sink] (sb/append builder (f)))))
 
 (def ^:private builtin-macros
   {:csrf-token
@@ -232,15 +241,46 @@
 
 (declare expand-nodes)
 
+(defn- bake-path-fn
+  "Bakes a lookup path into a `context -> value` closure, so the renderer can
+   pull loop sources and variable values without resolving paths (or knowing
+   about the parser) itself."
+  [path]
+  (fn [context] (resolve-path context path)))
+
+(defn- bake-condition
+  "Rewrites a branch condition so it carries everything the renderer needs:
+   :evaluation-function becomes `context -> boolean` (resolving its own path and
+   applying the test), and :resolve is a `context -> raw-value` closure the
+   partial renderer uses to decide whether the condition is resolvable yet.
+   Idempotent (via :baked?) so running expansion twice is safe. Done after macro
+   expansion, when the condition's path is in its final substituted form."
+  [{:keys [condition evaluation-function baked?] :as c}]
+  (if baked?
+    c
+    (let [test-fn (or evaluation-function boolean)]
+      (assoc c :evaluation-function (fn [context] (test-fn (resolve-path context condition)))
+               :resolve (bake-path-fn condition)
+               :baked? true))))
+
 (defn- expand-node-children [node macros]
   (cond-> node
+    (and (= :value-node (:type node)) (not (:render-fn node)) (contains? node :value))
+    (-> (assoc :render-fn (bake-render-fn (:value node))) (dissoc :value))
+
+    (and (contains? node :source) (not (fn? (:source node))))
+    (update :source bake-path-fn)
+
+    (and (= :variable-assignment (:type node)) (not (fn? (:variable-value node))))
+    (update :variable-value bake-path-fn)
+
     (contains? node :body)       (update :body expand-nodes macros)
     (contains? node :when-empty) (update :when-empty expand-nodes macros)
     (contains? node :else)       (update :else expand-nodes macros)
     (contains? node :branches)   (update :branches
                                          (fn [branches]
                                            (mapv (fn [[condition body]]
-                                                   [condition (expand-nodes body macros)])
+                                                   [(bake-condition condition) (expand-nodes body macros)])
                                                  branches)))))
 
 (defn- expand-nodes [nodes macros]
