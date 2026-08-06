@@ -5,6 +5,7 @@
             [clojure.test :refer [deftest is testing]]
             [jj.majavat :as majavat]
             [jj.majavat.parser :as parser]
+            [jj.majavat.protocol.builder :refer [Builder]]
             [jj.majavat.renderer :refer [->InputStreamRenderer ->StringRenderer]]
             [jj.majavat.protocol.renderer.sanitizer :as sanitizer]
             [jj.majavat.renderer.sanitizer :refer [->Html]]
@@ -209,6 +210,43 @@
           (let [render-fn (majavat/build-renderer "somefile" opts)]
             (render-fn {}) (render-fn {}) (render-fn {}))
           (is (= expected-calls (mock/call-count parser/parse))))))))
+
+(defrecord EchoBuilder [pre-render-context environment]
+  Builder
+  (build-renderer [_ file-path template-resolver renderer escape-config error-handler]
+    (fn [context]
+      {:file-path          file-path
+       :template-resolver  template-resolver
+       :renderer           renderer
+       :escape-config      escape-config
+       :error-handler      error-handler
+       :pre-render-context pre-render-context
+       :environment        environment
+       :context            context})))
+
+(deftest custom-builder-test
+  (testing ":builder receives the pre-render context and the resolved environment"
+    (mock/with-mock
+      [parser/parse [[{:type :text :value "text"}] {}]]
+      (let [filters {:reverse identity}
+            result ((majavat/build-renderer "somefile" {:builder     ->EchoBuilder
+                                                        :pre-render  {:a 1}
+                                                        :fragment    :sidebar
+                                                        :environment {:filters filters}})
+                    {:b 2})]
+        (is (= "somefile" (:file-path result)))
+        (is (= {:a 1} (:pre-render-context result)))
+        (is (= {:b 2} (:context result)))
+        (is (= filters (get-in result [:environment :filters])))
+        (is (= :sidebar (get-in result [:environment :fragment])))
+        (is (some? (get-in result [:environment :json-serializer])))
+        (is (zero? (mock/call-count parser/parse))))))
+
+  (testing ":builder takes precedence over cache?"
+    (doseq [cache? [true false]]
+      (testing (str ":cache? " cache?)
+        (let [result ((majavat/build-renderer "somefile" {:builder ->EchoBuilder :cache? cache?}) {})]
+          (is (= "somefile" (:file-path result))))))))
 
 (deftest nil-options-default-correctly
   (let [file-path "html/index.html"

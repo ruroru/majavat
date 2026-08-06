@@ -41,9 +41,11 @@
          sanitizer (get opts :sanitizer (sanitizer/->None))
          error-handler (or (:error-handler opts)
                            (reporting/->Reporting))
-         builder (if cache?
-                   (builders/->CachedBuilder pre-render-context environment)
-                   (builders/->OneShotBuilder pre-render-context environment))]
+         build-builder (or (:builder opts)
+                           (if cache?
+                             builders/->CachedBuilder
+                             builders/->OneShotBuilder))
+         builder (build-builder pre-render-context environment)]
 
      (builder/build-renderer builder file-path resolver renderer sanitizer error-handler))))
 

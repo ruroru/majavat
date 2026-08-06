@@ -67,6 +67,7 @@ All supported options:
 | `environment`       | {}                                      | Map (see [environment options](#environment))       |
 | `error-handler`     | Reporting                               | Any ErrorHandler Implementation                     |
 | `fragment`          | nil                                     | Keyword naming a [fragment](#fragments) to render   |
+| `builder`           | Chosen by `cache?`                      | Any [`Builder`](#builder) constructor               |
 
 #### Environment
 
@@ -770,6 +771,70 @@ Pass it via the environment when building a renderer:
 ```clojure
 (def render-fn (build-renderer "input-file" {:environment {:json-serializer (->JacksonSerializer object-mapper)}}))
 ```
+
+## Builder
+
+The `Builder` protocol decides *when* a template is parsed: once up front (and reused on every render) or on every
+render call. The built-ins are selected by the [`cache?`](#usage) option, but you can supply your own to control
+parsing yourself - for example to re-parse only when the template file changed, or to expire the parsed template after a
+period.
+
+### Protocol Methods
+
+#### `build-renderer`
+
+Returns the render function that `jj.majavat/build-renderer` hands back to the caller - a function of one argument, the
+render context.
+
+- file-path - the template being built
+- template-resolver - the [`TemplateResolver`](#templateresolver) to read templates with
+- renderer - the [`RenderTarget`](#rendertarget-protocol) the AST is rendered into
+- escape-config - the [`Sanitizer`](#sanitizer) applied to interpolated values
+- error-handler - the [`ErrorHandler`](#errorhandler) to hand parse errors to
+
+```clojure
+(build-renderer builder file-path template-resolver renderer escape-config error-handler)
+```
+
+### Built-in Implementations
+
+- **CachedBuilder** (default, `:cache? true`) - Parses the template once when the render function is built
+- **OneShotBuilder** (`:cache? false`) - Parses the template on every render call
+
+### Example Implementation
+
+A builder is created with a constructor taking `[pre-render-context environment]`, so the `:builder` option takes the
+constructor rather than an instance - majavat calls it with the pre-render context and the fully resolved environment
+(filters, sanitizers, dictionary, json serializer, fragment).
+
+```clojure
+(:require [jj.majavat.parser :as parser]
+  [jj.majavat.protocol.builder :refer [Builder]]
+  [jj.majavat.protocol.renderer.render-target :as render-target])
+
+(defrecord TtlBuilder [pre-render-context environment]
+  Builder
+  (build-renderer [_ file-path template-resolver renderer escape-config error-handler]
+    (let [{:keys [filters sanitizers dictionary json-serializer fragment]} environment
+          template (atom nil)]
+      (fn [context]
+        (let [[parsed-at ast] (or @template [0 nil])
+              ast (if (< (- (System/currentTimeMillis) parsed-at) 60000)
+                    ast
+                    (let [ast (parser/parse-template file-path template-resolver filters sanitizers
+                                                     dictionary escape-config json-serializer fragment)]
+                      (reset! template [(System/currentTimeMillis) ast])
+                      ast))]
+          (render-target/render renderer ast context error-handler))))))
+```
+
+Pass the constructor when building a renderer:
+
+```clojure
+(def render-fn (build-renderer "input-file" {:builder ->TtlBuilder}))
+```
+
+`:builder` takes precedence over `cache?`.
 
 ## Performance
 
