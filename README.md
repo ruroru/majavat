@@ -25,7 +25,7 @@ Add majavat to dependency list
 ;; or build html renderer, which will sanitize input
 (def html-render-fn (majavat/build-html-renderer "index.html"))
 (def render-fn-from-string (majavat/build-string-renderer "hello {{ user }}</b>"
-                                              {:sanitizer (->Html)}))
+                                                          {:sanitizer (->Html)}))
 
 
 (render-fn {:user "jj"})
@@ -108,56 +108,51 @@ Hello {{ name | upper-case }}!
 
 ##### Built In Filters
 
-| Filter                      | Type          | Input                              | Output                       |
-|-----------------------------|---------------|------------------------------------|------------------------------|
-| abs                         | Number        | -1                                 | 1.0                          |
-| append(" world")            | String        | "hello"                            | "hello world"                |
-| capitalize                  | String        | "hello world"                      | "Hello world"                |
-| ceil                        | Number        | 1.99                               | 2                            |
-| date("hh/mm", "Asia/Tokyo") | Instant       | 2011-11-11T02:11:00Z               | "11/11"                      |
-| date("yyyy")                | LocalDate     | 2025-01-15                         | "2025"                       |
-| date("yyyy")                | LocalDateTime | 2025-01-15T11:11                   | "2025"                       |
-| date("hh/mm")               | LocalTime     | 11:11                              | "11/11"                      |
-| date("hh/mm", "Asia/Tokyo") | ZonedDateTime | 2011-11-11T11:11+09:00[Asia/Tokyo] | "11/11"                      |
-| dec                         | Number        | 5                                  | 4                            |
-| default("foo")              | nil           | nil                                | "foo"                        |
-| default("foo")              | not nil       | "bar"                              | "bar"                        |
-| file-size                   | Number        | 2048                               | "2 KB"                       |
-| first                       | Map           | {:foo :a :bar :b :baz :c}          | [:foo :a]                    |
-| first                       | Sequential    | (list :foo :bar :baz)              | :foo                         |
-| floor                       | Number        | 1.4                                | 1.0                          |
-| inc                         | Number        | 5                                  | 6                            |
-| indent(2, [first], [blank]) | String        | "a\nb"                             | "a\n  b"                     |
-| int                         | String        | "123"                              | 123                          |
-| join                        | Sequential    | [1 2 3]                            | "1, 2, 3" (default sep ", ") |
-| join("-")                   | Sequential    | [1 2 3]                            | "1-2-3"                      |
-| json                        | Any           | {:a 1}                             | {"a":1}                      |
-| json(2)                     | Any           | {:a 1}                             | pretty-printed, 2-sp indent  |
-| length                      | Map           | {:a 1 :b 2}                        | 2                            |
-| length                      | Sequential    | [1 2 3]                            | 3                            |
-| length                      | String        | "hello"                            | 5                            |
-| long                        | String        | "123"                              | 123L                         |
-| lower-case                  | String        | "HELLO WORLD"                      | "hello world"                |
-| name                        | Keyword       | :name                              | "name"                       |
-| prepend(" world")           | String        | "hello"                            | "world hello"                |
-| replace("a", "o")           | String        | "banana"                           | "bonono"                     |
-| replace("a", "o", 2)        | String        | "banana"                           | "bonona"                     |
-| rest                        | Map           | {:foo :a :bar :b :baz :c}          | {:bar :b :baz :c}            |
-| rest                        | Sequential    | (list :foo :bar :baz)              | (list :bar :baz)             |
-| round                       | Number        | 1.99                               | 2                            |
-| slugify                     | String        | "Foo Bar"                          | "foo-bar"                    |
-| str                         | any           | 1                                  | "1"                          |
-| title-case                  | String        | "hello world"                      | "Hello World"                |
-| trans                       | Keyword       | :hello                             | "hei" (via dictionary)       |
-| trim                        | String        | "  hello  "                        | "hello"                      |
-| truncate(14, [kill], [end]) | String        | "The quick brown fox"              | "The quick..."               |
-| upper-case                  | String        | "hello world"                      | "HELLO WORLD"                |
-| upper-roman                 | String        | "iv"                               | "IV"                         |
+| Filter                          | Type          | Input                              | Output                       |
+|---------------------------------|---------------|------------------------------------|------------------------------|
+| abs                             | Number        | -1                                 | 1.0                          |
+| append(" world")                | String        | "hello"                            | "hello world"                |
+| capitalize                      | String        | "hello world"                      | "Hello world"                |
+| ceil                            | Number        | 1.99                               | 2                            |
+| date(["hh/mm"], ["Asia/Tokyo"]) | Instant       | 2011-11-11T02:11:00Z               | "11/11"                      |
+| date(["yyyy"])                  | LocalDate     | 2025-01-15                         | "2025"                       |
+| date(["yyyy"])                  | LocalDateTime | 2025-01-15T11:11                   | "2025"                       |
+| date(["hh/mm"])                 | LocalTime     | 11:11                              | "11/11"                      |
+| date(["hh/mm"], ["Asia/Tokyo"]) | ZonedDateTime | 2011-11-11T11:11+09:00[Asia/Tokyo] | "11/11"                      |
+| dec                             | Number        | 5                                  | 4                            |
+| default("foo")                  | nil           | nil                                | "foo"                        |
+| default("foo")                  | not nil       | "bar"                              | "bar"                        |
+| file-size                       | Number        | 2048                               | "2 KB"                       |
+| first                           | Map           | {:foo :a :bar :b :baz :c}          | [:foo :a]                    |
+| first                           | Sequential    | (list :foo :bar :baz)              | :foo                         |
+| floor                           | Number        | 1.4                                | 1.0                          |
+| inc                             | Number        | 5                                  | 6                            |
+| indent(2, [first], [blank])     | String        | "a\nb"                             | "a\n  b"                     |
+| int                             | String        | "123"                              | 123                          |
+| join([separator])               | Sequential    | [1 2 3]                            | "1, 2, 3" (default sep ", ") |
+| json                            | Any           | {:a 1}                             | {"a":1}                      |
+| json(2)                         | Any           | {:a 1}                             | pretty-printed, 2-sp indent  |
+| length                          | Map           | {:a 1 :b 2}                        | 2                            |
+| length                          | Sequential    | [1 2 3]                            | 3                            |
+| length                          | String        | "hello"                            | 5                            |
+| long                            | String        | "123"                              | 123L                         |
+| lower-case                      | String        | "HELLO WORLD"                      | "hello world"                |
+| name                            | Keyword       | :name                              | "name"                       |
+| prepend(" world")               | String        | "hello"                            | "world hello"                |
+| replace(old, new, [count])      | String        | "banana"                           | "bonono"                     |
+| rest                            | Map           | {:foo :a :bar :b :baz :c}          | {:bar :b :baz :c}            |
+| rest                            | Sequential    | (list :foo :bar :baz)              | (list :bar :baz)             |
+| round                           | Number        | 1.99                               | 2                            |
+| slugify                         | String        | "Foo Bar"                          | "foo-bar"                    |
+| str                             | any           | 1                                  | "1"                          |
+| title-case                      | String        | "hello world"                      | "Hello World"                |
+| trans                           | Keyword       | :hello                             | "hei" (via dictionary)       |
+| trim                            | String        | "  hello  "                        | "hello"                      |
+| truncate(14, [kill], [end])     | String        | "The quick brown fox"              | "The quick..."               |
+| upper-case                      | String        | "hello world"                      | "HELLO WORLD"                |
+| upper-roman                     | String        | "iv"                               | "IV"                         |
 
-> Arguments shown in `[brackets]` are optional. `indent`'s `width` is required; `first`
-> also indents the first line (off by default) and `blank` also indents blank lines.
-> For `truncate`, `kill` cuts at the exact length instead of trimming back to a word
-> boundary, and `end` sets the ellipsis (default `"..."`).
+> Arguments shown in `[brackets]` are optional. 
 
 ##### User Provided filters Filters
 
