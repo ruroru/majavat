@@ -24,6 +24,9 @@
 (defn is-lt? [v arg]
   (and (number? v) (< v arg)))
 
+(defn is-seq? [v]
+  (seq? v))
+
 (defn is-empty? [v]
   (cond
     (nil? v) true

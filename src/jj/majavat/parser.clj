@@ -56,15 +56,16 @@
                                    :json (sanitizer/->Json)
                                    :none (sanitizer/->None)})
 
-(def ^:private evaluation-functions {:default tests/default-test
-                                     :even    tests/is-even?
-                                     :odd     tests/is-odd?
-                                     :empty   tests/is-empty?
-                                     :equals  tests/is-equal?
-                                     :greater tests/is-gt?
-                                     :lower tests/is-lt?
+(def ^:private evaluation-functions {:default          tests/default-test
+                                     :even             tests/is-even?
+                                     :odd              tests/is-odd?
+                                     :empty            tests/is-empty?
+                                     :seq              tests/is-seq?
+                                     :equals           tests/is-equal?
+                                     :greater          tests/is-gt?
+                                     :lower            tests/is-lt?
                                      :greater-or-equal tests/is-ge?
-                                     :lower-or-equal tests/is-le?
+                                     :lower-or-equal   tests/is-le?
                                      })
 
 (defn- create-filter-fn [{:keys [filter-name args]} filter-map]

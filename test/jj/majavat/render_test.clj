@@ -12,7 +12,6 @@
     [jj.majavat.renderer :refer [->InputStreamRenderer ->PartialRenderer ->StringRenderer]]
     [jj.majavat.protocol.renderer.render-target :as renderer]
     [jj.majavat.renderer.sanitizer :refer [->Html ->None]]
-    [jj.majavat.renderer.tests :as tests]
     [jj.majavat.resolver.fs :as fcr]
     [jj.majavat.resolver.resource :as rcr]
     [jj.majavat.error-handler.fail-fast :as fail-fast]
@@ -664,6 +663,23 @@ this is a  footer"
        )
     "odd" "if/if-is-even-else" {:value 1}
     "even" "if/if-is-even-else" {:value 2}))
+
+(deftest if-is-seq-test
+  (are [expected template-path context]
+    (= expected
+       (renderer/render (->StringRenderer)
+                        (parse template-path contentResolver empty-fn-map empty-sanitizers-map)
+                        context
+                        default-error-handler))
+    "yes" "if/if-is-seq" {:value '(1 2 3)}
+    "yes" "if/if-is-seq" {:value (range 3)}
+    "yes" "if/if-is-seq" {:value '()}
+    "no" "if/if-is-seq" {:value [1 2 3]}
+    "no" "if/if-is-seq" {:value {:a 1}}
+    "no" "if/if-is-seq" {:value #{:a}}
+    "no" "if/if-is-seq" {:value "string"}
+    "no" "if/if-is-seq" {:value 1}
+    "no" "if/if-is-seq" {}))
 
 (deftest if-comparison-operators-test
   (are [expected template-path context]

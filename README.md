@@ -214,10 +214,11 @@ or with tests
 
 Available `is` tests:
 
-| test name | args | example                |
-|-----------|------|------------------------|
-| even      | -    | {% if value is even %} |
-| odd       | -    | {% if value is odd %}  |
+| test name | args | example                    |
+|-----------|------|----------------------------|
+| even      | -    | {% if value is even %}     |
+| odd       | -    | {% if value is odd %}      |
+| seq       | -    | {% if value is seq %}      |
 
 #### Comparison operators
 

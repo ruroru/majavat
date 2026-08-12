@@ -42,6 +42,31 @@
                2
                4))
 
+(deftest is-seq-returns-true
+  (are [input] (= true (tests/is-seq? input))
+               '()
+               '(1 2 3)
+               (range 3)
+               (map inc [1 2 3])
+               (seq [1 2 3])))
+
+(deftest is-seq-returns-false
+  (are [input] (= false (tests/is-seq? input))
+               nil
+               ""
+               "string"
+               :keyword
+               true
+               false
+               0
+               1
+               []
+               [1 2 3]
+               {}
+               {:a 1}
+               #{}
+               #{:a}))
+
 (deftest is-empty-returns-true
   (are [input] (= true (tests/is-empty? input))
                nil
