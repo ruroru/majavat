@@ -8,7 +8,7 @@
     (catch Exception _ nil)))
 
 (defn- append-string [sb ^String s]
-  (sb/append sb \")
+  (sb/append-char sb \")
   (let [len (.length s)]
     (loop [i 0]
       (when (< i len)
@@ -23,9 +23,9 @@
             \tab       (sb/append sb "\\t")
             (if (< (int c) 32)
               (sb/append sb (format "\\u%04x" (int c)))
-              (sb/append sb c)))
+              (sb/append-char sb c)))
           (recur (inc i))))))
-  (sb/append sb \"))
+  (sb/append-char sb \"))
 
 (defn- key->str ^String [k]
   (cond

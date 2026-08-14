@@ -39,7 +39,7 @@
           \> (sb/append sb "&gt;")
           \" (sb/append sb "&quot;")
           \' (sb/append sb "&apos;")
-          (sb/append sb c))
+          (sb/append-char sb c))
         (recur (inc i)))
       sb)))
 
@@ -94,7 +94,7 @@
           \tab (sb/append sb "\\t")
           (if (< (int c) 32)
             (sb/append sb (unicode-escape (int c)))
-            (sb/append sb c)))
+            (sb/append-char sb c)))
         (recur (inc i)))
       sb)))
 

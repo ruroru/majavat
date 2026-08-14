@@ -3,8 +3,7 @@
             [jj.majavat.protocol.error-handler :as error]
             [jj.majavat.protocol.renderer.render-target :as render-target]
             [jj.majavat.string-builder :as sb])
-  (:import (clojure.lang IReduceInit)
-           (java.nio.charset Charset StandardCharsets)
+  (:import (java.nio.charset Charset StandardCharsets)
            (java.util ArrayList)
            (jj.majavat.stream SequentialByteArrayInputStream)))
 
@@ -35,90 +34,142 @@
           (pprint/pprint (dissoc context target)))
         (pprint/pprint context)))))
 
-(defn- reduce-nodes
-  [rf acc nodes context]
-  (reduce
-    (fn [acc node]
-      (case (node :type)
-        :text
-        (rf acc (node :value ""))
+(defn- assignment-context
+  [node context]
+  (assoc context (node :variable-name) ((node :variable-value) context)))
 
-        :value-node
-        (rf acc (node :render-fn) context)
+(defn- declaration-context
+  [node context]
+  (assoc context (node :variable-name) (node :variable-value)))
 
-        :variable-assignment
-        (reduce-nodes rf acc (node :body)
-                      (assoc context (node :variable-name)
-                                     ((node :variable-value) context)))
+(defn- branch-body
+  [node context]
+  (or (reduce
+        (fn [_ [condition body]]
+          (when (evaluate-condition condition context)
+            (reduced body)))
+        nil
+        (node :branches))
+      (node :else)))
 
-        :variable-declaration
-        (reduce-nodes rf acc (node :body)
-                      (assoc context (node :variable-name) (node :variable-value)))
+(declare render-nodes)
 
-        :for
-        (let [body (node :body)
-              identifier (node :identifier)
-              items ((node :source) context)]
-          (if (seq items)
-            (let [item-count (count items)]
-              (loop [i 0
-                     remaining (seq items)
-                     acc acc]
-                (if remaining
-                  (let [loop-context (get-loop-context context i item-count)
-                        new-context (assoc loop-context identifier (first remaining))]
-                    (recur (inc i) (next remaining)
-                           (reduce-nodes rf acc body new-context)))
-                  acc)))
-            (if-let [when-empty (node :when-empty)]
-              (reduce-nodes rf acc when-empty context)
-              acc)))
+(defn- render-for
+  [node context sb]
+  (let [items ((node :source) context)]
+    (if (seq items)
+      (let [body (node :body)
+            identifier (node :identifier)
+            item-count (count items)]
+        (loop [i 0
+               remaining (seq items)]
+          (when remaining
+            (let [loop-context (get-loop-context context i item-count)]
+              (render-nodes body (assoc loop-context identifier (first remaining)) sb)
+              (recur (inc i) (next remaining))))))
+      (when-let [when-empty (node :when-empty)]
+        (render-nodes when-empty context sb)))))
 
-        :each
-        (let [body (node :body)
-              identifier (node :identifier)
-              items ((node :source) context)]
-          (if (seq items)
-            (loop [remaining (seq items)
-                   acc acc]
-              (if remaining
-                (recur (next remaining)
-                       (reduce-nodes rf acc body (assoc context identifier (first remaining))))
-                acc))
-            (if-let [when-empty (node :when-empty)]
-              (reduce-nodes rf acc when-empty context)
-              acc)))
+(defn- render-each
+  [node context sb]
+  (let [items ((node :source) context)]
+    (if (seq items)
+      (let [body (node :body)
+            identifier (node :identifier)]
+        (loop [remaining (seq items)]
+          (when remaining
+            (render-nodes body (assoc context identifier (first remaining)) sb)
+            (recur (next remaining)))))
+      (when-let [when-empty (node :when-empty)]
+        (render-nodes when-empty context sb)))))
 
-        :if
-        (let [matched (reduce
-                        (fn [_ [condition body]]
-                          (when (evaluate-condition condition context)
-                            (reduced {:body body})))
-                        nil
-                        (node :branches))]
-          (cond
-            matched (reduce-nodes rf acc (:body matched) context)
-            (seq (node :else)) (reduce-nodes rf acc (node :else) context)
-            :else acc))
+(defn- render-translation
+  [node context sb]
+  (when-let [translated ((node :trans-fn) (get context :locale))]
+    (sb/append sb (->str translated))))
 
-        :translation
-        (let [result ((node :trans-fn) (get context :locale))]
-          (if result
-            (rf acc (->str result))
-            acc))
+(defn- render-nodes
+  [nodes context sb]
+  (let [node-count (count nodes)]
+    (loop [n 0]
+      (if (< n node-count)
+        (let [node (nth nodes n)]
+          (case (node :type)
+            :text                 (sb/append sb (node :value ""))
+            :value-node           ((node :render-fn) context sb nil)
+            :variable-assignment  (render-nodes (node :body) (assignment-context node context) sb)
+            :variable-declaration (render-nodes (node :body) (declaration-context node context) sb)
+            :for                  (render-for node context sb)
+            :each                 (render-each node context sb)
+            :if                   (render-nodes (branch-body node context) context sb)
+            :translation          (render-translation node context sb)
+            :debug                (debug-output node context)
+            nil)
+          (recur (inc n)))
+        sb))))
 
-        :debug
-        (do (debug-output node context) acc)
+(defn- add-bytes
+  [^ArrayList result ^String s ^Charset charset]
+  (when (pos? (.length s))
+    (.add result (.getBytes s charset))))
 
-        acc))
-    acc
-    nodes))
+(declare render-nodes-to-bytes)
 
-(defn- template-reducible
-  [nodes context]
-  (reify IReduceInit
-    (reduce [_ rf init]
-      (reduce-nodes rf init nodes context))))
+(defn- for-bytes
+  [node context ^Charset charset ^ArrayList result]
+  (let [items ((node :source) context)]
+    (if (seq items)
+      (let [body (node :body)
+            identifier (node :identifier)
+            item-count (count items)]
+        (loop [i 0
+               remaining (seq items)]
+          (when remaining
+            (let [loop-context (get-loop-context context i item-count)]
+              (render-nodes-to-bytes body (assoc loop-context identifier (first remaining))
+                                     charset result)
+              (recur (inc i) (next remaining))))))
+      (when-let [when-empty (node :when-empty)]
+        (render-nodes-to-bytes when-empty context charset result)))))
+
+(defn- each-bytes
+  [node context ^Charset charset ^ArrayList result]
+  (let [items ((node :source) context)]
+    (if (seq items)
+      (let [body (node :body)
+            identifier (node :identifier)]
+        (loop [remaining (seq items)]
+          (when remaining
+            (render-nodes-to-bytes body (assoc context identifier (first remaining))
+                                   charset result)
+            (recur (next remaining)))))
+      (when-let [when-empty (node :when-empty)]
+        (render-nodes-to-bytes when-empty context charset result)))))
+
+(defn- translation-bytes
+  [node context ^Charset charset ^ArrayList result]
+  (when-let [translated ((node :trans-fn) (get context :locale))]
+    (add-bytes result (->str translated) charset)))
+
+(defn- render-nodes-to-bytes
+  [nodes context ^Charset charset ^ArrayList result]
+  (let [node-count (count nodes)]
+    (loop [n 0]
+      (if (< n node-count)
+        (let [node (nth nodes n)]
+          (case (node :type)
+            :text                 (add-bytes result (node :value "") charset)
+            :value-node           (add-bytes result ((node :render-fn) context) charset)
+            :variable-assignment  (render-nodes-to-bytes (node :body) (assignment-context node context) charset result)
+            :variable-declaration (render-nodes-to-bytes (node :body) (declaration-context node context) charset result)
+            :for                  (for-bytes node context charset result)
+            :each                 (each-bytes node context charset result)
+            :if                   (render-nodes-to-bytes (branch-body node context) context charset result)
+            :translation          (translation-bytes node context charset result)
+            :debug                (debug-output node context)
+            nil)
+          (recur (inc n)))
+        result))))
 
 (defn- partial-render-nodes [nodes context]
   (reduce
@@ -267,34 +318,16 @@
   render-target/RenderTarget
   (render [this template context error-handler]
     (if-not (map? template)
-      (transduce identity
-                 (fn
-                   ([sb] (sb/build sb))
-                   ([sb ^String s] (sb/append sb s))
-                   ([sb render-fn context] (render-fn context sb nil)))
-                 (sb/create-string-builder)
-                 (template-reducible template context))
+      (sb/build (render-nodes template context (sb/create-string-builder)))
       (error/handle-error error-handler this template))))
 
 (defrecord InputStreamRenderer []
   render-target/RenderTarget
   (render [this template context error-handler]
     (if-not (map? template)
-      (let [^Charset charset StandardCharsets/UTF_8]
-        (transduce identity
-                   (fn
-                     ([^ArrayList al] (SequentialByteArrayInputStream. al))
-                     ([^ArrayList al ^String s]
-                      (when (pos? (.length s))
-                        (.add al (.getBytes s charset)))
-                      al)
-                     ([^ArrayList al render-fn context]
-                      (let [^String s (render-fn context)]
-                        (when (pos? (.length s))
-                          (.add al (.getBytes s charset)))
-                        al)))
-                   (ArrayList. (count template))
-                   (template-reducible template context)))
+      (SequentialByteArrayInputStream.
+        (render-nodes-to-bytes template context StandardCharsets/UTF_8
+                               (ArrayList. (count template))))
       (error/handle-error error-handler this template))))
 
 (defrecord PartialRenderer []

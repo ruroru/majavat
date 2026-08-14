@@ -19,12 +19,12 @@
           (let [c (aget char-array index)]
             (if (or (Character/isWhitespace c) (= c \-))
               (do
-                (sb/append sb c)
+                (sb/append-char sb c)
                 (recur (inc index) true))
               (do
                 (if new-word?
-                  (sb/append sb (Character/toUpperCase c))
-                  (sb/append sb (Character/toLowerCase c)))
+                  (sb/append-char sb (Character/toUpperCase c))
+                  (sb/append-char sb (Character/toLowerCase c)))
                 (recur (inc index) false))))
           (sb/build sb))))))
 

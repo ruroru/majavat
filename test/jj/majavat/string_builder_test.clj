@@ -13,9 +13,18 @@
 
 (deftest append-char
   (let [b (sb/create-string-builder)]
-    (sb/append b \a)
-    (sb/append b \b)
+    (sb/append-char b \a)
+    (sb/append-char b \b)
     (is (= "ab" (sb/build b)))))
+
+(deftest append-primitive-char
+  (testing "append-char takes a primitive char local, which append cannot"
+    (let [^String s "xy"
+          b (sb/create-string-builder)]
+      (sb/append-char b (.charAt s 0))
+      (let [c (.charAt s 1)]
+        (sb/append-char b c))
+      (is (= "xy" (sb/build b))))))
 
 (deftest append-returns-builder
   (testing "append returns the builder so calls can be threaded"

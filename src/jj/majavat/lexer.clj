@@ -25,7 +25,7 @@
                                (+ close 2)
                                (inc close))]
                   (recur next-i (sb/create-string-builder) (conj result (keyword content))))
-                (recur (inc i) (sb/append current c) result)))
+                (recur (inc i) (sb/append-char current c) result)))
 
             (= c \.)
             (let [remaining (sb/build current)]
@@ -34,7 +34,7 @@
                 (recur (inc i) (sb/create-string-builder) (conj result (keyword remaining)))))
 
             :else
-            (recur (inc i) (sb/append current c) result)))))))
+            (recur (inc i) (sb/append-char current c) result)))))))
 
 (defn- parse-let-assignment [assignment-string]
   (let [trimmed (string/trim assignment-string)
