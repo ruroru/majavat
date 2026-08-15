@@ -3,7 +3,7 @@
     [clojure.tools.logging :as logger]
     [jj.majavat.error-handler.reporting :as reporting]
     [jj.majavat.protocol.builder :as builder]
-    [jj.majavat.renderer :refer [->StringRenderer]]
+    [jj.majavat.renderer :refer [string-renderer]]
     [jj.majavat.renderer.json :as json]
     [jj.majavat.renderer.sanitizer :as sanitizer]
     [jj.majavat.protocol.builder :as builder]
@@ -32,7 +32,7 @@
                          (assoc :fragment (:fragment opts)))
 
          renderer (or (:renderer opts)
-                      (->StringRenderer))
+                      (string-renderer))
 
          cache? (get opts :cache? true)
          pre-render-context (if (map? (get opts :pre-render {}))

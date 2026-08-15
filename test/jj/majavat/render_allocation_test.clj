@@ -13,11 +13,14 @@
    render rather than per row, a per-row differential would cancel it out, so we
    assert on the absolute bytes allocated for a fixed template.
 
-   On the reference JVM the healthy render allocates ~7.5 KB; the reflective
-   regression pushed it to ~14.3 KB. The budget is set just above the healthy
-   figure (small headroom for JVM/GC version drift) so it trips early. If a
-   future JVM shifts the healthy baseline, re-run with the value printed below
-   and adjust."
+   On the reference JVM the healthy render allocates ~4.2 KB. When this guard
+   was written that figure was ~7.5 KB and the reflective regression pushed it
+   to ~14.3 KB; the baseline has since come down because the renderers size
+   their output buffer from the last render rather than growing into it. The
+   budget is set just above the healthy figure (small headroom for JVM/GC
+   version drift) so it trips early -- keep it tight when the baseline moves,
+   or it stops catching the regression it exists for. If a future JVM shifts
+   the healthy baseline, re-run with the value printed below and adjust."
   (:require [clojure.test :refer [deftest is]]
             [jj.majavat :as majavat]
             [jj.majavat.renderer.sanitizer :as san])
@@ -65,9 +68,9 @@
     {:id 9  :message "Feature: A bug with seniority."}
     {:id 1  :message "fortune: No such file or directory"}]})
 
-;; Healthy baseline is ~7.4 KB; kept tight to catch a reflective-append
-;; regression (~14.3 KB) early, with a small headroom for JVM/GC drift.
-(def ^:private budget-bytes 7500.0)
+;; Healthy baseline is ~4184 bytes, identical across fresh JVMs; kept tight to
+;; catch a reflective-append regression early, with headroom for JVM/GC drift.
+(def ^:private budget-bytes 4400.0)
 
 (deftest render-allocation-within-budget
   (if-not (allocation-supported?)

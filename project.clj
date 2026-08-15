@@ -17,9 +17,6 @@
                          :resource-paths ["benchmark/resources"]
                          :dependencies   [[selmer "1.13.5"]
                                           [hiccup "2.0.0"]]}
-             ;; Allocation measurement: EpsilonGC never collects, so heap
-             ;; growth is exactly total allocation. Capacity runs end in OOM
-             ;; by design; ExitOnOutOfMemoryError makes that a clean exit.
              :gc-load   {:source-paths   ["benchmark/src"]
                          :resource-paths ["benchmark/resources"]
                          :dependencies   [[selmer "1.13.5"]
@@ -28,10 +25,6 @@
                                           "-XX:+UnlockExperimentalVMOptions"
                                           "-XX:+UseEpsilonGC"
                                           "-XX:+ExitOnOutOfMemoryError"]}
-             ;; Real collector: measures actual GC work rather than inferring
-             ;; it from allocation volume. Deliberately no :jvm-opts - heap and
-             ;; collector come from the JVM_OPTS env var set by gc-load.ps1,
-             ;; and a :jvm-opts here would silently override it.
              :gc-time   {:source-paths   ["benchmark/src"]
                          :resource-paths ["benchmark/resources"]
                          :dependencies   [[selmer "1.13.5"]

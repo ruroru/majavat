@@ -6,7 +6,7 @@
             [jj.majavat :as majavat]
             [jj.majavat.parser :as parser]
             [jj.majavat.protocol.builder :refer [Builder]]
-            [jj.majavat.renderer :refer [->InputStreamRenderer ->StringRenderer]]
+            [jj.majavat.renderer :refer [input-stream-renderer string-renderer]]
             [jj.majavat.protocol.renderer.sanitizer :as sanitizer]
             [jj.majavat.renderer.sanitizer :refer [->Html]]
             [jj.majavat.resolver.fs :refer [->FsResolver]]
@@ -76,8 +76,8 @@
    :params          (sorted-map :page 1 :q "hello world")})
 
 (def ^:private renderer-axis
-  [{:label "StringRenderer" :opts {:renderer (->StringRenderer)}}
-   {:label "InputStreamRenderer" :opts {:renderer (->InputStreamRenderer)}}])
+  [{:label "StringRenderer" :opts {:renderer (string-renderer)}}
+   {:label "InputStreamRenderer" :opts {:renderer (input-stream-renderer)}}])
 
 (def ^:private cache-axis
   [{:label "cached" :opts {}}

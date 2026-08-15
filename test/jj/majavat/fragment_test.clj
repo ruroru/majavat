@@ -1,7 +1,7 @@
 (ns jj.majavat.fragment-test
   (:require [clojure.test :refer [deftest is]]
             [jj.majavat.parser :as parser]
-            [jj.majavat.renderer :refer [->StringRenderer]]
+            [jj.majavat.renderer :refer [string-renderer]]
             [jj.majavat.renderer.sanitizer :refer [->None]]
             [jj.majavat.renderer.json :refer [->DefaultJsonSerializer]]
             [jj.majavat.protocol.mock-dictionary :refer [create-mock-dictionary]]
@@ -21,7 +21,7 @@
   (build-file "fragment/page.html" fragment))
 
 (defn- render [template context]
-  (rt/render (->StringRenderer) template context (fail-fast/->FailFast)))
+  (rt/render (string-renderer) template context (fail-fast/->FailFast)))
 
 (deftest whole-page-splices-fragment-body-inline
   (is (= "<html><li>Bob</li><footer>bye</footer></html>"

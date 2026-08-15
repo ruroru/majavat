@@ -314,21 +314,46 @@
     []
     nodes))
 
-(defrecord StringRenderer []
+(def default-capacity 128)
+
+(def default-chunk-capacity
+
+  16)
+
+(def max-capacity
+  (* 1024 1024))
+
+(deftype StringRenderer [^:volatile-mutable ^long capacity]
   render-target/RenderTarget
   (render [this template context error-handler]
     (if-not (map? template)
-      (sb/build (render-nodes template context (sb/create-string-builder)))
+      (let [^String s (sb/build (render-nodes template context
+                                              (sb/create-string-builder capacity)))
+            len (.length s)]
+        (when (> len capacity)
+          (set! capacity (min len (long max-capacity))))
+        s)
       (error/handle-error error-handler this template))))
 
-(defrecord InputStreamRenderer []
+(defn string-renderer
+  ([] (string-renderer default-capacity))
+  ([capacity] (->StringRenderer (long capacity))))
+
+(deftype InputStreamRenderer [^:volatile-mutable ^long capacity]
   render-target/RenderTarget
   (render [this template context error-handler]
     (if-not (map? template)
-      (SequentialByteArrayInputStream.
-        (render-nodes-to-bytes template context StandardCharsets/UTF_8
-                               (ArrayList. (count template))))
+      (let [^ArrayList result (render-nodes-to-bytes template context StandardCharsets/UTF_8
+                                                     (ArrayList. (int capacity)))
+            size (.size result)]
+        (when (> size capacity)
+          (set! capacity (min size (long max-capacity))))
+        (SequentialByteArrayInputStream. result))
       (error/handle-error error-handler this template))))
+
+(defn input-stream-renderer
+  ([] (input-stream-renderer default-chunk-capacity))
+  ([capacity] (->InputStreamRenderer (long capacity))))
 
 (defrecord PartialRenderer []
   render-target/RenderTarget
