@@ -11,7 +11,7 @@
                                     :username :env/clojars_user
                                     :password :env/clojars_pass}]]
   :java-source-paths ["java-src"]
-  :javac-options ["--release" "11"]
+  :javac-options ["--release" "17"]
 
   :profiles {:benchmark {:source-paths   ["benchmark/src"]
                          :resource-paths ["benchmark/resources"]
