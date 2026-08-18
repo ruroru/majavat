@@ -83,11 +83,6 @@
       (when-let [when-empty (node :when-empty)]
         (render-nodes when-empty context sb)))))
 
-(defn- render-translation
-  [node context sb]
-  (when-let [translated ((node :trans-fn) (get context :locale))]
-    (sb/append sb (->str translated))))
-
 (defn- render-nodes
   [nodes context sb]
   (let [node-count (count nodes)]
@@ -102,7 +97,6 @@
             :for                  (render-for node context sb)
             :each                 (render-each node context sb)
             :if                   (render-nodes (branch-body node context) context sb)
-            :translation          (render-translation node context sb)
             :debug                (debug-output node context)
             nil)
           (recur (inc n)))
@@ -146,11 +140,6 @@
       (when-let [when-empty (node :when-empty)]
         (render-nodes-to-bytes when-empty context charset result)))))
 
-(defn- translation-bytes
-  [node context ^Charset charset ^ArrayList result]
-  (when-let [translated ((node :trans-fn) (get context :locale))]
-    (add-bytes result (->str translated) charset)))
-
 (defn- render-nodes-to-bytes
   [nodes context ^Charset charset ^ArrayList result]
   (let [node-count (count nodes)]
@@ -165,7 +154,6 @@
             :for                  (for-bytes node context charset result)
             :each                 (each-bytes node context charset result)
             :if                   (render-nodes-to-bytes (branch-body node context) context charset result)
-            :translation          (translation-bytes node context charset result)
             :debug                (debug-output node context)
             nil)
           (recur (inc n)))
@@ -277,13 +265,6 @@
                                           [condition (partial-render-nodes body context)])
                                         branches)
                         :else (partial-render-nodes else-body context)))))
-
-        :translation
-        (let [trans-fn (node :trans-fn)
-              locale (get context :locale)]
-          (if-let [translated (trans-fn locale)]
-            (conj acc {:type :text :value (->str translated)})
-            (conj acc node)))
 
         :debug
         (do

@@ -505,14 +505,23 @@
 
 (deftest trans-test
   (let [mock-dictionary (create-mock-dictionary)
-        input-file "trans/trans"
-        result (parse input-file (rcr/->ResourceResolver) empty-fn-map empty-sanitizers-map mock-dictionary)
-        trans-fn (:trans-fn (first result))]
+        result (parse "trans/trans" (rcr/->ResourceResolver) empty-fn-map empty-sanitizers-map mock-dictionary)]
+    (is (= [{:type :macro-call :name :trans :args [[:hello]] :line 1}]
+           result))))
 
-    (is (= 1 (count result)))
-    (is (fn? trans-fn))
-    (is (= "hei" (trans-fn "fi")))
-    (is (= "hello" (trans-fn "en")))))
+
+(deftest bare-tag-without-arguments-is-error
+  (are [expected-ast input-file]
+    (= expected-ast (parse input-file (rcr/->ResourceResolver) empty-fn-map empty-sanitizers-map))
+    {:error-message "unknown tag or macro 'trans' on line 1"
+     :line          "1"
+     :type          "syntax-error"}
+    "trans/trans-old-syntax"
+
+    {:error-message "unknown tag or macro 'foo' on line 2"
+     :line          "2"
+     :type          "syntax-error"}
+    "unknown-tag"))
 
 
 (deftest if-is-equals-string

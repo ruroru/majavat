@@ -228,6 +228,12 @@
             (= (:type (peek stack)) :macro-name)
             (recur (rrest my-sequence) "" (conj stack {:type :block-end :line line-number}) new-line-number)
 
+            (and (= (:type (peek stack)) :block-start) (not (string/blank? trimmed-string)))
+            (recur (rrest my-sequence) "" (conj stack {:type  :unknown-tag
+                                                       :value (keyword (first (string/split trimmed-string #"\s+")))
+                                                       :line  line-number}
+                                                {:type :block-end :line line-number}) new-line-number)
+
             :else
             (recur (rrest my-sequence) "" (conj stack {:type :block-end :line line-number}) new-line-number)))
 
@@ -459,25 +465,12 @@
           (= (string/trim current-string) "macro")
           (recur (rest my-sequence) "" (conj stack {:type :keyword-macro}) new-line-number)
 
-          (= (string/trim current-string) "trans")
-          (recur (rest my-sequence) (str "" current-char) (conj stack {:type :token/translation}) new-line-number)
-
           (and (= current-char \() (not (string/blank? (string/trim current-string))))
           (recur (rest my-sequence) "" (conj stack {:type :macro-call :value (keyword (string/trim current-string)) :line line-number}
                                               {:type :open-paren :kind :macro}) new-line-number)
 
           :else
           (recur (rest my-sequence) (str current-string current-char) stack new-line-number)))
-
-        (= (:type (peek stack)) :token/translation)
-        (if (= next-char \%)
-          (let [trimmed (string/trim current-string)]
-            (if (string/blank? trimmed)
-              (recur (rest my-sequence) "" stack new-line-number)
-              (recur (rest my-sequence) "" (conj stack {:type  :token/translation-key
-                                                         :value (keyword trimmed)})
-                     new-line-number)))
-          (recur (rest my-sequence) (str current-string current-char) stack new-line-number))
 
         (= (:type (peek stack)) :token/debug)
         (if (= next-char \%)

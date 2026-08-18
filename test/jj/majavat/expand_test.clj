@@ -60,6 +60,36 @@
     (is (= "1" (:line result)))))
 
 
+(deftest trans-expands-to-value-node
+  (are [input-file] (= [{:type :value-node}]
+                       (expand input-file (rcr/->ResourceResolver) empty-fn-map empty-sanitizers-map))
+    "trans/trans"
+    "trans/trans-quoted-key"))
+
+
+(deftest trans-value-node-translates-key-for-context-locale
+  (are [input-file] (let [result    (expand-raw input-file (rcr/->ResourceResolver) empty-fn-map empty-sanitizers-map)
+                          render-fn (:render-fn (first result))]
+                      (and (= "hello" (render-fn {:locale "en"}))
+                           (= "hei" (render-fn {:locale "fi"}))))
+    "trans/trans"
+    "trans/trans-quoted-key"))
+
+
+(deftest trans-without-translation-renders-nothing
+  (are [input-file dictionary] (let [result    (expand-raw input-file (rcr/->ResourceResolver) empty-fn-map empty-sanitizers-map dictionary)
+                                     render-fn (:render-fn (first result))]
+                                 (= "" (render-fn {:locale "en"})))
+    "trans/trans-unknown-key" default-dictionary
+    "trans/trans" nil))
+
+
+(deftest trans-without-key-is-error
+  (let [result (expand "trans/trans-no-args" (rcr/->ResourceResolver) empty-fn-map empty-sanitizers-map)]
+    (is (= "syntax-error" (:type result)))
+    (is (= "1" (:line result)))))
+
+
 (deftest macro
   (let [expected-ast [{:type :text :value "bar"}
                       {:type :value-node}

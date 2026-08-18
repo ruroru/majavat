@@ -439,26 +439,12 @@ Available values:
 
 or ones provided under `:environment :sanitizers`
 
-#### Translation
-
-The `trans` tag translates a key using the configured [`Dictionary`](#dictionary). The language is determined by the
-`:locale` key in the context.
-
-```
-{% trans hello %}
-```
-
-```clojure
-(def render-fn (build-renderer "input-file" {:environment {:dictionary my-dictionary}}))
-
-(render-fn {:locale "fi"}) ;; returns the Finnish translation for :hello
-(render-fn {:locale "en"}) ;; returns the English translation for :hello
-```
-
 #### Macros
 
 Every macro — whether built-in or user-defined — is called with parenthesised,
-comma-separated arguments: `{% name(arg1, arg2) %}`.
+comma-separated arguments: `{% name(arg1, arg2) %}`. A block tag that is neither
+a known keyword nor a macro call is a syntax error, so `{% name arg %}` is
+rejected rather than silently dropped.
 
 ##### Built-in macros
 
@@ -507,6 +493,26 @@ formatted with tz {% now("yyyy-MM-dd HH:mm", "Asia/Tokyo") %}
 (def render-fn (build-renderer "input-file"))
 
 (render-fn {}) ;; e.g. "default format 2011/11/11 11:11\nformatted 2011-11-11\nformatted with tz 2011-11-11 23:11"
+```
+
+###### trans
+
+Translates a key using the configured [`Dictionary`](#dictionary). The language
+is the `:locale` key of the context. The argument is the key itself, not a
+context lookup, and may be written bare or quoted — `{% trans(hello) %}` and
+`{% trans("hello") %}` both ask the dictionary for `:hello`. A key without a
+translation renders nothing. To translate a value from the context instead, use
+the [`trans` filter](#built-in-filters): `{{ key | trans }}`.
+
+```
+{% trans(hello) %}
+```
+
+```clojure
+(def render-fn (build-renderer "input-file" {:environment {:dictionary my-dictionary}}))
+
+(render-fn {:locale "fi"}) ;; returns the Finnish translation for :hello
+(render-fn {:locale "en"}) ;; returns the English translation for :hello
 ```
 
 ##### Defining macros
@@ -656,8 +662,8 @@ Check if template exists at a path.
 
 ## Dictionary
 
-The `Dictionary` protocol provides translation support for templates via the `{% trans %}` tag. The locale is read from
-the `:locale` key in the rendering context.
+The `Dictionary` protocol provides translation support for templates via the [`trans` macro](#trans) and the `trans`
+filter. The locale is read from the `:locale` key in the rendering context.
 
 ### Protocol Methods
 

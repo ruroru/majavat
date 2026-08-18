@@ -549,10 +549,19 @@
 
 (deftest trans-test
   (is (= [{:type :block-start}
-          {:type :token/translation}
-          {:type :token/translation-key :value :key}
+          {:type :macro-call :value :trans :line 1}
+          {:type :open-paren :kind :macro}
+          {:type :macro-arg :value [:key]}
+          {:type :close-paren :kind :macro}
           {:line 1 :type :block-end}]
-         (lexer/tokenize "{% trans key %}"))))
+         (lexer/tokenize "{% trans(key) %}")))
+  (is (= [{:type :block-start}
+          {:type :macro-call :value :trans :line 1}
+          {:type :open-paren :kind :macro}
+          {:type :macro-arg :value "key"}
+          {:type :close-paren :kind :macro}
+          {:line 1 :type :block-end}]
+         (lexer/tokenize "{% trans(\"key\") %}"))))
 
 
 (deftest if-equals-string
