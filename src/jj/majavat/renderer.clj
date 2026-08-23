@@ -316,9 +316,9 @@
         s)
       (error/handle-error error-handler this template))))
 
-(defn string-renderer
-  ([] (string-renderer default-capacity))
-  ([capacity] (->StringRenderer (long capacity))))
+(defn ->StringRenderer
+  ([] (->StringRenderer default-capacity))
+  ([capacity] (StringRenderer. (long capacity))))
 
 (deftype InputStreamRenderer [^:volatile-mutable ^long capacity]
   render-target/RenderTarget
@@ -332,9 +332,9 @@
         (SequentialByteArrayInputStream. result))
       (error/handle-error error-handler this template))))
 
-(defn input-stream-renderer
-  ([] (input-stream-renderer default-chunk-capacity))
-  ([capacity] (->InputStreamRenderer (long capacity))))
+(defn ->InputStreamRenderer
+  ([] (->InputStreamRenderer default-chunk-capacity))
+  ([capacity] (InputStreamRenderer. (long capacity))))
 
 (defrecord PartialRenderer []
   render-target/RenderTarget
