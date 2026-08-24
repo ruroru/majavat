@@ -7,13 +7,14 @@
             [jj.majavat.renderer.sanitizer :as sanitizer]
             [jj.majavat.string-builder :as sb]
             [jj.majavat.protocol.json :as json-protocol]
+            [jj.majavat.protocol.yaml :as yaml-protocol]
             [jj.majavat.protocol.renderer.sanitizer :refer [sanitize]]
             [jj.majavat.protocol.resolver :as resolver]
             [jj.majavat.protocol.dictionary :as dictionary])
   (:import (clojure.lang ExceptionInfo)
            (java.nio.file Paths)))
 
-(defn create-filter-map [dictionary json-serializer]
+(defn create-filter-map [dictionary json-serializer yaml-serializer]
   {:trim             filters/trim-string
    :upper-case       filters/upper-case-string
    :lower-case       filters/lower-case-string
@@ -37,6 +38,7 @@
    :date             filters/handle-date
    :where            filters/->handle-where
    :first            filters/get-first
+   :last             filters/get-last
    :rest             filters/get-rest
    :join             filters/join-seq
    :length           filters/get-length
@@ -45,6 +47,9 @@
    :truncate         filters/truncate-string
    :json             (fn [v & args]
                        (json-protocol/to-json json-serializer v
+                                              (when (seq args) {:indent (first args)})))
+   :yaml             (fn [v & args]
+                       (yaml-protocol/to-yaml yaml-serializer v
                                               (when (seq args) {:indent (first args)})))
    :str              filters/handle-str
    :quote            filters/quote-value
@@ -989,11 +994,11 @@
          (recur (rest lexed-list) list current-block parsing-for-body current-file-path template-resolver filter-map merged-sanitizers tag-stack macros current-sanitizer macro-param))))))
 
 (defn parse
-  ([resource-path template-resolver user-filters user-sanitizers dictionary current-sanitizer json-serializer]
+  ([resource-path template-resolver user-filters user-sanitizers dictionary current-sanitizer json-serializer yaml-serializer]
    (if (resolver/template-exists? template-resolver resource-path)
      (let [file-content (resolver/read-template template-resolver resource-path)
            lexed-value (lexer/tokenize file-content)
-           filter-map (merge (create-filter-map dictionary json-serializer) user-filters)
+           filter-map (merge (create-filter-map dictionary json-serializer yaml-serializer) user-filters)
            merged-sanitizers (merge user-sanitizers sanitizers)
            macros (atom (builtin-macros dictionary))]
        (try
@@ -1020,7 +1025,7 @@
       :error-message (format "%s can not be found." resource-path)})))
 
 (defn parse-template
-  [resource-path template-resolver user-filters user-sanitizers dictionary current-sanitizer json-serializer fragment]
-  (-> (parse resource-path template-resolver user-filters user-sanitizers dictionary current-sanitizer json-serializer)
+  [resource-path template-resolver user-filters user-sanitizers dictionary current-sanitizer json-serializer yaml-serializer fragment]
+  (-> (parse resource-path template-resolver user-filters user-sanitizers dictionary current-sanitizer json-serializer yaml-serializer)
       expand-macros
       (select-fragment fragment)))

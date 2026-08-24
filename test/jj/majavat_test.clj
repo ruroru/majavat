@@ -240,6 +240,7 @@
         (is (= filters (get-in result [:environment :filters])))
         (is (= :sidebar (get-in result [:environment :fragment])))
         (is (some? (get-in result [:environment :json-serializer])))
+        (is (some? (get-in result [:environment :yaml-serializer])))
         (is (zero? (mock/call-count parser/parse))))))
 
   (testing ":builder takes precedence over cache?"

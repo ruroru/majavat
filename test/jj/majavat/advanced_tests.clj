@@ -6,6 +6,7 @@
             [jj.majavat.renderer.tests :as tests]
             [jj.majavat.renderer.sanitizer :refer [->None]]
             [jj.majavat.renderer.json :refer [->DefaultJsonSerializer]]
+            [jj.majavat.renderer.yaml :refer [->DefaultYamlSerializer]]
             [jj.majavat.protocol.mock-dictionary :refer [create-mock-dictionary]]
             [jj.majavat.resolver.resource :as rcr]))
 
@@ -15,11 +16,12 @@
 (def ^:private default-dictionary (create-mock-dictionary))
 (def ^:private default-sanitizer (->None))
 (def ^:private default-json-serializer (->DefaultJsonSerializer))
+(def ^:private default-yaml-serializer (->DefaultYamlSerializer))
 
 (defn- parse [& args]
   (let [result (apply parser/parse
                       (concat args (drop (- (count args) 4)
-                                         [default-dictionary default-sanitizer default-json-serializer])))]
+                                         [default-dictionary default-sanitizer default-json-serializer default-yaml-serializer])))]
     (walk/postwalk #(if (map? %) (dissoc % :render-fn) %)
                    (if (map? result) result (first result)))))
 

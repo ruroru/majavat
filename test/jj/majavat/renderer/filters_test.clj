@@ -248,6 +248,17 @@
                         {:a :b :c :d} [:a :b]
                         ))
 
+(deftest last-test
+  (are [input expected] (= expected (filters/get-last input))
+                        (list :a :b) :b
+                        [1 2 3] 3
+                        ["only"] "only"
+                        [] nil
+                        {:a :b :c :d} [:c :d]
+                        "not-a-seq" nil
+                        nil nil
+                        ))
+
 (deftest rest-test
   (are [input expected] (= expected (filters/get-rest input))
                         (list :a :b) (list :b)

@@ -298,6 +298,12 @@
           (map? v))
     (first v)))
 
+(defn get-last [v]
+  (when (or
+          (sequential? v)
+          (map? v))
+    (last v)))
+
 (defn get-rest [v]
 
   (cond

@@ -7,7 +7,9 @@
     [clojure.test :refer [are deftest is testing]]
     [jj.majavat.parser :as parser]
     [jj.majavat.renderer.json :refer [->DefaultJsonSerializer]]
+    [jj.majavat.renderer.yaml :refer [->DefaultYamlSerializer]]
     [jj.majavat.protocol.json :refer [Json]]
+    [jj.majavat.protocol.yaml :refer [Yaml]]
     [jj.majavat.protocol.mock-dictionary :refer [create-mock-dictionary]]
     [jj.majavat.renderer :refer [->PartialRenderer ->InputStreamRenderer ->StringRenderer]]
     [jj.majavat.protocol.renderer.render-target :as renderer]
@@ -34,12 +36,13 @@
 (def ^:private default-dictionary (create-mock-dictionary))
 (def ^:private default-sanitizer (->None))
 (def ^:private default-json-serializer (->DefaultJsonSerializer))
+(def ^:private default-yaml-serializer (->DefaultYamlSerializer))
 
 (defn- parse [& args]
   (parser/expand-macros
     (apply parser/parse
            (concat args (drop (- (count args) 4)
-                              [default-dictionary default-sanitizer default-json-serializer])))))
+                              [default-dictionary default-sanitizer default-json-serializer default-yaml-serializer])))))
 
 (def ^:private default-error-handler (fail-fast/->FailFast))
 (def ^:private reporting-error-handler (reporting/->Reporting))
@@ -237,11 +240,11 @@ this is a  footer"
   (are [expected-value template-path context]
     (= expected-value
        (renderer/render (->StringRenderer)
-                        (parse template-path contentResolver empty-fn-map empty-sanitizers-map default-dictionary (->Html) (->DefaultJsonSerializer))
+                        (parse template-path contentResolver empty-fn-map empty-sanitizers-map default-dictionary (->Html) (->DefaultJsonSerializer) (->DefaultYamlSerializer))
                         context
                         default-error-handler)
        (String. (.readAllBytes ^InputStream (renderer/render (->InputStreamRenderer)
-                                                             (parse template-path contentResolver empty-fn-map empty-sanitizers-map default-dictionary (->Html) (->DefaultJsonSerializer))
+                                                             (parse template-path contentResolver empty-fn-map empty-sanitizers-map default-dictionary (->Html) (->DefaultJsonSerializer) (->DefaultYamlSerializer))
                                                              context
                                                              default-error-handler))))
     "foo BAR1 BAZｲ" "filter/upper-case" {:value "BAR1 BaZｲ"}
@@ -291,6 +294,9 @@ this is a  footer"
     "foobar-baz-quaz" "filter/slugify" {:value "bar baz-Quaz"}
     "foo1, 2, 3" "filter/join" {:value [1 2 3]}
     "foo1, 2, 3" "filter/join-default" {:value [1 2 3]}
+    "foo3" "filter/last" {:value [1 2 3]}
+    "foo" "filter/last" {:value []}
+    "foo" "filter/last" {}
     "foo3" "filter/length" {:value [1 2 3]}
     "foo5" "filter/length" {:value "hello"}
     "a\n  b" "filter/indent" {:value "a\nb"}
@@ -301,6 +307,9 @@ this is a  footer"
     "port is " "filter/quote" {}
     "[1,2,3]" "filter/json" {:value [1 2 3]}
     "{&quot;a&quot;:1}" "filter/json" {:value {:a 1}}
+    "- 1\n- 2\n- 3" "filter/yaml" {:value [1 2 3]}
+    "a: 1\nb:\n  - 1\n  - 2" "filter/yaml" {:value {:a 1 :b [1 2]}}
+    "a:\n    b: 1" "filter/yaml-indent" {:value {:a {:b 1}}}
     ))
 
 (defrecord StubJsonSerializer []
@@ -312,7 +321,20 @@ this is a  footer"
   (is (= "STUB:{:a 1}"
          (renderer/render (->StringRenderer)
                           (parse "filter/json" contentResolver empty-fn-map
-                                        empty-sanitizers-map default-dictionary default-sanitizer (->StubJsonSerializer))
+                                        empty-sanitizers-map default-dictionary default-sanitizer (->StubJsonSerializer) default-yaml-serializer)
+                          {:value {:a 1}}
+                          default-error-handler))))
+
+(defrecord StubYamlSerializer []
+  Yaml
+  (to-yaml [_ value _opts]
+    (str "STUB:" (pr-str value))))
+
+(deftest render-custom-yaml-serializer
+  (is (= "STUB:{:a 1}"
+         (renderer/render (->StringRenderer)
+                          (parse "filter/yaml" contentResolver empty-fn-map
+                                 empty-sanitizers-map default-dictionary default-sanitizer default-json-serializer (->StubYamlSerializer))
                           {:value {:a 1}}
                           default-error-handler))))
 

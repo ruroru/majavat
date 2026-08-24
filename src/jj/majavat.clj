@@ -5,6 +5,7 @@
     [jj.majavat.protocol.builder :as builder]
     [jj.majavat.renderer :refer [->StringRenderer]]
     [jj.majavat.renderer.json :as json]
+    [jj.majavat.renderer.yaml :as yaml]
     [jj.majavat.renderer.sanitizer :as sanitizer]
     [jj.majavat.protocol.builder :as builder]
     [jj.majavat.builder :as builders]
@@ -29,6 +30,7 @@
 
          environment (-> (get opts :environment {})
                          (update :json-serializer #(or % (json/->DefaultJsonSerializer)))
+                         (update :yaml-serializer #(or % (yaml/->DefaultYamlSerializer)))
                          (assoc :fragment (:fragment opts)))
 
          renderer (or (:renderer opts)

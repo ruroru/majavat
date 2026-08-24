@@ -71,11 +71,13 @@ All supported options:
 
 #### Environment
 
-| Option       | Default Value | Supported Options                              |
-|--------------|---------------|------------------------------------------------|
-| `filters`    | {}            | Map                                            |
-| `sanitizers` | {}            | Keyword -> Sanitizer Map                       |
-| `dictionary` | nil           | Any [`Dictionary`](#dictionary) implementation |
+| Option            | Default Value           | Supported Options                              |
+|-------------------|-------------------------|------------------------------------------------|
+| `filters`         | {}                      | Map                                            |
+| `sanitizers`      | {}                      | Keyword -> Sanitizer Map                       |
+| `dictionary`      | nil                     | Any [`Dictionary`](#dictionary) implementation |
+| `json-serializer` | `DefaultJsonSerializer` | Any [`Json`](#json) implementation             |
+| `yaml-serializer` | `DefaultYamlSerializer` | Any [`Yaml`](#yaml) implementation             |
 
 ### Creating templates
 
@@ -132,6 +134,8 @@ Hello {{ name | upper-case }}!
 | join([separator])               | Sequential    | [1 2 3]                            | "1, 2, 3" (default sep ", ") |
 | json                            | Any           | {:a 1}                             | {"a":1}                      |
 | json(2)                         | Any           | {:a 1}                             | pretty-printed, 2-sp indent  |
+| last                            | Map           | {:foo :a :bar :b :baz :c}          | [:baz :c]                    |
+| last                            | Sequential    | (list :foo :bar :baz)              | :baz                         |
 | length                          | Map           | {:a 1 :b 2}                        | 2                            |
 | length                          | Sequential    | [1 2 3]                            | 3                            |
 | length                          | String        | "hello"                            | 5                            |
@@ -152,6 +156,8 @@ Hello {{ name | upper-case }}!
 | truncate(14, [kill], [end])     | String        | "The quick brown fox"              | "The quick..."               |
 | upper-case                      | String        | "hello world"                      | "HELLO WORLD"                |
 | upper-roman                     | String        | "iv"                               | "IV"                         |
+| yaml                            | Any           | {:a "x\ny"}                        | "a: \|-\n  x\n  y"           |
+| yaml(4)                         | Any           | {:a {:b 1}}                        | "a:\n    b: 1" (4-sp indent) |
 
 > Arguments shown in `[brackets]` are optional. 
 
@@ -293,6 +299,19 @@ In situations where loop context is not needed, `only` can be used
 (render-fn {:items ["Apple" "Banana" "Orange"]}) ;; returns "- Apple\n- Banana\n- Orange"
 ```
 
+##### Iterating over a map
+```
+settings:
+{% for entry in settings -%}
+  {{ entry | first | name }}: {{ entry | last }}
+{% endfor %}
+```
+
+```clojure
+(def render-fn (build-renderer "input-file"))
+
+(render-fn {:settings {:host "localhost" :port 8080}}) ;; returns "settings:\nhost: localhost\nport: 8080\n"
+```
 #### Including template
 
 file.txt content
@@ -797,6 +816,68 @@ Pass it via the environment when building a renderer:
 
 ```clojure
 (def render-fn (build-renderer "input-file" {:environment {:json-serializer (->JacksonSerializer object-mapper)}}))
+```
+
+## Yaml
+
+The `Yaml` protocol controls how the [`yaml`](#built-in-filters) filter turns a value into a YAML string.
+Majavat ships a built-in serializer, but you can supply your own (for example one backed by SnakeYAML or clj-yaml) and
+the filter will call it instead.
+
+### Protocol Methods
+
+#### `to-yaml`
+
+Serializes a value to a YAML string.
+
+- value - the value being serialized
+- opts - a map of options (may be `nil`); the built-in serializer honours `{:indent n}` for the indentation width (the
+  `yaml(n)` filter argument), custom implementations are free to ignore it
+
+```clojure
+(to-yaml serializer value opts)
+```
+
+### Built-in Implementation
+
+- **DefaultYamlSerializer** (default) - Block-style YAML with a 2 space indent, or `n` spaces via `yaml(n)`. Handles
+  nil, booleans, numbers (ratios as doubles, `NaN`/`Infinity` as `.nan`/`.inf`), strings, keywords, maps, and
+  sequential/set collections. Strings are written plain and only quoted when plain style would change their meaning -
+  empty strings, `yes`/`no`/`true`/`null`-like words, number-like strings, leading indicators, trailing spaces,
+  `key: value` and `# comment` sequences, and anything containing control characters. Empty collections are written in
+  flow style (`{}`, `[]`), and there is no trailing newline, so the template controls the surrounding layout.
+
+Multi-line strings are written as literal block scalars:
+
+```
+description: |-
+  first line
+  second line
+```
+
+The chomping indicator carries the trailing line break: `|-` for a value with none, `|` for a value ending in one. A
+`|` block writes that break itself, so a value ending in a newline survives even when the block is the last thing in the
+output - when something follows, it reads as a blank line that clip chomping folds back into the single break.
+
+A string falls back to a quoted scalar when a block would not give it back unchanged: it ends in more than one line
+break, a line ends in a space or a tab, the first line starts with one, or it carries carriage returns or other control
+characters. Keys are never written as blocks.
+
+### Example Implementation
+
+```clojure
+(:require [jj.majavat.protocol.yaml :refer [Yaml]])
+
+(defrecord SnakeYamlSerializer [yaml]
+  Yaml
+  (to-yaml [_ value _opts]
+    (.dump yaml value)))
+```
+
+Pass it via the environment when building a renderer:
+
+```clojure
+(def render-fn (build-renderer "input-file" {:environment {:yaml-serializer (->SnakeYamlSerializer yaml)}}))
 ```
 
 ## Builder

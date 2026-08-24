@@ -4,6 +4,7 @@
             [jj.majavat.renderer :refer [->StringRenderer]]
             [jj.majavat.renderer.sanitizer :refer [->None]]
             [jj.majavat.renderer.json :refer [->DefaultJsonSerializer]]
+            [jj.majavat.renderer.yaml :refer [->DefaultYamlSerializer]]
             [jj.majavat.protocol.mock-dictionary :refer [create-mock-dictionary]]
             [jj.majavat.protocol.renderer.render-target :as rt]
             [jj.majavat.error-handler.fail-fast :as fail-fast]
@@ -13,9 +14,10 @@
 (def ^:private resolver (rcr/->ResourceResolver))
 (def ^:private dict (create-mock-dictionary))
 (def ^:private json-ser (->DefaultJsonSerializer))
+(def ^:private yaml-ser (->DefaultYamlSerializer))
 
 (defn- build-file [file fragment]
-  (parser/parse-template file resolver {} {} dict (->None) json-ser fragment))
+  (parser/parse-template file resolver {} {} dict (->None) json-ser yaml-ser fragment))
 
 (defn- build [fragment]
   (build-file "fragment/page.html" fragment))
