@@ -340,6 +340,81 @@
                          {:type :end-verbatim}
                          {:line 1 :type :block-end}]))
 
+(deftest whitespace-control-tokenize
+  (are [input expected] (= expected (lexer/tokenize input))
+                        "a\n  {%- if x -%}\n  b{% endif %}"
+                        [{:type :text :value "a"}
+                         {:type :block-start}
+                         {:type :keyword-if}
+                         {:type :identifier :value [:x]}
+                         {:line 2 :type :block-end}
+                         {:type :text :value "b"}
+                         {:type :block-start}
+                         {:type :keyword-endif}
+                         {:line 3 :type :block-end}]
+
+                        "a\n {{- value -}}\n b"
+                        [{:type :text :value "a"}
+                         {:type :opening-bracket}
+                         {:type :expression :value [:value]}
+                         {:line 2 :type :closing-bracket}
+                         {:type :text :value "b"}]
+
+                        "a {%- if x %}b{% endif -%} c"
+                        [{:type :text :value "a"}
+                         {:type :block-start}
+                         {:type :keyword-if}
+                         {:type :identifier :value [:x]}
+                         {:line 1 :type :block-end}
+                         {:type :text :value "b"}
+                         {:type :block-start}
+                         {:type :keyword-endif}
+                         {:line 1 :type :block-end}
+                         {:type :text :value "c"}]
+
+                        "a\n{#- note -#}\nb"
+                        [{:type :text :value "a"}
+                         {:type :text :value "b"}]
+
+                        "{{- value }}"
+                        [{:type :opening-bracket}
+                         {:type :expression :value [:value]}
+                         {:line 1 :type :closing-bracket}]
+
+                        "{{- value | upper-case -}}"
+                        [{:type :opening-bracket}
+                         {:type :expression :value [:value]}
+                         {:type :filter-tag}
+                         {:type :filter-function :value :upper-case}
+                         {:line 1 :type :closing-bracket}]))
+
+(deftest whitespace-control-does-not-reach-into-verbatim
+  (is (= [{:type :block-start}
+          {:type :verbatim}
+          {:line 1 :type :block-end}
+          {:type :text :value "\n  {{- x -}}\n"}
+          {:type :block-start}
+          {:type :end-verbatim}
+          {:line 3 :type :block-end}]
+         (lexer/tokenize "{% verbatim %}\n  {{- x -}}\n{% endverbatim %}"))))
+
+(deftest whitespace-control-keeps-line-numbers
+  (is (= [{:type :text :value "x"}
+          {:type :opening-bracket}
+          {:type :expression :value [:v]}
+          {:line 4 :type :closing-bracket}
+          {:type :block-start}
+          {:type :keyword-if}
+          {:type :identifier :value [:q]}
+          {:line 5 :type :block-end}
+          {:type :block-start}
+          {:type :keyword-endif}
+          {:line 6 :type :block-end}
+          {:type :opening-bracket}
+          {:type :expression}
+          {:line 7 :type :closing-bracket}]
+         (lexer/tokenize "x\n\n\n{{- v -}}\n{% if q -%}\n{%- endif -%}\n{{  }}"))))
+
 (deftest tokenize-keyword-arguments
   (let [expected [{:type  :text
                    :value "testing "}

@@ -207,6 +207,15 @@
                                     "hello\r\r{{  }}\rworld"))
 
 
+(deftest whitespace-control-keeps-error-line
+  (.mkdir ^File (File. "./target"))
+  (spit "./target/whitespace-control" "a\n{% if x -%}\n\n\nb\n{{  }}\n{% endif %}")
+  (is (= {:error-message "error on line 6"
+          :line          "6"
+          :type          "syntax-error"}
+         (parse "./target/whitespace-control" (fcr/->FsResolver) empty-fn-map empty-sanitizers-map))))
+
+
 (deftest returns-error-with-line-3-if-missing-condition-in-if
   (is (= {:error-message "error on line 3"
           :line          "3"

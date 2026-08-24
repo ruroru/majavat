@@ -225,6 +225,12 @@ this is a  footer"
       "hello universe" "if/if-not-else")))
 
 
+(deftest render-whitespace-control
+  (let [template (parse "whitespace/control" contentResolver empty-fn-map empty-sanitizers-map)]
+    (assert-render template {:name "jj" :greet true} "Hellojj!\n<b>hi</b>\ndone")
+    (assert-render template {:name "jj"} "Hellojj!\n\ndone")))
+
+
 (deftest render-filters
   (System/setProperty "user.timezone" "UTC")
 

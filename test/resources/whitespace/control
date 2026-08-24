@@ -1,0 +1,5 @@
+Hello   {{- name -}}   !
+{% if greet -%}
+  <b>hi</b>
+{%- endif %}
+done

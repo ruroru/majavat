@@ -376,6 +376,30 @@ foo{# bar baz #}
 (render-fn {}) ;; returns "foo"
 ```
 
+#### Whitespace control
+
+A `-` right after an opening delimiter removes all whitespace in front of the tag, a `-` right before a
+closing delimiter removes all whitespace behind it. Newlines count as whitespace, and it works on
+`{{ }}`, `{% %}` and `{# #}` alike.
+
+input-file with content
+
+```
+Hello   {{- name -}}   !
+{% if greet -%}
+  <b>hi</b>
+{%- endif %}
+done
+```
+
+```clojure
+(def render-fn (build-renderer "input-file"))
+
+(render-fn {:name "jj" :greet true}) ;; returns "Hellojj!\n<b>hi</b>\ndone"
+```
+
+Whitespace control does not reach inside a `verbatim` block: its content is always kept as written.
+
 #### Verbatim
 
 input-file with content
@@ -857,8 +881,6 @@ loops, and nested data access.
 - [TTL Builder](https://github.com/ruroru/majavat-ttl-builder) - Reloads cache on a scheduled interval.
 
 ## TODOS
-
-* Whitespace control using `{%- -%}` and `{{- -}}`
 * Boolean `and` and `or` expressions
 
 ## License

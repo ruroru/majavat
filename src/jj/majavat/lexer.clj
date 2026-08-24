@@ -5,6 +5,123 @@
 (defn- rrest [s]
   (rest (rest s)))
 
+(def ^:private ^:const tag-closers {\{ "}}" \% "%}" \# "#}"})
+
+(defn- whitespace-char? [c]
+  (or (= \space c) (= \newline c) (= \return c) (= \tab c)))
+
+(defn- trim-trailing-whitespace [^String s]
+  (loop [i (count s)]
+    (if (and (pos? i) (whitespace-char? (.charAt s (dec i))))
+      (recur (dec i))
+      (subs s 0 i))))
+
+(defn- whitespace-run-end
+  "Index of the first non-whitespace character at or after `from`."
+  [^String s from]
+  (let [len (count s)]
+    (loop [i from]
+      (if (and (< i len) (whitespace-char? (.charAt s i)))
+        (recur (inc i))
+        i))))
+
+(defn- line-breaks
+  "The line breaks contained in `s`. Whitespace control drops `s` from the
+   template, but the tokenizer counts lines while it walks the characters it is
+   given, so these are carried into a later tag to keep line numbers honest."
+  [s]
+  (apply str (filter #(or (= \newline %) (= \return %)) s)))
+
+(defn- find-tag-start
+  "Index of the next `{{`, `{%` or `{#` at or after `from`, or -1."
+  [^String s from]
+  (let [len (count s)]
+    (loop [i (.indexOf s "{" (int from))]
+      (cond
+        (neg? i) -1
+        (>= (inc i) len) -1
+        (tag-closers (.charAt s (inc i))) i
+        :else (recur (.indexOf s "{" (int (inc i))))))))
+
+(defn- find-tag-close
+  "Index of the next `closer` at or after `from`, or -1."
+  [^String s from ^String closer]
+  (let [len (count s)
+        c0 (.charAt closer 0)
+        c1 (.charAt closer 1)]
+    (loop [i from]
+      (cond
+        (>= (inc i) len) -1
+        (and (= c0 (.charAt s i)) (= c1 (.charAt s (inc i)))) i
+        :else (recur (inc i))))))
+
+(defn- tag-name-of
+  "The tag body without its whitespace-control markers or padding."
+  [body]
+  (string/trim (string/replace (string/trim body) #"^-|-$" "")))
+
+(defn- find-endverbatim
+  "Index of the `{% endverbatim %}` tag at or after `from`, or -1."
+  [^String s from]
+  (loop [i (find-tag-start s from)]
+    (cond
+      (neg? i) -1
+
+      (and (= \% (.charAt s (inc i)))
+           (let [close-at (find-tag-close s (+ i 2) "%}")]
+             (and (not (neg? close-at))
+                  (= "endverbatim" (tag-name-of (subs s (+ i 2) close-at))))))
+      i
+
+      :else (recur (find-tag-start s (+ i 2))))))
+
+(defn- apply-whitespace-control
+  "Resolves the whitespace-control markers `{{- -}}`, `{%- -%}` and `{#- -#}`
+   before tokenizing: an opening marker drops the whitespace in front of the
+   tag, a closing marker drops the whitespace behind it, and both markers are
+   removed so the tokenizer only ever sees plain delimiters. Line breaks that
+   are dropped move into the padding of the next tag, where the tokenizer
+   ignores them but still counts them, so reported line numbers keep matching
+   the original template. Verbatim blocks are copied through untouched."
+  [^String s]
+  (let [len (count s)]
+    (loop [i 0
+           carried ""
+           out (sb/create-string-builder len)]
+      (let [start (find-tag-start s i)]
+        (if (neg? start)
+          (do (sb/append out (subs s i))
+              (sb/build out))
+          (let [kind (.charAt s (inc start))
+                closer (tag-closers kind)
+                open-marked? (and (< (+ start 2) len) (= \- (.charAt s (+ start 2))))
+                body-start (if open-marked? (+ start 3) (+ start 2))
+                close-at (find-tag-close s body-start closer)]
+            (if (neg? close-at)
+              (do (sb/append out (subs s i))
+                  (sb/build out))
+              (let [close-marked? (and (> close-at body-start) (= \- (.charAt s (dec close-at))))
+                    body (subs s body-start (if close-marked? (dec close-at) close-at))
+                    text (subs s i start)
+                    kept-text (if open-marked? (trim-trailing-whitespace text) text)
+                    after (if close-marked? (whitespace-run-end s (+ close-at 2)) (+ close-at 2))]
+                (sb/append out kept-text)
+                (sb/append-char out \{)
+                (sb/append-char out kind)
+                (sb/append out carried)
+                (sb/append out (line-breaks (subs text (count kept-text))))
+                (sb/append out body)
+                (sb/append out closer)
+                (let [carried (line-breaks (subs s (+ close-at 2) after))]
+                  (if (and (= \% kind) (= "verbatim" (tag-name-of body)))
+                    (let [end-at (find-endverbatim s after)]
+                      (if (neg? end-at)
+                        (do (sb/append out (subs s after))
+                            (sb/build out))
+                        (do (sb/append out (subs s after end-at))
+                            (recur end-at carried out))))
+                    (recur after carried out)))))))))))
+
 (defn- parse-path [^String s]
   (let [len (count s)]
     (loop [i 0
@@ -607,4 +724,4 @@
       stack)))
 
 (defn tokenize [string]
-  (reverse (tokenize-recursively (seq string) "" '() 1)))
+  (reverse (tokenize-recursively (seq (apply-whitespace-control (str string))) "" '() 1)))
