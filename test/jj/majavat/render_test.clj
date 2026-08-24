@@ -290,6 +290,9 @@ this is a  footer"
     "a\n  b" "filter/indent" {:value "a\nb"}
     "foohello there" "filter/replace" {:value "hello world"}
     "fooThe quick..." "filter/truncate" {:value "The quick brown fox"}
+    "port is &quot;8080&quot;" "filter/quote" {:value 8080}
+    "port is &quot;bar&quot;" "filter/quote" {:value "bar"}
+    "port is " "filter/quote" {}
     "[1,2,3]" "filter/json" {:value [1 2 3]}
     "{&quot;a&quot;:1}" "filter/json" {:value {:a 1}}
     ))

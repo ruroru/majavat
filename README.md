@@ -139,6 +139,7 @@ Hello {{ name | upper-case }}!
 | lower-case                      | String        | "HELLO WORLD"                      | "hello world"                |
 | name                            | Keyword       | :name                              | "name"                       |
 | prepend(" world")               | String        | "hello"                            | "world hello"                |
+| quote                           | Any           | 8080                               | "8080" (with quote chars)    |
 | replace(old, new, [count])      | String        | "banana"                           | "bonono"                     |
 | rest                            | Map           | {:foo :a :bar :b :baz :c}          | {:bar :b :baz :c}            |
 | rest                            | Sequential    | (list :foo :bar :baz)              | (list :bar :baz)             |

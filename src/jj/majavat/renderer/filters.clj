@@ -199,6 +199,25 @@
         (clojure.string/replace #"-+" "-")
         clojure.string/trim)))
 
+(defn quote-value
+  "Wraps the value in double quotes, escaping backslashes and double quotes it
+   contains so the result stays a well-formed quoted literal."
+  [v]
+  (when (some? v)
+    (let [^String s (str v)
+          len (.length s)
+          sb (sb/create-string-builder (+ len 2))]
+      (sb/append-char sb \")
+      (loop [i 0]
+        (when (< i len)
+          (let [c (.charAt s i)]
+            (when (or (= c \") (= c \\))
+              (sb/append-char sb \\))
+            (sb/append-char sb c)
+            (recur (inc i)))))
+      (sb/append-char sb \")
+      (sb/build sb))))
+
 (defn trim-string [value]
   (when (some? value)
     (.trim ^String value)))

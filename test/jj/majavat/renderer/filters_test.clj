@@ -229,6 +229,19 @@
                         "FooBar-Baz_123" "foobar-baz_123"
                         ))
 
+(deftest quote-test
+  (are [input expected] (= expected (filters/quote-value input))
+                        8080 "\"8080\""
+                        "foo" "\"foo\""
+                        "" "\"\""
+                        :foo "\":foo\""
+                        2.5 "\"2.5\""
+                        true "\"true\""
+                        "say \"hi\"" "\"say \\\"hi\\\"\""
+                        "back\\slash" "\"back\\\\slash\""
+                        nil nil
+                        ))
+
 (deftest first-test
   (are [input expected] (= expected (filters/get-first input))
                         (list :a :b) :a

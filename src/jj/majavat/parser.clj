@@ -47,6 +47,7 @@
                        (json-protocol/to-json json-serializer v
                                               (when (seq args) {:indent (first args)})))
    :str              filters/handle-str
+   :quote            filters/quote-value
    :trans            (with-meta
                        (fn [v context]
                          (dictionary/translate dictionary (get context :locale) (if (keyword? v) v (keyword v))))
