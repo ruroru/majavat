@@ -18,7 +18,8 @@
     [jj.majavat.resolver.resource :as rcr]
     [jj.majavat.error-handler.fail-fast :as fail-fast]
     [jj.majavat.error-handler.reporting :as reporting])
-  (:import (java.io InputStream Writer)
+  (:import (clojure.lang ExceptionInfo)
+           (java.io InputStream Writer)
            (java.net URI)
            (java.time LocalDate LocalDateTime LocalTime ZoneId ZonedDateTime)
            (java.util UUID)
@@ -869,16 +870,16 @@ this is a  footer"
 
 (deftest fail-fast-throws-on-template-not-found
   (let [template (parse "not-existing-file" contentResolver empty-fn-map empty-sanitizers-map)]
-    (is (thrown-with-msg? clojure.lang.ExceptionInfo
+    (is (thrown-with-msg? ExceptionInfo
                           #"Failed to render template"
                           (renderer/render (->StringRenderer) template {} default-error-handler)))
-    (is (thrown-with-msg? clojure.lang.ExceptionInfo
+    (is (thrown-with-msg? ExceptionInfo
                           #"Failed to render template"
                           (renderer/render (->InputStreamRenderer) template {} default-error-handler)))))
 
 (deftest fail-fast-throws-on-syntax-error
   (let [template (parse "filter/not-supported-filter" contentResolver empty-fn-map empty-sanitizers-map)]
-    (let [ex (is (thrown? clojure.lang.ExceptionInfo
+    (let [ex (is (thrown? ExceptionInfo
                           (renderer/render (->StringRenderer) template {:value "bar"} default-error-handler)))]
       (is (= "syntax-error" (:type (ex-data ex))))
       (is (string? (:error-message (ex-data ex)))))))
