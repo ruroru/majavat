@@ -5,12 +5,8 @@
             [jj.majavat.string-builder :as sb])
   (:import (java.nio.charset Charset StandardCharsets)
            (java.util ArrayList)
+           (java.util.concurrent.atomic AtomicInteger AtomicLong)
            (jj.majavat.stream SequentialByteArrayInputStream)))
-
-(defn- ->str [v]
-  (if (string? v)
-    v
-    (str v)))
 
 (defn- get-loop-context [context index count]
   (assoc context
@@ -297,44 +293,46 @@
 
 (def default-capacity 128)
 
-(def default-chunk-capacity
+(def default-chunk-capacity 16)
 
-  16)
-
-(def max-capacity
-  (* 1024 1024))
-
-(deftype StringRenderer [^:volatile-mutable ^long capacity]
+(deftype StringRenderer [^AtomicInteger capacity]
   render-target/RenderTarget
   (render [this template context error-handler]
     (if-not (map? template)
-      (let [^String s (sb/build (render-nodes template context
-                                              (sb/create-string-builder capacity)))
+      (let [cap (.get capacity)
+            ^String s (sb/build (render-nodes template context
+                                              (sb/create-string-builder cap)))
             len (.length s)]
-        (when (> len capacity)
-          (set! capacity (min len (long max-capacity))))
+        (let [current-cap (.get capacity)]
+          (when (> len current-cap)
+            (.set capacity len)))
         s)
       (error/handle-error error-handler this template))))
 
 (defn ->StringRenderer
   ([] (->StringRenderer default-capacity))
-  ([capacity] (StringRenderer. (long capacity))))
+  ([capacity] (StringRenderer. (if (instance? AtomicInteger capacity) capacity (AtomicInteger. (long capacity))))))
 
-(deftype InputStreamRenderer [^:volatile-mutable ^long capacity]
+(deftype InputStreamRenderer [^AtomicInteger capacity]
   render-target/RenderTarget
   (render [this template context error-handler]
     (if-not (map? template)
       (let [^ArrayList result (render-nodes-to-bytes template context StandardCharsets/UTF_8
-                                                     (ArrayList. (int capacity)))
-            size (.size result)]
-        (when (> size capacity)
-          (set! capacity (min size (long max-capacity))))
+                                                     (ArrayList. (int (.get capacity))))
+            len (.size result)]
+        (let [current-cap (.get capacity)]
+          (when (> len current-cap)
+            (.set capacity len)))
         (SequentialByteArrayInputStream. result))
       (error/handle-error error-handler this template))))
 
 (defn ->InputStreamRenderer
   ([] (->InputStreamRenderer default-chunk-capacity))
-  ([capacity] (InputStreamRenderer. (long capacity))))
+  ([capacity]
+   (InputStreamRenderer.
+     (if (instance? AtomicInteger capacity)
+       capacity
+       (AtomicInteger. (int capacity))))))
 
 (defrecord PartialRenderer []
   render-target/RenderTarget

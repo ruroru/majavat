@@ -7,9 +7,7 @@
     [clojure.test :refer [are deftest is testing]]
     [jj.majavat.parser :as parser]
     [jj.majavat.renderer.json :refer [->DefaultJsonSerializer]]
-    [jj.majavat.renderer.yaml :refer [->DefaultYamlSerializer]]
     [jj.majavat.protocol.json :refer [Json]]
-    [jj.majavat.protocol.yaml :refer [Yaml]]
     [jj.majavat.protocol.mock-dictionary :refer [create-mock-dictionary]]
     [jj.majavat.renderer :refer [->PartialRenderer ->InputStreamRenderer ->StringRenderer]]
     [jj.majavat.protocol.renderer.render-target :as renderer]
@@ -18,7 +16,8 @@
     [jj.majavat.resolver.resource :as rcr]
     [jj.majavat.error-handler.fail-fast :as fail-fast]
     [jj.majavat.error-handler.reporting :as reporting])
-  (:import (java.io InputStream Writer)
+  (:import (clojure.lang ExceptionInfo)
+           (java.io InputStream Writer)
            (java.net URI)
            (java.time LocalDate LocalDateTime LocalTime ZoneId ZonedDateTime)
            (java.util UUID)
@@ -36,13 +35,12 @@
 (def ^:private default-dictionary (create-mock-dictionary))
 (def ^:private default-sanitizer (->None))
 (def ^:private default-json-serializer (->DefaultJsonSerializer))
-(def ^:private default-yaml-serializer (->DefaultYamlSerializer))
 
 (defn- parse [& args]
   (parser/expand-macros
     (apply parser/parse
            (concat args (drop (- (count args) 4)
-                              [default-dictionary default-sanitizer default-json-serializer default-yaml-serializer])))))
+                              [default-dictionary default-sanitizer default-json-serializer])))))
 
 (def ^:private default-error-handler (fail-fast/->FailFast))
 (def ^:private reporting-error-handler (reporting/->Reporting))
@@ -240,11 +238,11 @@ this is a  footer"
   (are [expected-value template-path context]
     (= expected-value
        (renderer/render (->StringRenderer)
-                        (parse template-path contentResolver empty-fn-map empty-sanitizers-map default-dictionary (->Html) (->DefaultJsonSerializer) (->DefaultYamlSerializer))
+                        (parse template-path contentResolver empty-fn-map empty-sanitizers-map default-dictionary (->Html) (->DefaultJsonSerializer))
                         context
                         default-error-handler)
        (String. (.readAllBytes ^InputStream (renderer/render (->InputStreamRenderer)
-                                                             (parse template-path contentResolver empty-fn-map empty-sanitizers-map default-dictionary (->Html) (->DefaultJsonSerializer) (->DefaultYamlSerializer))
+                                                             (parse template-path contentResolver empty-fn-map empty-sanitizers-map default-dictionary (->Html) (->DefaultJsonSerializer))
                                                              context
                                                              default-error-handler))))
     "foo BAR1 BAZｲ" "filter/upper-case" {:value "BAR1 BaZｲ"}
@@ -307,9 +305,6 @@ this is a  footer"
     "port is " "filter/quote" {}
     "[1,2,3]" "filter/json" {:value [1 2 3]}
     "{&quot;a&quot;:1}" "filter/json" {:value {:a 1}}
-    "- 1\n- 2\n- 3" "filter/yaml" {:value [1 2 3]}
-    "a: 1\nb:\n  - 1\n  - 2" "filter/yaml" {:value {:a 1 :b [1 2]}}
-    "a:\n    b: 1" "filter/yaml-indent" {:value {:a {:b 1}}}
     ))
 
 (defrecord StubJsonSerializer []
@@ -321,20 +316,7 @@ this is a  footer"
   (is (= "STUB:{:a 1}"
          (renderer/render (->StringRenderer)
                           (parse "filter/json" contentResolver empty-fn-map
-                                        empty-sanitizers-map default-dictionary default-sanitizer (->StubJsonSerializer) default-yaml-serializer)
-                          {:value {:a 1}}
-                          default-error-handler))))
-
-(defrecord StubYamlSerializer []
-  Yaml
-  (to-yaml [_ value _opts]
-    (str "STUB:" (pr-str value))))
-
-(deftest render-custom-yaml-serializer
-  (is (= "STUB:{:a 1}"
-         (renderer/render (->StringRenderer)
-                          (parse "filter/yaml" contentResolver empty-fn-map
-                                 empty-sanitizers-map default-dictionary default-sanitizer default-json-serializer (->StubYamlSerializer))
+                                        empty-sanitizers-map default-dictionary default-sanitizer (->StubJsonSerializer))
                           {:value {:a 1}}
                           default-error-handler))))
 
@@ -536,6 +518,31 @@ this is a  footer"
     "first true true 1 0\n" {:values (list "first")}
     "" {:values (list)}
     ))
+
+(deftest for-over-map
+  (are [expected template-path input-context]
+    (= expected
+       (String. (.readAllBytes ^InputStream (renderer/render
+                                              (->InputStreamRenderer)
+                                              (parse template-path contentResolver empty-fn-map empty-sanitizers-map)
+                                              input-context
+                                              default-error-handler)))
+       (renderer/render (->StringRenderer)
+                        (parse template-path contentResolver empty-fn-map empty-sanitizers-map)
+                        input-context
+                        default-error-handler)
+       (renderer/render (->StringRenderer)
+                        (renderer/render (->PartialRenderer)
+                                         (parse template-path contentResolver empty-fn-map empty-sanitizers-map)
+                                         input-context
+                                         default-error-handler)
+                        {}
+                        default-error-handler))
+    "host: localhost\nport: 8080\n" "loop/for-map" {:settings (array-map :host "localhost" :port 8080)}
+    "host: localhost\nport: 8080\n" "loop/for-map-only" {:settings (array-map :host "localhost" :port 8080)}
+    "a: 1\n" "loop/for-map" {:settings {"a" 1}}
+    "" "loop/for-map" {:settings {}}
+    "" "loop/for-map" {}))
 
 (deftest partial-render
   (are [expected input-file input-context] (= expected (strip-render-fn (renderer/render (->PartialRenderer)
@@ -869,16 +876,16 @@ this is a  footer"
 
 (deftest fail-fast-throws-on-template-not-found
   (let [template (parse "not-existing-file" contentResolver empty-fn-map empty-sanitizers-map)]
-    (is (thrown-with-msg? clojure.lang.ExceptionInfo
+    (is (thrown-with-msg? ExceptionInfo
                           #"Failed to render template"
                           (renderer/render (->StringRenderer) template {} default-error-handler)))
-    (is (thrown-with-msg? clojure.lang.ExceptionInfo
+    (is (thrown-with-msg? ExceptionInfo
                           #"Failed to render template"
                           (renderer/render (->InputStreamRenderer) template {} default-error-handler)))))
 
 (deftest fail-fast-throws-on-syntax-error
   (let [template (parse "filter/not-supported-filter" contentResolver empty-fn-map empty-sanitizers-map)]
-    (let [ex (is (thrown? clojure.lang.ExceptionInfo
+    (let [ex (is (thrown? ExceptionInfo
                           (renderer/render (->StringRenderer) template {:value "bar"} default-error-handler)))]
       (is (= "syntax-error" (:type (ex-data ex))))
       (is (string? (:error-message (ex-data ex)))))))

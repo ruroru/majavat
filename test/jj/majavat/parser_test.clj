@@ -7,7 +7,6 @@
             [jj.majavat.renderer.tests :as tests]
             [jj.majavat.renderer.sanitizer :refer [->None]]
             [jj.majavat.renderer.json :refer [->DefaultJsonSerializer]]
-            [jj.majavat.renderer.yaml :refer [->DefaultYamlSerializer]]
             [jj.majavat.protocol.mock-dictionary :refer [create-mock-dictionary]]
             [jj.majavat.resolver.fs :as fcr]
             [jj.majavat.protocol.dictionary :as dictionary]
@@ -20,12 +19,11 @@
 (def ^:private default-dictionary (create-mock-dictionary))
 (def ^:private default-sanitizer (->None))
 (def ^:private default-json-serializer (->DefaultJsonSerializer))
-(def ^:private default-yaml-serializer (->DefaultYamlSerializer))
 
 (defn- parse [& args]
   (let [result (apply parser/parse
                       (concat args (drop (- (count args) 4)
-                                         [default-dictionary default-sanitizer default-json-serializer default-yaml-serializer])))]
+                                         [default-dictionary default-sanitizer default-json-serializer])))]
     (walk/postwalk #(if (map? %) (dissoc % :render-fn) %)
                    (if (map? result) result (first result)))))
 
@@ -39,7 +37,7 @@
   (is (= [{:type :text :value "hello "}
           {:type :value-node}]
          (parse "insert-value.html" contentResolver empty-fn-map empty-sanitizers-map)))
-  (let [value-node (second (first (parser/parse "insert-value.html" contentResolver empty-fn-map empty-sanitizers-map default-dictionary default-sanitizer default-json-serializer default-yaml-serializer)))]
+  (let [value-node (second (first (parser/parse "insert-value.html" contentResolver empty-fn-map empty-sanitizers-map default-dictionary default-sanitizer default-json-serializer)))]
     (is (= "world" ((:render-fn value-node) {:name "world"})))))
 
 (deftest test-parse-child-value
@@ -453,7 +451,7 @@
 
 
 (deftest escape-tag
-  (let [result (first (parser/parse "escape/escape-html" contentResolver empty-fn-map empty-sanitizers-map default-dictionary default-sanitizer default-json-serializer default-yaml-serializer))
+  (let [result (first (parser/parse "escape/escape-html" contentResolver empty-fn-map empty-sanitizers-map default-dictionary default-sanitizer default-json-serializer))
         node (first result)]
     (is (= [{:type :value-node}]
            (parse "escape/escape-html" contentResolver empty-fn-map empty-sanitizers-map)))

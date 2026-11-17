@@ -7,14 +7,13 @@
             [jj.majavat.renderer.sanitizer :as sanitizer]
             [jj.majavat.string-builder :as sb]
             [jj.majavat.protocol.json :as json-protocol]
-            [jj.majavat.protocol.yaml :as yaml-protocol]
             [jj.majavat.protocol.renderer.sanitizer :refer [sanitize]]
             [jj.majavat.protocol.resolver :as resolver]
             [jj.majavat.protocol.dictionary :as dictionary])
   (:import (clojure.lang ExceptionInfo)
            (java.nio.file Paths)))
 
-(defn create-filter-map [dictionary json-serializer yaml-serializer]
+(defn create-filter-map [dictionary json-serializer]
   {:trim             filters/trim-string
    :upper-case       filters/upper-case-string
    :lower-case       filters/lower-case-string
@@ -47,9 +46,6 @@
    :truncate         filters/truncate-string
    :json             (fn [v & args]
                        (json-protocol/to-json json-serializer v
-                                              (when (seq args) {:indent (first args)})))
-   :yaml             (fn [v & args]
-                       (yaml-protocol/to-yaml yaml-serializer v
                                               (when (seq args) {:indent (first args)})))
    :str              filters/handle-str
    :quote            filters/quote-value
@@ -279,6 +275,22 @@
   [path]
   (fn [context] (resolve-path context path)))
 
+(defn- entry->item [entry]
+  {:key (key entry) :value (val entry)})
+
+(defn- loop-items
+  "A map is looped over as `{:key k :value v}` items, so a template reads its
+   entries as `entry.key` and `entry.value`; anything else is looped over as is."
+  [source]
+  (if (map? source)
+    (mapv entry->item source)
+    source))
+
+(defn- bake-source-fn
+  "Bakes a loop's source path into a `context -> items` closure."
+  [path]
+  (fn [context] (loop-items (resolve-path context path))))
+
 (defn- bake-condition
   "Rewrites a branch condition so it carries everything the renderer needs:
    :evaluation-function becomes `context -> boolean` (resolving its own path and
@@ -300,7 +312,7 @@
     (-> (assoc :render-fn (bake-render-fn (:value node))) (dissoc :value))
 
     (and (contains? node :source) (not (fn? (:source node))))
-    (update :source bake-path-fn)
+    (update :source bake-source-fn)
 
     (and (= :variable-assignment (:type node)) (not (fn? (:variable-value node))))
     (update :variable-value bake-path-fn)
@@ -994,11 +1006,11 @@
          (recur (rest lexed-list) list current-block parsing-for-body current-file-path template-resolver filter-map merged-sanitizers tag-stack macros current-sanitizer macro-param))))))
 
 (defn parse
-  ([resource-path template-resolver user-filters user-sanitizers dictionary current-sanitizer json-serializer yaml-serializer]
+  ([resource-path template-resolver user-filters user-sanitizers dictionary current-sanitizer json-serializer]
    (if (resolver/template-exists? template-resolver resource-path)
      (let [file-content (resolver/read-template template-resolver resource-path)
            lexed-value (lexer/tokenize file-content)
-           filter-map (merge (create-filter-map dictionary json-serializer yaml-serializer) user-filters)
+           filter-map (merge (create-filter-map dictionary json-serializer) user-filters)
            merged-sanitizers (merge user-sanitizers sanitizers)
            macros (atom (builtin-macros dictionary))]
        (try
@@ -1025,7 +1037,7 @@
       :error-message (format "%s can not be found." resource-path)})))
 
 (defn parse-template
-  [resource-path template-resolver user-filters user-sanitizers dictionary current-sanitizer json-serializer yaml-serializer fragment]
-  (-> (parse resource-path template-resolver user-filters user-sanitizers dictionary current-sanitizer json-serializer yaml-serializer)
+  [resource-path template-resolver user-filters user-sanitizers dictionary current-sanitizer json-serializer fragment]
+  (-> (parse resource-path template-resolver user-filters user-sanitizers dictionary current-sanitizer json-serializer)
       expand-macros
       (select-fragment fragment)))
