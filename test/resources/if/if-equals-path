@@ -1,0 +1,1 @@
+{% if value == other.value %}yes{% else %}no{% endif %}

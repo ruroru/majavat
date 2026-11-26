@@ -100,7 +100,9 @@
 (deftest is-ge-returns-false
   (are [v arg] (= false (boolean (tests/is-ge? v arg)))
                3        5
-               -5       -1))
+               -5       -1
+               5        nil
+               5        "5"))
 
 (deftest is-gt-returns-true
   (are [v arg] (= true (tests/is-gt? v arg))
@@ -112,7 +114,9 @@
   (are [v arg] (= false (boolean (tests/is-gt? v arg)))
                5        5
                3        5
-               -5       -1))
+               -5       -1
+               6        nil
+               6        "5"))
 
 (deftest is-le-returns-true
   (are [v arg] (= true (tests/is-le? v arg))
@@ -124,7 +128,9 @@
 (deftest is-le-returns-false
   (are [v arg] (= false (boolean (tests/is-le? v arg)))
                10       5
-               -1       -5))
+               -1       -5
+               5        nil
+               5        "5"))
 
 (deftest is-lt-returns-true
   (are [v arg] (= true (tests/is-lt? v arg))
@@ -137,4 +143,5 @@
                5        5
                10       5
                -1       -5
-               ))
+               4        nil
+               4        "5"))

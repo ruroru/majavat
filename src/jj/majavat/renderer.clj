@@ -152,6 +152,24 @@
           (recur (inc n)))
         result))))
 
+(defn- bind-branches
+  "Binds an if's branches to a pre-render context. A branch the context decides
+   is dropped when false, and when true becomes the else body, ending the chain;
+   the rest are kept, with what the context already holds baked in, since the
+   render context won't have it."
+  [branches else-body context]
+  (loop [kept []
+         remaining (seq branches)]
+    (if remaining
+      (let [[condition body] (first remaining)
+            bound ((:resolve condition) context)]
+        (cond
+          (nil? bound) (recur (conj kept [condition body]) (next remaining))
+          (map? bound) (recur (conj kept [bound body]) (next remaining))
+          (if (:negate condition) (not bound) bound) [kept body]
+          :else (recur kept (next remaining))))
+      [kept else-body])))
+
 (defn- partial-render-nodes [nodes context]
   (reduce
     (fn [acc node]
@@ -213,30 +231,14 @@
                               (node :when-empty) (assoc :when-empty (partial-render-nodes (node :when-empty) context))))))
 
         :if
-        (let [branches (node :branches)
-              else-body (node :else)
-              first-unresolved (reduce
-                                 (fn [acc [condition body]]
-                                   (if (some? ((:resolve condition) context))
-                                     (if (evaluate-condition condition context)
-                                       (reduced {:resolved true :body body})
-                                       acc)
-                                     (reduced {:resolved false})))
-                                 nil
-                                 branches)]
-          (cond
-            (and first-unresolved (:resolved first-unresolved))
-            (into acc (partial-render-nodes (:body first-unresolved) context))
-
-            (and (nil? first-unresolved))
-            (into acc (partial-render-nodes else-body context))
-
-            :else
+        (let [[branches else-body] (bind-branches (node :branches) (node :else) context)]
+          (if (seq branches)
             (conj acc (assoc node
                         :branches (mapv (fn [[condition body]]
                                           [condition (partial-render-nodes body context)])
                                         branches)
-                        :else (partial-render-nodes else-body context)))))
+                        :else (partial-render-nodes else-body context)))
+            (into acc (partial-render-nodes else-body context))))
 
         :debug
         (do

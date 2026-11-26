@@ -46,6 +46,8 @@
   (are [expected template] (= expected (keys-of template))
     #{[:a :b] [:x] [:c] [:y] [:z]} "{% if a.b %}{{ x }}{% elif c > 1 %}{{ y }}{% else %}{{ z }}{% endif %}"
     #{[:a]} "{% if not a %}no{% endif %}"
+    #{[:a] [:b :c]} "{% if a == b.c %}yes{% endif %}"
+    #{[:a] [:b]} "{% macro same(x) %}{% if a == x %}y{% endif %}{% endmacro %}{% same(b) %}"
     #{[:items]} "{% for i in items %}{% if i is even %}{{ i }}{% endif %}{% endfor %}"))
 
 (deftest macros
@@ -72,6 +74,12 @@
            (rt/render (->PartialRenderer)
                       (build "{{ site }} {{ user }}{% if beta %}{{ flag }}{% endif %}")
                       {:site "Acme" :beta true}
+                      (fail-fast/->FailFast)))))
+  (is (= #{[:limit]}
+         (parser/required-keys
+           (rt/render (->PartialRenderer)
+                      (build "{% if score > limit %}high{% endif %}")
+                      {:score 3}
                       (fail-fast/->FailFast))))))
 
 (deftest error-passes-through

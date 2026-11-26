@@ -1,0 +1,4 @@
+{% if price > 1.5 %}over{% else %}under{% endif %}
+{% if price >= limit.max %}at limit{% else %}below limit{% endif %}
+{% if a %}A{% elif b == price %}B{% else %}none{% endif %}
+{% for x in xs %}{% if x == y %}={% else %}!{% endif %}{% endfor %}

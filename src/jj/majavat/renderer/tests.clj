@@ -13,16 +13,16 @@
   (= v arg))
 
 (defn is-ge? [v arg]
-  (and (number? v) (>= v arg)))
+  (and (number? v) (number? arg) (>= v arg)))
 
 (defn is-gt? [v arg]
-  (and (number? v) (> v arg)))
+  (and (number? v) (number? arg) (> v arg)))
 
 (defn is-le? [v arg]
-  (and (number? v) (<= v arg)))
+  (and (number? v) (number? arg) (<= v arg)))
 
 (defn is-lt? [v arg]
-  (and (number? v) (< v arg)))
+  (and (number? v) (number? arg) (< v arg)))
 
 (defn is-seq? [v]
   (seq? v))

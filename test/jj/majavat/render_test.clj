@@ -742,7 +742,65 @@ this is a  footer"
 
     "yes" "if/if-lower-or-equal" {:value 4}
     "yes" "if/if-lower-or-equal" {:value 5}
-    "no" "if/if-lower-or-equal" {:value 6}))
+    "no" "if/if-lower-or-equal" {:value 6}
+
+    "yes" "if/if-greater-decimal" {:value 2}
+    "yes" "if/if-greater-decimal" {:value 1.6}
+    "no" "if/if-greater-decimal" {:value 1.5}
+    "no" "if/if-greater-decimal" {:value 1}
+
+    "yes" "if/if-equals-path" {:value 1 :other {:value 1}}
+    "yes" "if/if-equals-path" {:value "a" :other {:value "a"}}
+    "no" "if/if-equals-path" {:value 1 :other {:value 2}}
+    "no" "if/if-equals-path" {:value 1}))
+
+(deftest comparison-between-two-paths
+  (are [expected template context]
+    (= expected (renderer/render (->StringRenderer)
+                                 (parse "template" (->StringResolver "template" template) empty-fn-map empty-sanitizers-map)
+                                 context
+                                 default-error-handler))
+    "yes" "{% if a > b %}yes{% else %}no{% endif %}" {:a 2 :b 1.5}
+    "no" "{% if a > b %}yes{% else %}no{% endif %}" {:a 1 :b 1.5}
+    "no" "{% if a > b %}yes{% else %}no{% endif %}" {:a 2}
+    "no" "{% if a > b %}yes{% else %}no{% endif %}" {:a 2 :b "1"}
+    "yes" "{% if a <= b %}yes{% else %}no{% endif %}" {:a 1 :b 1}
+    "no" "{% if a < b %}yes{% else %}no{% endif %}" {:b 1}
+    "yes" "{% if a == b %}yes{% else %}no{% endif %}" {}
+    "medium" "{% if v > big %}big{% elif v > small %}medium{% else %}small{% endif %}" {:v 5 :big 10 :small 1}
+    "1" "{% macro same(x) %}{% if a == x %}1{% else %}0{% endif %}{% endmacro %}{% same(b) %}" {:a 2 :b 2}
+    "0" "{% macro same(x) %}{% if a == x %}1{% else %}0{% endif %}{% endmacro %}{% same(b) %}" {:a 2 :x 2}))
+
+(deftest tag-closers-in-text-are-text
+  (are [expected template context]
+    (= expected (renderer/render (->StringRenderer)
+                                 (parse "template" (->StringResolver "template" template) empty-fn-map empty-sanitizers-map)
+                                 context
+                                 default-error-handler))
+    "<style>.a{width:100%}</style>" "<style>.a{width:100%}</style>" {}
+    "<script>if(a){b={c:1}}</script>" "<script>if(a){b={c:1}}</script>" {}
+    "a }} b %} c" "a }} b %} c" {}
+    "1}} 1%}" "{{ x }}}} {{ x }}%}" {:x 1}
+    "}}" "{% if x %}}}{% endif %}" {:x 1}
+    "ab}}c" "a{# note #}b}}c" {}
+    "{{ x }}%}" "{% verbatim %}{{ x }}{% endverbatim %}%}" {}))
+
+(deftest pre-render-matches-rendering-with-everything
+  (are [expected template pre-rendered context]
+    (let [ast (parse "template" (->StringResolver "template" template) empty-fn-map empty-sanitizers-map)
+          render (fn [nodes ctx] (renderer/render (->StringRenderer) nodes ctx default-error-handler))]
+      (= expected
+         (render ast (merge context pre-rendered))
+         (render (renderer/render (->PartialRenderer) ast pre-rendered default-error-handler) context)))
+    "A" "{% if c %}C{% elif a %}A{% endif %}" {:a true} {:c false}
+    "C" "{% if c %}C{% elif a %}A{% endif %}" {:a true} {:c true}
+    "C" "{% if not a %}X{% elif c %}C{% endif %}" {:a true} {:c true}
+    "" "{% if a %}A{% elif not c %}C{% endif %}" {:c true} {:a false}
+    "yes" "{% if value == other.value %}yes{% else %}no{% endif %}" {:value 1} {:other {:value 1}}
+    "yes" "{% if value == other.value %}yes{% else %}no{% endif %}" {:other {:value 1}} {:value 1}
+    "no" "{% if value == other.value %}yes{% else %}no{% endif %}" {:value 1} {:other {:value 2}}
+    "yes" "{% if value == other.value %}yes{% else %}no{% endif %}" {:value 1 :other {:value 1}} {}
+    "=!" "{% for x in xs %}{% if x == y %}={% else %}!{% endif %}{% endfor %}" {:xs [1 2]} {:y 1}))
 
 (deftest elif-custom-condition-test
   (are [expected context]

@@ -9,6 +9,7 @@
             [jj.majavat.renderer.json :refer [->DefaultJsonSerializer]]
             [jj.majavat.protocol.mock-dictionary :refer [create-mock-dictionary]]
             [jj.majavat.resolver.fs :as fcr]
+            [jj.majavat.resolver.string :refer [->StringResolver]]
             [jj.majavat.protocol.dictionary :as dictionary]
             [jj.majavat.resolver.resource :as rcr])
   (:import (java.io File)))
@@ -264,6 +265,29 @@
                    "loop/for-in"
                    "loop/for-i-in"
                    ))
+
+(deftest tag-closers-in-text-are-text
+  (is (= [{:type :text :value "<style>.a{width:100%}</style>"}
+          {:type :value-node}
+          {:type :text :value "}}"}]
+         (parse "template" (->StringResolver "template" "<style>.a{width:100%}</style>{{ x }}}}") empty-fn-map empty-sanitizers-map))))
+
+(deftest if-greater-decimal
+  (let [[condition body] (first (:branches (first (parse "if/if-greater-decimal" (rcr/->ResourceResolver) empty-fn-map empty-sanitizers-map))))
+        eval-fn (:evaluation-function condition)]
+    (is (= [:value] (:condition condition)))
+    (is (= [{:type :text :value "yes"}] body))
+    (is (true? (eval-fn 1.6)))
+    (is (false? (eval-fn 1.5)))
+    (is (false? (eval-fn 1)))))
+
+(deftest if-equals-path
+  (let [[condition body] (first (:branches (first (parse "if/if-equals-path" (rcr/->ResourceResolver) empty-fn-map empty-sanitizers-map))))]
+    (is (= {:condition           [:value]
+            :compare-to          [:other :value]
+            :evaluation-function tests/is-equal?}
+           condition))
+    (is (= [{:type :text :value "yes"}] body))))
 
 (deftest if-not-test
   (are [template expected-ast]

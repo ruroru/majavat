@@ -153,6 +153,14 @@
             :else
             (recur (inc i) (sb/append-char current c) result)))))))
 
+(defn- comparison-value-token
+  "The right-hand side of a comparison: a number literal, or else a path into
+   the context."
+  [s]
+  (if (re-matches #"[+-]?\d*\.?\d+" s)
+    {:type :comparative :value (or (parse-long s) (parse-double s))}
+    {:type :identifier :value (parse-path s)}))
+
 (defn- parse-let-assignment [assignment-string]
   (let [trimmed (string/trim assignment-string)
         parts (string/split trimmed #"\s*=\s*" 2)]
@@ -231,6 +239,14 @@
               (recur (rest seq-rest) new-line-number (str accumulated current-char))))
           (recur (rest seq-rest) new-line-number (str accumulated current-char)))))))
 
+(defn- between-tags?
+  "True when no tag is open: nothing lexed yet, or the last token ends a tag or
+   is text. `%}` and `}}` there are plain text, not tag ends."
+  [stack]
+  (case (:type (peek stack))
+    (nil :block-end :closing-bracket :text) true
+    false))
+
 (defn- tokenize-recursively [my-sequence current-string stack line-number]
   (if-not (empty? my-sequence)
     (let [current-char (first my-sequence)
@@ -264,7 +280,7 @@
           :else
           (recur (rrest my-sequence) "" (conj stack {:type :text :value current-string} {:type :block-start}) new-line-number))
 
-        (and (= current-char \%) (= next-char \}))
+        (and (= current-char \%) (= next-char \}) (not (between-tags? stack)))
         (let [trimmed-string (string/trim current-string)]
           (cond
             (= "endfor" trimmed-string)
@@ -373,7 +389,7 @@
           (and (= next-char \%) (not (string/starts-with? current-string "\"")))
           (let [trimmed (string/trim (str current-string current-char))]
             (if (not (string/blank? trimmed))
-              (recur (rest my-sequence) "" (conj stack {:type :comparative :value (Long/parseLong trimmed)}) new-line-number)
+              (recur (rest my-sequence) "" (conj stack (comparison-value-token trimmed)) new-line-number)
               (recur (rest my-sequence) "" stack new-line-number)))
 
           :else
@@ -391,7 +407,7 @@
         (every? identity [(= (:type (peek stack)) :keyword-in)])
         (recur (rest my-sequence) (str current-string current-char) stack new-line-number)
 
-        (and (= current-char \}) (= next-char \}))
+        (and (= current-char \}) (= next-char \}) (not (between-tags? stack)))
         (let [trimmed-string (string/trim current-string)
               last-type (:type (peek stack))]
           (cond

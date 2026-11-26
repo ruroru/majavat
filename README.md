@@ -226,17 +226,20 @@ Available `is` tests:
 
 #### Comparison operators
 
-| operator | example                   |
-|----------|---------------------------|
-| ==       | {% if value == 0 %}       |
-|          | {% if value == "value" %} |
-| <        | {% if value < 10 %}       |
-| <=       | {% if value <= 10 %}      |
-| >        | {% if value > 10 %}       |
-| >=       | {% if value >= 10 %}      |
+| operator | example                       |
+|----------|-------------------------------|
+| ==       | {% if value == 0 %}           |
+|          | {% if value == "value" %}     |
+|          | {% if value == other.value %} |
+| <        | {% if value < 10 %}           |
+| <=       | {% if value <= 10 %}          |
+| >        | {% if value > 1.5 %}          |
+| >=       | {% if value >= limit %}       |
 
-`<`, `<=`, `>`, and `>=` compare numbers (a non-number value makes the condition
-false); `==` compares numbers and strings.
+The right-hand side is a number (whole or decimal), a quoted string, or a path
+into the context. `<`, `<=`, `>`, and `>=` compare numbers (a non-number on
+either side makes the condition false); `==` compares any two values, so two
+missing values are equal.
 
 #### Looping
 

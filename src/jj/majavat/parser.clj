@@ -268,7 +268,7 @@
                           (assoc n k (into arg (subvec v 1)))
                           n)))
                     node
-                    [:value :source :condition]))
+                    [:value :source :condition :compare-to]))
           node))
       body)))
 
@@ -327,6 +327,7 @@
 (defn- branch-keys [acc [condition body] locals]
   (-> acc
       (add-key locals (:condition condition))
+      (add-key locals (:compare-to condition))
       (collect-keys body locals)))
 
 (defn- if-keys [acc node locals]
@@ -405,16 +406,38 @@
 (defn- bake-condition
   "Rewrites a branch condition so it carries everything the renderer needs:
    :evaluation-function becomes `context -> boolean` (resolving its own path and
-   applying the test), and :resolve is a `context -> raw-value` closure the
-   partial renderer uses to decide whether the condition is resolvable yet.
+   applying the test), and :resolve binds a pre-render context for the partial
+   renderer: it returns the test's result when that context decides the
+   condition, nil when the condition still needs the render context, or, for a
+   comparison against another path (:compare-to) with one side known, a
+   condition comparing the other side against the known value.
    Idempotent (via :baked?) so running expansion twice is safe. Done after macro
-   expansion, when the condition's path is in its final substituted form."
-  [{:keys [condition evaluation-function baked?] :as c}]
-  (if baked?
+   expansion, when the condition's paths are in their final substituted form."
+  [{:keys [condition compare-to evaluation-function baked?] :as c}]
+  (cond
+    baked?
     c
+
+    compare-to
+    (let [one-sided (dissoc c :compare-to)]
+      (assoc c :evaluation-function (fn [context] (evaluation-function (resolve-path context condition)
+                                                                       (resolve-path context compare-to)))
+               :resolve (fn [context]
+                          (let [left (resolve-path context condition)
+                                right (resolve-path context compare-to)]
+                            (cond
+                              (and (some? left) (some? right)) (boolean (evaluation-function left right))
+                              (some? left) (bake-condition (assoc one-sided :condition compare-to
+                                                                            :evaluation-function #(evaluation-function left %)))
+                              (some? right) (bake-condition (assoc one-sided :evaluation-function #(evaluation-function % right))))))
+               :baked? true))
+
+    :else
     (let [test-fn (or evaluation-function boolean)]
       (assoc c :evaluation-function (fn [context] (test-fn (resolve-path context condition)))
-               :resolve (bake-path-fn condition)
+               :resolve (fn [context]
+                          (let [v (resolve-path context condition)]
+                            (when (some? v) (boolean (test-fn v)))))
                :baked? true))))
 
 (defn- expand-node-children [node macros]
@@ -598,6 +621,10 @@
   #{:equals :greater :lower :greater-or-equal :lower-or-equal})
 
 (defn- parse-operator-test
+  "Parses the test after a condition's path. Returns the condition's test fields
+   and the tokens after the tag. A comparison against a literal bakes the literal
+   into :evaluation-function; a comparison against another path keeps that path
+   as :compare-to, with the two-argument test as :evaluation-function."
   [remaining-after-condition]
   (let [next-token (first remaining-after-condition)]
     (if (and next-token
@@ -612,11 +639,13 @@
                 ref-value (:value ref-token)
                 remaining-after-ref (rest remaining-after-test)
                 compare-fn (get evaluation-functions test-value)]
-            [(fn [v] (compare-fn v ref-value))
+            [(if (= :identifier (:type ref-token))
+               {:evaluation-function compare-fn :compare-to ref-value}
+               {:evaluation-function (fn [v] (compare-fn v ref-value))})
              (rest remaining-after-ref)])
-          [(get evaluation-functions test-value (:default evaluation-functions))
+          [{:evaluation-function (get evaluation-functions test-value (:default evaluation-functions))}
            (rest remaining-after-test)]))
-      [(:default evaluation-functions)
+      [{:evaluation-function (:default evaluation-functions)}
        (rest remaining-after-condition)])))
 
 (defn- parse-ast
@@ -854,13 +883,12 @@
          :keyword-if (let [remaining (rest lexed-list)
                            condition-token (first remaining)
                            remaining-after-condition (rest remaining)
-                           [eval-fn remaining-after-block-end] (parse-operator-test remaining-after-condition)]
+                           [condition-test remaining-after-block-end] (parse-operator-test remaining-after-condition)]
                        (if (some? (:value condition-token))
                          (let [new-tag-stack (push-tag tag-stack :if (:line current-item))
                                [branches else-body remaining-final final-tag-stack]
                                (loop [branches []
-                                      current-condition {:condition           (:value condition-token)
-                                                         :evaluation-function eval-fn}
+                                      current-condition (assoc condition-test :condition (:value condition-token))
                                       remaining remaining-after-block-end
                                       ts new-tag-stack]
                                  (let [[body remaining-after-body updated-ts] (parse-ast remaining [] current-block true current-file-path template-resolver filter-map merged-sanitizers ts macros current-sanitizer macro-param)
@@ -871,10 +899,9 @@
                                      (let [elif-remaining (rest remaining-after-body)
                                            elif-condition-token (first elif-remaining)
                                            elif-remaining-after-condition (rest elif-remaining)
-                                           [elif-eval-fn elif-remaining-after-block-end] (parse-operator-test elif-remaining-after-condition)
+                                           [elif-test elif-remaining-after-block-end] (parse-operator-test elif-remaining-after-condition)
                                            negate? (= :keyword-elif-not (:type next-token))
-                                           elif-cond (cond-> {:condition           (:value elif-condition-token)
-                                                              :evaluation-function elif-eval-fn}
+                                           elif-cond (cond-> (assoc elif-test :condition (:value elif-condition-token))
                                                              negate? (assoc :negate true))]
                                        (recur (conj branches [current-condition body])
                                               elif-cond
@@ -917,10 +944,9 @@
                                          (let [elif-remaining (rest remaining-after-body)
                                                elif-condition-token (first elif-remaining)
                                                elif-remaining-after-condition (rest elif-remaining)
-                                               [elif-eval-fn elif-remaining-after-block-end] (parse-operator-test elif-remaining-after-condition)
+                                               [elif-test elif-remaining-after-block-end] (parse-operator-test elif-remaining-after-condition)
                                                negate? (= :keyword-elif-not (:type next-token))
-                                               elif-cond (cond-> {:condition           (:value elif-condition-token)
-                                                                  :evaluation-function elif-eval-fn}
+                                               elif-cond (cond-> (assoc elif-test :condition (:value elif-condition-token))
                                                                  negate? (assoc :negate true))]
                                            (recur (conj branches [current-condition body])
                                                   elif-cond

@@ -784,3 +784,25 @@
           {:line 1
            :type :block-end}]
          (lexer/tokenize "{% if some.condition > 6 %}yes{% endif %}"))))
+
+(deftest tag-closers-in-text-are-text
+  (is (= [{:type :text :value ".a{width:100%} f(){g()}}"}]
+         (lexer/tokenize ".a{width:100%} f(){g()}}")))
+  (is (= [{:type :text :value "a}}"}
+          {:type :opening-bracket}
+          {:type :expression :value [:x]}
+          {:type :closing-bracket :line 1}
+          {:type :text :value "%}"}
+          {:type :block-start}
+          {:type :keyword-endif}
+          {:type :block-end :line 1}
+          {:type :text :value "}}"}]
+         (lexer/tokenize "a}}{{ x }}%}{% endif %}}}"))))
+
+(deftest comparison-value-token
+  (are [expected source]
+    (= expected (nth (lexer/tokenize (str "{% if v > " source " %}")) 5))
+    {:type :comparative :value 1.5} "1.5"
+    {:type :comparative :value -2} "-2"
+    {:type :comparative :value 0.5} ".5"
+    {:type :identifier :value [:limit :max]} "limit.max"))

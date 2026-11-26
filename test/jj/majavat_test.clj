@@ -144,6 +144,18 @@
     :context         {:value "a blast"}
     :splittable-keys [:value]
     :opts            {:environment {:sanitizers {:starnitizer (->StarSanitizer)}}}}
+   {:label           "tag closers in inline css and js"
+    :file-path       "html/inline-css-js.html"
+    :expected        "html/expected-inline-css-js.html"
+    :context         {:title "Hi" :items [10 20]}
+    :splittable-keys [:title :items]
+    :opts            {}}
+   {:label           "decimal and path comparisons"
+    :file-path       "if/comparisons.html"
+    :expected        "if/expected-comparisons.html"
+    :context         {:price 2 :limit {:max 2} :a false :b 2 :xs [1 2] :y 2}
+    :splittable-keys [:price :limit :a :b :xs :y]
+    :opts            {}}
    {:label           "parse error"
     :file-path       "html/index-with-error.html"
     :expected        "html/expected-error.html"
