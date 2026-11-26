@@ -1,2 +1,0 @@
-The planets are:{% each world in planets %}
-Planet {{ world }}{% endeach %}

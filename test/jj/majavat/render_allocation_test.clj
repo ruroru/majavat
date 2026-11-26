@@ -50,7 +50,7 @@
 (def ^:private template
   (str "<!DOCTYPE html><html><head><title>Fortunes</title></head><body><table>"
        "<tr><th>id</th><th>message</th></tr>"
-       "{% for f only in fortunes %}<tr><td>{{ f.id }}</td><td>{{ f.message }}</td></tr>{% endfor %}"
+       "{% for f in fortunes %}<tr><td>{{ f.id }}</td><td>{{ f.message }}</td></tr>{% endfor %}"
        "</table></body></html>"))
 
 (def ^:private fortunes

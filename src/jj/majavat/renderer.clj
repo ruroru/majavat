@@ -8,13 +8,6 @@
            (java.util.concurrent.atomic AtomicInteger AtomicLong)
            (jj.majavat.stream SequentialByteArrayInputStream)))
 
-(defn- get-loop-context [context index count]
-  (assoc context
-    :loop {:total  count
-           :index  index
-           :first? (zero? index)
-           :last?  (= index (dec count))}))
-
 (defn- evaluate-condition
   [condition context]
   (let [eval-fn (or (:evaluation-function condition) boolean)
@@ -48,34 +41,40 @@
         (node :branches))
       (node :else)))
 
+(defn- loop-context
+  "The context an iteration renders with when the body reads `loop`."
+  [context identifier item build-loop index item-count]
+  (assoc (assoc context :loop (build-loop index item-count)) identifier item))
+
 (declare render-nodes)
+
+(defn- render-items
+  [node context items sb]
+  (let [body (node :body)
+        identifier (node :identifier)]
+    (loop [remaining (seq items)]
+      (when remaining
+        (render-nodes body (assoc context identifier (first remaining)) sb)
+        (recur (next remaining))))))
+
+(defn- render-items-with-loop
+  [node context items build-loop sb]
+  (let [body (node :body)
+        identifier (node :identifier)
+        item-count (num (count items))]
+    (loop [i 0
+           remaining (seq items)]
+      (when remaining
+        (render-nodes body (loop-context context identifier (first remaining) build-loop i item-count) sb)
+        (recur (inc i) (next remaining))))))
 
 (defn- render-for
   [node context sb]
   (let [items ((node :source) context)]
     (if (seq items)
-      (let [body (node :body)
-            identifier (node :identifier)
-            item-count (count items)]
-        (loop [i 0
-               remaining (seq items)]
-          (when remaining
-            (let [loop-context (get-loop-context context i item-count)]
-              (render-nodes body (assoc loop-context identifier (first remaining)) sb)
-              (recur (inc i) (next remaining))))))
-      (when-let [when-empty (node :when-empty)]
-        (render-nodes when-empty context sb)))))
-
-(defn- render-each
-  [node context sb]
-  (let [items ((node :source) context)]
-    (if (seq items)
-      (let [body (node :body)
-            identifier (node :identifier)]
-        (loop [remaining (seq items)]
-          (when remaining
-            (render-nodes body (assoc context identifier (first remaining)) sb)
-            (recur (next remaining)))))
+      (if-let [build-loop (node :loop)]
+        (render-items-with-loop node context items build-loop sb)
+        (render-items node context items sb))
       (when-let [when-empty (node :when-empty)]
         (render-nodes when-empty context sb)))))
 
@@ -91,7 +90,6 @@
             :variable-assignment  (render-nodes (node :body) (assignment-context node context) sb)
             :variable-declaration (render-nodes (node :body) (declaration-context node context) sb)
             :for                  (render-for node context sb)
-            :each                 (render-each node context sb)
             :if                   (render-nodes (branch-body node context) context sb)
             :debug                (debug-output node context)
             nil)
@@ -105,34 +103,34 @@
 
 (declare render-nodes-to-bytes)
 
+(defn- items-bytes
+  [node context items ^Charset charset ^ArrayList result]
+  (let [body (node :body)
+        identifier (node :identifier)]
+    (loop [remaining (seq items)]
+      (when remaining
+        (render-nodes-to-bytes body (assoc context identifier (first remaining)) charset result)
+        (recur (next remaining))))))
+
+(defn- items-with-loop-bytes
+  [node context items build-loop ^Charset charset ^ArrayList result]
+  (let [body (node :body)
+        identifier (node :identifier)
+        item-count (num (count items))]
+    (loop [i 0
+           remaining (seq items)]
+      (when remaining
+        (render-nodes-to-bytes body (loop-context context identifier (first remaining) build-loop i item-count)
+                               charset result)
+        (recur (inc i) (next remaining))))))
+
 (defn- for-bytes
   [node context ^Charset charset ^ArrayList result]
   (let [items ((node :source) context)]
     (if (seq items)
-      (let [body (node :body)
-            identifier (node :identifier)
-            item-count (count items)]
-        (loop [i 0
-               remaining (seq items)]
-          (when remaining
-            (let [loop-context (get-loop-context context i item-count)]
-              (render-nodes-to-bytes body (assoc loop-context identifier (first remaining))
-                                     charset result)
-              (recur (inc i) (next remaining))))))
-      (when-let [when-empty (node :when-empty)]
-        (render-nodes-to-bytes when-empty context charset result)))))
-
-(defn- each-bytes
-  [node context ^Charset charset ^ArrayList result]
-  (let [items ((node :source) context)]
-    (if (seq items)
-      (let [body (node :body)
-            identifier (node :identifier)]
-        (loop [remaining (seq items)]
-          (when remaining
-            (render-nodes-to-bytes body (assoc context identifier (first remaining))
-                                   charset result)
-            (recur (next remaining)))))
+      (if-let [build-loop (node :loop)]
+        (items-with-loop-bytes node context items build-loop charset result)
+        (items-bytes node context items charset result))
       (when-let [when-empty (node :when-empty)]
         (render-nodes-to-bytes when-empty context charset result)))))
 
@@ -148,7 +146,6 @@
             :variable-assignment  (render-nodes-to-bytes (node :body) (assignment-context node context) charset result)
             :variable-declaration (render-nodes-to-bytes (node :body) (declaration-context node context) charset result)
             :for                  (for-bytes node context charset result)
-            :each                 (each-bytes node context charset result)
             :if                   (render-nodes-to-bytes (branch-body node context) context charset result)
             :debug                (debug-output node context)
             nil)
@@ -192,41 +189,20 @@
 
         :for
         (let [identifier (node :identifier)
+              build-loop (node :loop)
               body (node :body)
               items ((node :source) context)]
           (if (some? items)
             (if (seq items)
-              (let [item-count (count items)]
+              (let [item-count (num (count items))]
                 (loop [i 0
                        remaining (seq items)
                        result acc]
                   (if remaining
                     (let [item (first remaining)
-                          loop-context (get-loop-context context i item-count)
-                          new-context (assoc loop-context identifier item)
-                          rendered (partial-render-nodes body new-context)]
-                      (recur (inc i) (next remaining) (into result rendered)))
-                    result)))
-              (if-let [when-empty (node :when-empty)]
-                (into acc (partial-render-nodes when-empty context))
-                acc))
-            (conj acc (cond-> (assoc node :body (partial-render-nodes body context))
-                              (node :when-empty) (assoc :when-empty (partial-render-nodes (node :when-empty) context))))))
-
-        :each
-        (let [identifier (node :identifier)
-              body (node :body)
-              items ((node :source) context)]
-          (if (some? items)
-            (if (seq items)
-              (let [item-count (count items)]
-                (loop [i 0
-                       remaining (seq items)
-                       result acc]
-                  (if remaining
-                    (let [item (first remaining)
-                          loop-context (get-loop-context context i item-count)
-                          new-context (assoc loop-context identifier item)
+                          new-context (if build-loop
+                                        (loop-context context identifier item build-loop i item-count)
+                                        (assoc context identifier item))
                           rendered (partial-render-nodes body new-context)]
                       (recur (inc i) (next remaining) (into result rendered)))
                     result)))

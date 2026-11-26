@@ -268,31 +268,7 @@
         (let [trimmed-string (string/trim current-string)]
           (cond
             (= "endfor" trimmed-string)
-            (let [for-only? (loop [tokens stack
-                                   depth 0
-                                   saw-only? false]
-                              (if (empty? tokens)
-                                saw-only?
-                                (let [t (:type (first tokens))]
-                                  (cond
-                                    (or (= t :end-for) (= t :end-each-token))
-                                    (recur (rest tokens) (inc depth) saw-only?)
-
-                                    (and (= t :only-token) (zero? depth))
-                                    (recur (rest tokens) depth true)
-
-                                    (or (= t :keyword-for) (= t :each-token))
-                                    (if (pos? depth)
-                                      (recur (rest tokens) (dec depth) saw-only?)
-                                      saw-only?)
-
-                                    :else
-                                    (recur (rest tokens) depth saw-only?)))))
-                  end-type (if for-only? :end-each-token :end-for)]
-              (recur (rrest my-sequence) "" (conj stack {:type end-type} {:type :block-end :line line-number}) new-line-number))
-
-            (= "endeach" trimmed-string)
-            (recur (rrest my-sequence) "" (conj stack {:type :end-each-token} {:type :block-end :line line-number}) new-line-number)
+            (recur (rrest my-sequence) "" (conj stack {:type :end-for} {:type :block-end :line line-number}) new-line-number)
 
             (= "endverbatim" trimmed-string)
             (recur (rrest my-sequence) "" (conj stack {:type :end-verbatim} {:type :block-end :line line-number}) new-line-number)
@@ -374,12 +350,6 @@
                              (string/trim current-string))]
           (recur (rest my-sequence) "" (conj stack {:type :operator :value :is} {:type :operator-test :value operator-test}) new-line-number))
 
-        (and (= (:type (peek stack)) :identifier)
-             (= (string/trim current-string) "only")
-             (= current-char \ )
-             (= :keyword-for (:type (second stack))))
-        (recur (rest my-sequence) "" (conj stack {:type :only-token}) new-line-number)
-
         (= (:type (peek stack)) :operator)
         (if (= next-char \%)
           (let [trimmed (string/trim current-string)]
@@ -412,39 +382,13 @@
         (every? identity [(= "in" (string/trim current-string)) (= (:type (peek stack)) :identifier)])
         (recur (rest my-sequence) (str "" current-char) (conj stack {:type :keyword-in}) new-line-number)
 
-        (every? identity [(= "in" (string/trim current-string)) (and (map? (peek stack)) (= :each-token (:type (peek stack))) (:value (peek stack)))])
-        (recur (rest my-sequence) (str "" current-char) (conj (pop stack) {:type :identifier :value (:value (peek stack))} {:type :each-in-token}) new-line-number)
-
-        (= (:type (peek stack)) :only-token)
-        (cond
-          (and (= (string/trim current-string) "in") (= current-char \ ))
-          (recur (rest my-sequence) "" stack new-line-number)
-
-          (= next-char \%)
-          (let [current-trimmed (string/trim current-string)]
-            (if (not (string/blank? current-trimmed))
-              (recur (rest my-sequence) "" (conj stack {:type :identifier :value (parse-path current-trimmed)}) new-line-number)
-              (recur (rest my-sequence) "" (conj stack {:type :identifier}) new-line-number)))
-
-          :else
-          (recur (rest my-sequence) (str current-string current-char) stack new-line-number))
-
         (every? identity [(= (:type (peek stack)) :keyword-in) (= next-char \%)])
         (let [current-trimmed (string/trim current-string)]
           (if (not (string/blank? current-trimmed))
             (recur (rest my-sequence) "" (conj stack {:type :identifier :value (parse-path current-trimmed)}) new-line-number)
             (recur (rest my-sequence) "" (conj stack {:type :identifier}) new-line-number)))
 
-        (every? identity [(= (:type (peek stack)) :each-in-token) (= next-char \%)])
-        (let [current-trimmed (string/trim current-string)]
-          (if (not (string/blank? current-trimmed))
-            (recur (rest my-sequence) "" (conj stack {:type :each-identifier-token :value (parse-path current-trimmed)}) new-line-number)
-            (recur (rest my-sequence) "" (conj stack {:type :each-identifier-token}) new-line-number)))
-
         (every? identity [(= (:type (peek stack)) :keyword-in)])
-        (recur (rest my-sequence) (str current-string current-char) stack new-line-number)
-
-        (every? identity [(= (:type (peek stack)) :each-in-token)])
         (recur (rest my-sequence) (str current-string current-char) stack new-line-number)
 
         (and (= current-char \}) (= next-char \}))
@@ -539,9 +483,6 @@
           (cond
           (= (string/trim current-string) "for")
           (recur (rest my-sequence) "" (conj stack {:type :keyword-for}) new-line-number)
-
-          (= (string/trim current-string) "each")
-          (recur (rest my-sequence) "" (conj stack {:type :each-token}) new-line-number)
 
           (= (string/trim current-string) "let")
           (recur (rest my-sequence) "" (conj stack {:type :keyword-let}) new-line-number)
@@ -646,14 +587,6 @@
           (and (not (string/blank? current-string))
                (or (= current-char \ ) (= next-char \%)))
           (recur (rest my-sequence) (str "" current-char) (conj stack {:type :identifier :value (keyword (string/trim current-string))}) new-line-number)
-          :else
-          (recur (rest my-sequence) (str current-string current-char) stack new-line-number))
-
-        (= (:type (peek stack)) :each-token)
-        (cond
-          (and (not (string/blank? current-string))
-               (or (= current-char \ ) (= next-char \%)))
-          (recur (rest my-sequence) (str "" current-char) (conj stack {:type :each-token :value (keyword (string/trim current-string))}) new-line-number)
           :else
           (recur (rest my-sequence) (str current-string current-char) stack new-line-number))
 

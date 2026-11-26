@@ -416,15 +416,6 @@
     "filter/piped-empty-filter"
     ))
 
-(deftest test-parse-for-only-loop
-  (is (= [{:body       [{:type  :text
-                         :value "hello "}
-                        {:type :value-node}]
-           :identifier :world
-           :source     [:planets]
-           :type       :each}]
-         (parse "each/each" contentResolver empty-fn-map empty-sanitizers-map))))
-
 (deftest unclosed-tag-error
   (are [expected-ast input-file]
     (= expected-ast (parse input-file (rcr/->ResourceResolver) empty-fn-map empty-sanitizers-map))
@@ -442,11 +433,6 @@
      :line          "1"
      :type          "syntax-error"}
     "tagstack/unclosed-for-tag"
-
-    {:error-message "Mismatched closing tag on line 1: expected 'endeach' but found 'endlet' (opening tag was on line 1)"
-     :line          "1"
-     :type          "syntax-error"}
-    "tagstack/unclosed-each-tag"
     ))
 
 

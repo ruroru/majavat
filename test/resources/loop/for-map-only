@@ -1,3 +1,0 @@
-{% for entry only in settings -%}
-  {{ entry.key | name }}: {{ entry.value }}
-{% endfor %}

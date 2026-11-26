@@ -1,1 +1,0 @@
-The planets are: {% for world in planets %}{{ world }}{{loop.first?}}{{loop.last?}}{{loop.total}}{{loop.index}}{% endfor %}

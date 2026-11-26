@@ -282,19 +282,8 @@ The loop context provides access to:
 
 `loop.last?` - true only for the last item
 
-In situations where loop context is not needed, `only` can be used
-
-```
-{% for item only in items %}
-- {{ item }}
-{% endfor %}
-```
-
-```clojure
-(def render-fn (build-renderer "input-file"))
-
-(render-fn {:items ["Apple" "Banana" "Orange"]}) ;; returns "- Apple\n- Banana\n- Orange"
-```
+`loop` is only built when the loop body reads it, and then holds only the fields the body reads, so a loop that
+never uses it costs nothing extra.
 
 ##### Iterating over a map
 

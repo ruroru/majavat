@@ -466,28 +466,6 @@
     (is (= expected (lexer/tokenize nil)))))
 
 
-(deftest for-only-test
-  (is (= [{:type :block-start}
-          {:type :keyword-for}
-          {:type  :identifier
-           :value :world}
-          {:type :only-token}
-          {:type  :identifier
-           :value [:planets]}
-          {:line 1
-           :type :block-end}
-          {:type  :text
-           :value " hello "}
-          {:type :opening-bracket}
-          {:type  :expression
-           :value [:world]}
-          {:line 1
-           :type :closing-bracket}
-          {:type :block-start}
-          {:type :end-each-token}
-          {:line 1
-           :type :block-end}]
-         (lexer/tokenize "{%  for world only in planets %} hello {{ world }}{% endfor %}"))))
 
 
 

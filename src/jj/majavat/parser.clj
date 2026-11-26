@@ -169,6 +169,9 @@
             (get-in context path))))
 
 (defn- bake-render-fn
+  "Bakes the render-fn of a value-node. Arity 0 returns the context path it
+   reads, 1 renders the value as a string, 2 returns the raw resolved value (the
+   partial renderer's probe) and 3 appends the rendered value to a builder."
   ([value]
    (bake-render-fn value nil nil))
   ([value sanitizer]
@@ -180,6 +183,7 @@
                   (fn [v context] (sanitize san (->str (filter-fn v context))))
                   (fn [v context] (->str (filter-fn v context))))]
      (fn
+       ([] value)
        ([context] (finish (resolve-path context value) context))
        ([context _raw] (resolve-path context value))
        ([context builder _sink]
@@ -192,10 +196,12 @@
 (defn- bake-thunk
   "Builds a self-evaluating value-node render-fn: `f`'s arguments are baked in
    at build time, `f` is called fresh on every render, it ignores the render
-   context, and the pre-render (raw) arity returns nil so partial rendering
-   never collapses the node into static text (which would freeze the value)."
+   context (so arity 0 names no path), and the pre-render (raw) arity returns
+   nil so partial rendering never collapses the node into static text (which
+   would freeze the value)."
   [f]
   (fn
+    ([] nil)
     ([_context] (f))
     ([_context _raw] nil)
     ([_context builder _sink] (sb/append builder (f)))))
@@ -271,9 +277,11 @@
 (defn- bake-path-fn
   "Bakes a lookup path into a `context -> value` closure, so the renderer can
    pull loop sources and variable values without resolving paths (or knowing
-   about the parser) itself."
+   about the parser) itself. Arity 0 returns the path."
   [path]
-  (fn [context] (resolve-path context path)))
+  (fn
+    ([] path)
+    ([context] (resolve-path context path))))
 
 (defn- entry->item [entry]
   {:key (key entry) :value (val entry)})
@@ -287,9 +295,112 @@
     source))
 
 (defn- bake-source-fn
-  "Bakes a loop's source path into a `context -> items` closure."
+  "Bakes a loop's source path into a `context -> items` closure. Arity 0
+   returns the path."
   [path]
-  (fn [context] (loop-items (resolve-path context path))))
+  (fn
+    ([] path)
+    ([context] (loop-items (resolve-path context path)))))
+
+(declare collect-keys)
+
+(defn- add-key
+  "Adds the context path `path` to `acc`, unless it is empty or starts at a name
+   the template binds itself."
+  [acc locals path]
+  (if (and (seq path) (not (contains? locals (first path))))
+    (conj acc path)
+    acc))
+
+(defn- loop-keys
+  "The source is read outside the loop, the body also sees the item and `loop`,
+   and the `empty` branch renders outside the loop again."
+  [acc node locals]
+  (-> acc
+      (add-key locals ((:source node)))
+      (collect-keys (:body node) (conj locals (:identifier node) :loop))
+      (collect-keys (:when-empty node) locals)))
+
+(defn- let-keys [acc node locals]
+  (collect-keys acc (:body node) (conj locals (:variable-name node))))
+
+(defn- branch-keys [acc [condition body] locals]
+  (-> acc
+      (add-key locals (:condition condition))
+      (collect-keys body locals)))
+
+(defn- if-keys [acc node locals]
+  (collect-keys (reduce #(branch-keys %1 %2 locals) acc (:branches node))
+                (:else node)
+                locals))
+
+(defn- node-keys [acc node locals]
+  (case (:type node)
+    :value-node           (add-key acc locals ((:render-fn node)))
+    :for                  (loop-keys acc node locals)
+    :variable-assignment  (let-keys (add-key acc locals ((:variable-value node))) node locals)
+    :variable-declaration (let-keys acc node locals)
+    :if                   (if-keys acc node locals)
+    :fragment             (collect-keys acc (:body node) locals)
+    acc))
+
+(defn- collect-keys [acc nodes locals]
+  (reduce #(node-keys %1 %2 locals) acc nodes))
+
+(defn required-keys
+  "The context paths a template reads, as a set of keyword vectors:
+   `{{ user.name }}` needs `[:user :name]`. Takes the nodes `parse-template`
+   returns, or a partially rendered template to see what is still missing.
+
+   Names the template binds itself - a loop's item and `loop`, a `let`
+   variable - are not context keys, so only the paths they are bound from are
+   listed. Keys a context-aware filter reads inside its own code (`:locale` for
+   the `trans` filter) are not visible here. An error map is passed through."
+  [ast]
+  (if (map? ast)
+    ast
+    (collect-keys #{} ast #{})))
+
+(def ^:private loop-field-exprs
+  "How each `loop` field is computed from the index `i` and the item count `n`."
+  '{:total  n
+    :index  i
+    :first? (zero? (long i))
+    :last?  (== (long i) (dec (long n)))})
+
+(defmacro ^:private loop-map-builders
+  "Expands to a map from every set of `loop` fields to a `(fn [i n] loop-map)`
+   whose map holds only those fields, written as one literal so it is built in
+   a single allocation."
+  []
+  (into {}
+        (map (fn [fields] [(set fields) `(fn [~'i ~'n] ~(select-keys loop-field-exprs fields))]))
+        (reduce (fn [subsets field] (into subsets (map #(conj % field)) subsets))
+                [[]]
+                (keys loop-field-exprs))))
+
+(def ^:private loop-map-builder (loop-map-builders))
+
+(defn- read-loop-fields
+  "The `loop` fields `body` reads, or nil when it never reads `loop`. Reading
+   `loop` itself needs every field; an unknown field needs none, but still gets
+   an empty `loop` so it can't see an outer one."
+  [body]
+  (let [paths (filter #(= :loop (first %)) (collect-keys #{} body #{}))]
+    (when (seq paths)
+      (if (some #(= [:loop] %) paths)
+        (set (keys loop-field-exprs))
+        (into #{} (comp (map second) (filter loop-field-exprs)) paths)))))
+
+(defn- bake-loop
+  "Gives a loop the `:loop` builder its body needs: a `(fn [index count] map)`
+   making the `loop` map with only the fields the body reads. A body that never
+   reads `loop` gets none, so nothing is built for it. Runs once the body is
+   expanded, so spliced-in macros and nested loops count."
+  [node]
+  (if-let [build-loop (loop-map-builder (read-loop-fields (:body node)))]
+    (assoc node :loop build-loop)
+    node))
 
 (defn- bake-condition
   "Rewrites a branch condition so it carries everything the renderer needs:
@@ -324,7 +435,10 @@
                                          (fn [branches]
                                            (mapv (fn [[condition body]]
                                                    [(bake-condition condition) (expand-nodes body macros)])
-                                                 branches)))))
+                                                 branches)))
+
+    (= :for (:type node))
+    bake-loop))
 
 (defn- expand-nodes [nodes macros]
   (into []
@@ -706,26 +820,22 @@
                             identifier-token (first remaining)]
                         (if (not (= :block-end (:type identifier-token)))
                           (let [remaining-after-id (rest remaining)
-                                separator-token (first remaining-after-id)
-                                separator-type (:type separator-token)
-                                each-mode? (= :only-token separator-type)]
-                            (if (or (= :keyword-in separator-type) each-mode?)
+                                separator-token (first remaining-after-id)]
+                            (if (= :keyword-in (:type separator-token))
                               (let [remaining-after-in (rest remaining-after-id)
                                     source-token (first remaining-after-in)
                                     remaining-after-source (rest remaining-after-in)
                                     block-end-token (first remaining-after-source)]
                                 (if (some? (:value source-token))
                                   (let [remaining-after-block-end (rest remaining-after-source)
-                                        tag-kind (if each-mode? :each :for)
-                                        node-type (if each-mode? :each :for)
-                                        new-tag-stack (push-tag tag-stack tag-kind (:line current-item))
+                                        new-tag-stack (push-tag tag-stack :for (:line current-item))
                                         [body remaining-after-body updated-tag-stack] (parse-ast remaining-after-block-end [] current-block true current-file-path template-resolver filter-map merged-sanitizers new-tag-stack macros current-sanitizer macro-param)
                                         [when-empty remaining-after-empty final-tag-stack] (if (and (seq remaining-after-body)
                                                                                                     (= :keyword-empty (:type (first remaining-after-body))))
                                                                                              (let [remaining-after-empty-kw (rest (rest remaining-after-body))]
                                                                                                (parse-ast remaining-after-empty-kw [] current-block true current-file-path template-resolver filter-map merged-sanitizers updated-tag-stack macros current-sanitizer macro-param))
                                                                                              [nil remaining-after-body updated-tag-stack])
-                                        for-node (cond-> {:type       node-type
+                                        for-node (cond-> {:type       :for
                                                           :identifier (:value identifier-token)
                                                           :source     (:value source-token)
                                                           :body       body}
@@ -740,40 +850,6 @@
                           (throw (ex-info (format "error on line %s" (:line identifier-token))
                                           {:type :syntax-error
                                            :line (:line identifier-token)}))))
-
-         :each-token (let [remaining (rest lexed-list)
-                           identifier-token (first remaining)]
-                       (if (not (= :block-end (:type identifier-token)))
-                         (let [remaining-after-id (rest remaining)]
-                           (if (= :each-in-token (:type (first remaining-after-id)))
-                             (let [remaining-after-in (rest remaining-after-id)
-                                   source-token (first remaining-after-in)
-                                   remaining-after-source (rest remaining-after-in)
-                                   block-end-token (first remaining-after-source)]
-                               (if (some? (:value source-token))
-                                 (let [remaining-after-block-end (rest remaining-after-source)
-                                       new-tag-stack (push-tag tag-stack :each (:line current-item))
-                                       [body remaining-after-body updated-tag-stack] (parse-ast remaining-after-block-end [] current-block true current-file-path template-resolver filter-map merged-sanitizers new-tag-stack macros current-sanitizer macro-param)
-                                       [when-empty remaining-after-empty final-tag-stack] (if (and (seq remaining-after-body)
-                                                                                                   (= :keyword-empty (:type (first remaining-after-body))))
-                                                                                            (let [remaining-after-empty-kw (rest (rest remaining-after-body))]
-                                                                                              (parse-ast remaining-after-empty-kw [] current-block true current-file-path template-resolver filter-map merged-sanitizers updated-tag-stack macros current-sanitizer macro-param))
-                                                                                            [nil remaining-after-body updated-tag-stack])
-                                       each-node (cond-> {:type       :each
-                                                          :identifier (:value identifier-token)
-                                                          :source     (:value source-token)
-                                                          :body       body}
-                                                         when-empty (assoc :when-empty when-empty))]
-                                   (recur remaining-after-empty (conj list each-node) current-block parsing-for-body current-file-path template-resolver filter-map merged-sanitizers final-tag-stack macros current-sanitizer macro-param))
-                                 (throw (ex-info (format "error on line %s" (:line block-end-token))
-                                                 {:type :syntax-error
-                                                  :line (:line block-end-token)}))))
-                             (throw (ex-info (format "error on line %s" (:line (first remaining-after-id)))
-                                             {:type :syntax-error
-                                              :line (:line (first remaining-after-id))}))))
-                         (throw (ex-info (format "error on line %s" (:line identifier-token))
-                                         {:type :syntax-error
-                                          :line (:line identifier-token)}))))
 
          :keyword-if (let [remaining (rest lexed-list)
                            condition-token (first remaining)
@@ -891,11 +967,6 @@
                                (recur (rest lexed-list) list current-block parsing-for-body current-file-path template-resolver filter-map merged-sanitizers tag-stack macros current-sanitizer macro-param))
 
          :escape-name (recur (rest lexed-list) list current-block parsing-for-body current-file-path template-resolver filter-map merged-sanitizers tag-stack macros current-sanitizer macro-param)
-         :end-each-token (if parsing-for-body
-                           (let [updated-tag-stack (pop-tag tag-stack :each (or (:line current-item) 1))]
-                             [list (rest lexed-list) updated-tag-stack])
-                           (recur (rest lexed-list) list current-block parsing-for-body current-file-path template-resolver filter-map merged-sanitizers tag-stack macros current-sanitizer macro-param))
-
          :keyword-else (if parsing-for-body
                          [list lexed-list tag-stack]
                          (recur (rest lexed-list) list current-block parsing-for-body current-file-path template-resolver filter-map merged-sanitizers tag-stack macros current-sanitizer macro-param))
@@ -980,8 +1051,6 @@
 
 
          :keyword-in (recur (rest lexed-list) list current-block parsing-for-body current-file-path template-resolver filter-map merged-sanitizers tag-stack macros current-sanitizer macro-param)
-         :each-in-token (recur (rest lexed-list) list current-block parsing-for-body current-file-path template-resolver filter-map merged-sanitizers tag-stack macros current-sanitizer macro-param)
-         :each-identifier-token (recur (rest lexed-list) list current-block parsing-for-body current-file-path template-resolver filter-map merged-sanitizers tag-stack macros current-sanitizer macro-param)
          :variable-declaration (recur (rest lexed-list) list current-block parsing-for-body current-file-path template-resolver filter-map merged-sanitizers tag-stack macros current-sanitizer macro-param)
          :identifier (recur (rest lexed-list) list current-block parsing-for-body current-file-path template-resolver filter-map merged-sanitizers tag-stack macros current-sanitizer macro-param)
 

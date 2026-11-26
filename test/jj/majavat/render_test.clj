@@ -14,6 +14,7 @@
     [jj.majavat.renderer.sanitizer :refer [->Html ->None]]
     [jj.majavat.resolver.fs :as fcr]
     [jj.majavat.resolver.resource :as rcr]
+    [jj.majavat.resolver.string :refer [->StringResolver]]
     [jj.majavat.error-handler.fail-fast :as fail-fast]
     [jj.majavat.error-handler.reporting :as reporting])
   (:import (clojure.lang ExceptionInfo)
@@ -420,24 +421,6 @@ this is a  footer"
     (slurp (io/resource "loop/for-loop-else-expected")) "loop/for-loop-else" {}
     ))
 
-(deftest each
-  (let [context {:planets ["Mercury" "Venus" "Earth" "Mars" "Jupiter" "Saturn" "Uranus" "Neptune"]}
-        string-renderer (renderer/render (->StringRenderer)
-                                         (parse "each/each-planet" contentResolver empty-fn-map empty-sanitizers-map)
-                                         context
-                                         default-error-handler)
-        is-renderer (renderer/render
-                      (->InputStreamRenderer)
-                      (parse "each/each-planet" contentResolver empty-fn-map empty-sanitizers-map)
-                      context
-                      default-error-handler)]
-
-    (are [expected input]
-      (= expected input)
-
-      (slurp (io/resource "each/each-planet-expected")) string-renderer
-      (slurp (io/resource "each/each-planet-expected")) (String. (.readAllBytes ^InputStream is-renderer)))))
-
 (deftest csrf-token
   (testing "render to string"
     (are [expected-value template-path context]
@@ -519,6 +502,31 @@ this is a  footer"
     "" {:values (list)}
     ))
 
+(defn- loops-seen
+  "The `loop` value each iteration of `template` renders with, collected once per
+   render target (string, stream, partial)."
+  [template context]
+  (let [seen (atom [])
+        spy (with-meta (fn [v ctx] (swap! seen conj (:loop ctx)) v) {:context-aware true})
+        ast (parse "template" (->StringResolver "template" template) {:spy spy} empty-sanitizers-map)
+        seen-by (fn [render] (reset! seen []) (render) @seen)]
+    [(seen-by #(renderer/render (->StringRenderer) ast context default-error-handler))
+     (seen-by #(slurp (renderer/render (->InputStreamRenderer) ast context default-error-handler)))
+     (seen-by #(renderer/render (->PartialRenderer) ast context default-error-handler))]))
+
+(deftest loop-binds-only-the-fields-its-body-reads
+  (are [expected template] (= (repeat 3 expected) (loops-seen template {:xs [1 2]}))
+    [nil nil] "{% for x in xs %}{{ x | spy }}{% endfor %}"
+    [{:index 0} {:index 1}] "{% for x in xs %}{{ loop.index }}{{ x | spy }}{% endfor %}"
+    [{:last? false} {:last? true}] "{% for x in xs %}{% if loop.last? %}.{% endif %}{{ x | spy }}{% endfor %}"
+    [{:total 2 :index 0} {:total 2 :index 1}] "{% for x in xs %}{% let t = loop.total %}{{ loop.index }}/{{ t }}{% endlet %}{{ x | spy }}{% endfor %}"
+    [{:total 2 :index 0 :first? true :last? false}
+     {:total 2 :index 1 :first? false :last? true}] "{% for x in xs %}{{ loop }}{{ x | spy }}{% endfor %}"
+    [{} {}] "{% for x in xs %}{{ loop.nope }}{{ x | spy }}{% endfor %}"
+    [nil nil] "{% for x in xs %}{% for y in xs %}{{ loop.index }}{% endfor %}{{ x | spy }}{% endfor %}"
+    [{:index 0} {:index 1}] "{% for x in xs %}{% for y in none %}{% empty %}{{ loop.index }}{% endfor %}{{ x | spy }}{% endfor %}"
+    [{:index 0} {:index 1}] "{% macro pos() %}{{ loop.index }}{% endmacro %}{% for x in xs %}{% pos() %}{{ x | spy }}{% endfor %}"))
+
 (deftest for-over-map
   (are [expected template-path input-context]
     (= expected
@@ -539,7 +547,6 @@ this is a  footer"
                         {}
                         default-error-handler))
     "host: localhost\nport: 8080\n" "loop/for-map" {:settings (array-map :host "localhost" :port 8080)}
-    "host: localhost\nport: 8080\n" "loop/for-map-only" {:settings (array-map :host "localhost" :port 8080)}
     "a: 1\n" "loop/for-map" {:settings {"a" 1}}
     "" "loop/for-map" {:settings {}}
     "" "loop/for-map" {}))
@@ -578,10 +585,6 @@ this is a  footer"
 
                                            [{:type  :text
                                              :value "/some/route?key=value"}] "query-string/query-string" {:foo {:bar {"key" "value"}}}
-
-                                           [{:type  :text
-                                             :value "The planets are:Planet Mercury. Planet Venus. Planet Earth. Planet Mars. Planet Jupiter. Planet Saturn. Planet Uranus. Planet Neptune. "}]
-                                           "loop/each-loop-no-new-line" {:planets ["Mercury" "Venus" "Earth" "Mars" "Jupiter" "Saturn" "Uranus" "Neptune"]}
                                            ))
 
 (deftest render-depth-test
@@ -621,7 +624,6 @@ this is a  footer"
                                   (parse input-file contentResolver empty-fn-map empty-sanitizers-map)
                                   {}
                                   reporting-error-handler)))
-    "tagstack/expected-unclosed-each-tag.html" "tagstack/unclosed-each-tag"
     "tagstack/expected-unclosed-if-tag.html" "tagstack/unclosed-if-tag"
     "tagstack/expected-unclosed-for-tag.html" "tagstack/unclosed-for-tag"
     "tagstack/expected-unclosed-let-tag.html" "tagstack/unclosed-let-tag"
